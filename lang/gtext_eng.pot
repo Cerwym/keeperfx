@@ -5731,3 +5731,12 @@ msgstr ""
 msgctxt "Creature spell"
 msgid "Summon: Call upon temporary guardians to assist the creature in combat."
 msgstr ""
+#: guitext:1082
+msgctxt "In-game interface item"
+msgid "Audio Device"
+msgstr ""
+
+#: guitext:1083
+msgctxt "In-game interface description"
+msgid "Audio Device: Switch audio output device. LMB cycle devices. RMB display current device."
+msgstr ""

@@ -110,6 +110,7 @@ obj/bflib_filelst.o \
 obj/bflib_fmvids.o \
 obj/bflib_guibtns.o \
 obj/bflib_inputctrl.o \
+obj/input_manager.o \
 obj/bflib_keybrd.o \
 obj/bflib_main.o \
 obj/bflib_math.o \
@@ -337,6 +338,13 @@ obj/vidmode.o \
 obj/KeeperSpeechImp.o \
 obj/spritesheet.o \
 obj/windows.o \
+obj/bflib_imgui.o \
+obj/imgui/imgui.o \
+obj/imgui/imgui_draw.o \
+obj/imgui/imgui_tables.o \
+obj/imgui/imgui_widgets.o \
+obj/imgui/imgui_impl_sdl2.o \
+obj/imgui/imgui_impl_sdlrenderer2.o \
 $(FTEST_OBJS) \
 $(RES)
 
@@ -387,7 +395,9 @@ INCS = \
 	-I"deps/openal/include" \
 	-I"deps/luajit/include" \
 	-I"deps/miniupnpc/include" \
-	-I"deps/libnatpmp/include"
+	-I"deps/libnatpmp/include" \
+	-I"deps/imgui" \
+	-I"deps/imgui/backends"
 CXXINCS =  $(INCS)
 
 STDOBJS   = $(subst obj/,obj/std/,$(OBJS))
@@ -596,6 +606,25 @@ obj/std/%.o: src/%.c libexterns $(GENSRC)
 
 obj/hvlog/%.o: src/%.c libexterns $(GENSRC)
 	$(BUILD_CC_FILES_CMD)
+
+
+# ImGui library compilation (no pre/post checks for external library)
+
+obj/std/imgui/%.o: deps/imgui/%.cpp
+	-$(ECHO) 'Building ImGui file: $<'
+	$(CPP) $(CXXFLAGS) -Wno-error -o"$@" "$<"
+
+obj/hvlog/imgui/%.o: deps/imgui/%.cpp
+	-$(ECHO) 'Building ImGui file: $<'
+	$(CPP) $(CXXFLAGS) -Wno-error -o"$@" "$<"
+
+obj/std/imgui/%.o: deps/imgui/backends/%.cpp
+	-$(ECHO) 'Building ImGui backend file: $<'
+	$(CPP) $(CXXFLAGS) -Wno-error -o"$@" "$<"
+
+obj/hvlog/imgui/%.o: deps/imgui/backends/%.cpp
+	-$(ECHO) 'Building ImGui backend file: $<'
+	$(CPP) $(CXXFLAGS) -Wno-error -o"$@" "$<"
 
 
 # Windows resources compilation

@@ -57,6 +57,7 @@ struct GameSettings { // KFX settings
     long mentor_volume;
     int isometric_tilt;
     TbBool highlight_mode;
+    char audio_device_name[128]; /**< Preferred audio output device name (empty string means system default) */
     };
 #pragma pack()
 /******************************************************************************/

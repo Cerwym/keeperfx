@@ -114,6 +114,7 @@ void setup_default_settings(void)
      127,                       // mentor_volume
      CAMERA_TILT_DEFAULT,       // isometric_tilt
      false,                     // highlight_mode
+     "",                        // audio_device_name (empty = system default)
     };
     memcpy(&settings, &default_settings, sizeof(struct GameSettings));
     settings.switching_vidmodes_index = 0;

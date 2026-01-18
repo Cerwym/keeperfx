@@ -78,7 +78,7 @@ if ($debugFlagFTest -eq 'FTEST_DEBUG=1')
 {
     Write-Host 'Compiling with FTEST_DEBUG=1' -ForegroundColor Magenta;
 }
-wsl make all -j`nproc` $debugFlag $debugFlagFTest;
+wsl make standard -j`nproc` $debugFlag $debugFlagFTest;
 if ($?) {
     Write-Host 'Compilation successful!' -ForegroundColor Green;
 }

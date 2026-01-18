@@ -75,6 +75,8 @@ void gui_display_current_resolution(struct GuiButton *gbtn);
 void gui_set_sound_volume(struct GuiButton *gbtn);
 void gui_set_music_volume(struct GuiButton *gbtn);
 void gui_set_mentor_volume(struct GuiButton *gbtn);
+void gui_cycle_audio_device(struct GuiButton *gbtn);
+void gui_display_audio_device(struct GuiButton *gbtn);
 void init_video_menu(struct GuiMenu *gmnu);
 void init_audio_menu(struct GuiMenu *gmnu);
 /******************************************************************************/
