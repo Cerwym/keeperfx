@@ -490,4 +490,17 @@ void InputManager_UpdateMouseWheel(TbBool up) {
     InputManager::instance().updateMouseWheel(up != 0);
 }
 
+// Convenience wrappers for easier migration
+TbBool input_key_pressed(TbKeyCode key) {
+    return InputManager_IsKeyPressed(key);
+}
+
+TbKeyCode input_last_key(void) {
+    return InputManager_GetLastKey();
+}
+
+void input_clear_last_key(void) {
+    InputManager_ClearLastKey();
+}
+
 } // extern "C"

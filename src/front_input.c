@@ -34,6 +34,7 @@
 #include "bflib_inputctrl.h"
 #include "bflib_sound.h"
 #include "bflib_sndlib.h"
+#include "input_manager.hpp"
 #include "kjm_input.h"
 #include "frontend.h"
 #include "frontmenu_ingame_tabs.h"
@@ -407,7 +408,7 @@ short get_speed_control_inputs(void)
  */
 short get_packet_load_game_control_inputs(void)
 {
-  if (lbKeyOn[KC_LALT] && lbKeyOn[KC_X])
+  if (input_key_pressed(KC_LALT) && input_key_pressed(KC_X))
   {
     clear_key_pressed(KC_X);
     if ((game.system_flags & GSF_NetworkActive) != 0)
@@ -2421,12 +2422,12 @@ void get_dungeon_control_nonaction_inputs(void)
       set_players_packet_position(pckt, pos.x.val, pos.y.val, 0);
       pckt->additional_packet_values &= ~PCAdV_ContextMask; // reset cursor states to 0 (CSt_DefaultArrow)
   }
-  if (lbKeyOn[KC_LALT] && lbKeyOn[KC_X])
+  if (input_key_pressed(KC_LALT) && input_key_pressed(KC_X))
   {
     clear_key_pressed(KC_X);
     turn_on_menu(GMnu_QUIT);
   }
-  if (lbKeyOn[KC_ESCAPE])
+  if (input_key_pressed(KC_ESCAPE))
   {
       lbKeyOn[KC_ESCAPE] = 0;
       if (a_menu_window_is_active())
@@ -2505,7 +2506,7 @@ TbBool get_packet_load_demo_inputs(void)
   if (is_key_pressed(KC_SPACE,KMod_DONTCARE) ||
       is_key_pressed(KC_ESCAPE,KMod_DONTCARE) ||
       is_key_pressed(KC_RETURN,KMod_DONTCARE) ||
-      (lbKeyOn[KC_LALT] && lbKeyOn[KC_X]) ||
+      (input_key_pressed(KC_LALT) && input_key_pressed(KC_X)) ||
       left_button_clicked)
   {
       clear_key_pressed(KC_SPACE);
@@ -2638,9 +2639,9 @@ static void speech_pickup_of_gui_job(int job_idx)
     }
 
     unsigned short pick_flags = TPF_PickableCheck;
-    if (lbKeyOn[KC_LCONTROL] || lbKeyOn[KC_RCONTROL] || (job_idx == -1))
+    if (input_key_pressed(KC_LCONTROL) || input_key_pressed(KC_RCONTROL) || (job_idx == -1))
         pick_flags |= TPF_OrderedPick;
-    if (lbKeyOn[KC_LSHIFT] || lbKeyOn[KC_RSHIFT])
+    if (input_key_pressed(KC_LSHIFT) || input_key_pressed(KC_RSHIFT))
         pick_flags |= TPF_ReverseOrder;
     pick_up_creature_of_model_and_gui_job(kind, job_idx, my_player_number, pick_flags);
 }

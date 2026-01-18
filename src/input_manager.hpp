@@ -25,6 +25,7 @@
 #include "bflib_keybrd.h"
 #include "globals.h"
 
+#ifdef __cplusplus
 #include <array>
 #include <stack>
 #include <cstring>
@@ -212,9 +213,13 @@ public:
     const State* getRawState() const { return &rawInput_; }
 };
 
+#endif // __cplusplus
+
 /******************************************************************************/
 // C-style wrapper API for gradual migration from existing code
+#ifdef __cplusplus
 extern "C" {
+#endif
     void InputManager_Initialize();
     void InputManager_Shutdown();
     void InputManager_NewFrame();
@@ -241,6 +246,17 @@ extern "C" {
     void InputManager_UpdateMousePosition(long x, long y);
     void InputManager_UpdateMouseButton(int button, TbBool pressed);
     void InputManager_UpdateMouseWheel(TbBool up);
+    
+    // Convenience wrappers for easier migration (prefixed to avoid conflicts)
+    TbBool input_key_pressed(TbKeyCode key);
+    TbKeyCode input_last_key(void);
+    void input_clear_last_key(void);
+
+#ifdef __cplusplus
 }
+#endif
+
+// Legacy compatibility macros - these can gradually be phased out
+#define input_is_key_down(key) InputManager_IsKeyPressed(key)
 
 #endif // INPUT_MANAGER_HPP
