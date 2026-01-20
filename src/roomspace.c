@@ -1207,6 +1207,30 @@ void keeper_build_roomspace(PlayerNumber plyr_idx, struct RoomSpace *roomspace)
     player->roomspace.spiral.steps_remaining_before_turn = 0;
 }
 
+static void advance_spiral(struct RoomSpace *roomspace)
+{
+    // Move to next position in spiral if we have steps remaining
+    if (roomspace->spiral.steps_remaining_before_turn > 0)
+    {
+        const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
+        roomspace->buildx += dir->delta_x;
+        roomspace->buildy += dir->delta_y;
+    }
+    
+    // Update spiral state
+    roomspace->spiral.steps_remaining_before_turn--;
+    if (roomspace->spiral.steps_remaining_before_turn <= 0)
+    {
+        roomspace->spiral.turns_made++;
+        if (roomspace->spiral.turns_made & 1)  // On odd turns, increase step count
+        {
+            roomspace->spiral.steps_to_take_before_turning++;
+        }
+        roomspace->spiral.steps_remaining_before_turn = roomspace->spiral.steps_to_take_before_turning;
+        roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & 3; // Rotate clockwise
+    }
+}
+
 static void keeper_update_roomspace(struct RoomSpace *roomspace)
 {
     if (!roomspace->is_active)
@@ -1225,61 +1249,21 @@ static void keeper_update_roomspace(struct RoomSpace *roomspace)
         keeper_build_room(slab_subtile(roomspace->buildx, 0), slab_subtile(roomspace->buildy, 0), roomspace->plyr_idx, roomspace->rkind);
     }
     
-    // Use spiral pattern to find next point
+    // Advance spiral to find next valid position
     int slabs_checked = 0;
     int max_slabs_to_check = roomspace->width * roomspace->height * 2; // Safety limit
     
-    // Move to next position in spiral
-    if (roomspace->spiral.steps_remaining_before_turn > 0)
-    {
-        // Move in current direction
-        const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
-        roomspace->buildx += dir->delta_x;
-        roomspace->buildy += dir->delta_y;
-    }
-    
-    roomspace->spiral.steps_remaining_before_turn--;
-    if (roomspace->spiral.steps_remaining_before_turn <= 0)
-    {
-        // Time to turn
-        roomspace->spiral.turns_made++;
-        if (roomspace->spiral.turns_made & 1)  // On odd turns, increase step count
-        {
-            roomspace->spiral.steps_to_take_before_turning++;
-        }
-        roomspace->spiral.steps_remaining_before_turn = roomspace->spiral.steps_to_take_before_turning;
-        roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & 3; // Rotate clockwise
-    }
-    
-    // Find next valid build position
     while (slabs_checked < max_slabs_to_check)
     {
+        // Move to next position in spiral
+        advance_spiral(roomspace);
         slabs_checked++;
         
         // Check if position is within bounds
         if (roomspace->buildx < roomspace->left || roomspace->buildx > roomspace->right ||
             roomspace->buildy < roomspace->top || roomspace->buildy > roomspace->bottom)
         {
-            // Move to next position in spiral
-            if (roomspace->spiral.steps_remaining_before_turn > 0)
-            {
-                const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
-                roomspace->buildx += dir->delta_x;
-                roomspace->buildy += dir->delta_y;
-            }
-            
-            roomspace->spiral.steps_remaining_before_turn--;
-            if (roomspace->spiral.steps_remaining_before_turn <= 0)
-            {
-                roomspace->spiral.turns_made++;
-                if (roomspace->spiral.turns_made & 1)
-                {
-                    roomspace->spiral.steps_to_take_before_turning++;
-                }
-                roomspace->spiral.steps_remaining_before_turn = roomspace->spiral.steps_to_take_before_turning;
-                roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & 3;
-            }
-            continue;
+            continue; // Out of bounds, try next position
         }
         
         // Check if this position should be built
@@ -1288,7 +1272,7 @@ static void keeper_update_roomspace(struct RoomSpace *roomspace)
             // For box roomspace, all positions within bounds are valid
             if (roomspace->rkind == RoK_SELL || can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy))
             {
-                return; // Found valid position
+                return; // Found valid position, will build on next update
             }
         }
         else
@@ -1302,30 +1286,10 @@ static void keeper_update_roomspace(struct RoomSpace *roomspace)
                 {
                     if (roomspace->rkind == RoK_SELL || can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy))
                     {
-                        return; // Found valid position
+                        return; // Found valid position, will build on next update
                     }
                 }
             }
-        }
-        
-        // Move to next position in spiral
-        if (roomspace->spiral.steps_remaining_before_turn > 0)
-        {
-            const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
-            roomspace->buildx += dir->delta_x;
-            roomspace->buildy += dir->delta_y;
-        }
-        
-        roomspace->spiral.steps_remaining_before_turn--;
-        if (roomspace->spiral.steps_remaining_before_turn <= 0)
-        {
-            roomspace->spiral.turns_made++;
-            if (roomspace->spiral.turns_made & 1)
-            {
-                roomspace->spiral.steps_to_take_before_turning++;
-            }
-            roomspace->spiral.steps_remaining_before_turn = roomspace->spiral.steps_to_take_before_turning;
-            roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & 3;
         }
     }
     
