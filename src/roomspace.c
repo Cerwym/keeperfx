@@ -1216,8 +1216,8 @@ static void advance_spiral(struct RoomSpace *roomspace)
         // Time to turn
         roomspace->spiral.turns_made++;
         // On odd turns (1st, 3rd, 5th...), increase the number of steps before next turn
-        // Turn sequence: 1st turn→1step, 2nd turn→1step, 3rd turn→2steps, 4th turn→2steps, 5th turn→3steps...
-        // This creates: center, then 1N, 1E, 2S, 2W, 3N, 3E, 4S, 4W, ...
+        // Turn sequence: 1st turn→steps=1, 2nd turn→steps=1, 3rd turn→steps=2, 4th turn→steps=2, 5th turn→steps=3...
+        // This creates the spiral: center (built before any advance), then 1E, 1S, 2W, 2N, 3E, 3S, 4W, 4N...
         if (roomspace->spiral.turns_made & 1)
         {
             roomspace->spiral.steps_to_take_before_turning++;
@@ -1238,7 +1238,7 @@ static void keeper_update_roomspace(struct RoomSpace *roomspace)
     if (!roomspace->is_active)
         return;
     
-    // build a room or sell at current point
+    // Build a room or sell at current point (starts at center on first call, then spirals outward)
     if (roomspace->rkind == RoK_SELL)
         sell_at_point(roomspace);
     else
@@ -1251,7 +1251,7 @@ static void keeper_update_roomspace(struct RoomSpace *roomspace)
         keeper_build_room(slab_subtile(roomspace->buildx, 0), slab_subtile(roomspace->buildy, 0), roomspace->plyr_idx, roomspace->rkind);
     }
     
-    // Advance spiral to find next valid position
+    // Advance spiral to find next valid position for the next game tick
     int slabs_checked = 0;
     // Safety limit: In worst case, spiral may need to check positions outside the room bounds
     // before completing the full area. We allow 2x the room area to handle this gracefully.
