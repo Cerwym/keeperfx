@@ -51,6 +51,9 @@ const struct SpiralDirectionLookup spiral_directions[] = {
     { 0,  1},  // South
     {-1,  0}   // West
 };
+
+#define SPIRAL_NUM_DIRECTIONS 4
+#define SPIRAL_DIRECTION_MASK (SPIRAL_NUM_DIRECTIONS - 1)  // Used to wrap direction: (dir + 1) & 3 gives next clockwise direction
 /******************************************************************************/
 TbBool can_afford_roomspace(PlayerNumber plyr_idx, RoomKind rkind, int slab_count)
 {
@@ -1222,12 +1225,15 @@ static void advance_spiral(struct RoomSpace *roomspace)
     if (roomspace->spiral.steps_remaining_before_turn <= 0)
     {
         roomspace->spiral.turns_made++;
-        if (roomspace->spiral.turns_made & 1)  // On odd turns, increase step count
+        // On odd turns (1st, 3rd, 5th...), increase the number of steps before next turn
+        // This creates the expanding spiral: 1N, 1E, 2S, 2W, 3N, 3E, 4S, 4W, ...
+        if (roomspace->spiral.turns_made & 1)
         {
             roomspace->spiral.steps_to_take_before_turning++;
         }
         roomspace->spiral.steps_remaining_before_turn = roomspace->spiral.steps_to_take_before_turning;
-        roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & 3; // Rotate clockwise
+        // Rotate direction clockwise: North -> East -> South -> West -> North
+        roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & SPIRAL_DIRECTION_MASK;
     }
 }
 
@@ -1251,7 +1257,9 @@ static void keeper_update_roomspace(struct RoomSpace *roomspace)
     
     // Advance spiral to find next valid position
     int slabs_checked = 0;
-    int max_slabs_to_check = roomspace->width * roomspace->height * 2; // Safety limit
+    // Safety limit: In worst case, spiral may need to check positions outside the room bounds
+    // before completing the full area. We allow 2x the room area to handle this gracefully.
+    int max_slabs_to_check = roomspace->width * roomspace->height * 2;
     
     while (slabs_checked < max_slabs_to_check)
     {
