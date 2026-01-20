@@ -38,6 +38,19 @@ extern "C" {
 #endif
 /******************************************************************************/
 TbBool reset_roomspace = false;
+
+/** Direction lookup for spiral pattern (N, E, S, W) in slab coordinates. */
+struct SpiralDirectionLookup {
+    long delta_x;
+    long delta_y;
+};
+
+const struct SpiralDirectionLookup spiral_directions[] = {
+    { 0, -1},  // North
+    { 1,  0},  // East
+    { 0,  1},  // South
+    {-1,  0}   // West
+};
 /******************************************************************************/
 TbBool can_afford_roomspace(PlayerNumber plyr_idx, RoomKind rkind, int slab_count)
 {
@@ -1165,21 +1178,13 @@ void keeper_sell_roomspace(PlayerNumber plyr_idx, struct RoomSpace *roomspace)
     memcpy(&player->roomspace, roomspace, sizeof(player->roomspace));
     // Init
     player->roomspace.is_active = true;
-    if (!player->roomspace.drag_mode)
-    {
-        player->roomspace.buildx = roomspace->left;
-        player->roomspace.buildy = roomspace->top;
-    }
-    else
-    {
-        player->roomspace.buildx = roomspace->drag_start_x;
-        player->roomspace.buildy = roomspace->drag_start_y;
-    }
-    if (!roomspace->is_roomspace_a_box)
-    {
-        // We want to find first point
-        find_next_point(&player->roomspace, roomspace->drag_direction);
-    }
+    // Initialize spiral to start from center
+    player->roomspace.buildx = roomspace->centreX;
+    player->roomspace.buildy = roomspace->centreY;
+    player->roomspace.spiral.forward_direction = 0; // Start facing NORTH
+    player->roomspace.spiral.turns_made = 0;
+    player->roomspace.spiral.steps_to_take_before_turning = 0;
+    player->roomspace.spiral.steps_remaining_before_turn = 0;
 }
 
 void keeper_build_roomspace(PlayerNumber plyr_idx, struct RoomSpace *roomspace)
@@ -1193,31 +1198,21 @@ void keeper_build_roomspace(PlayerNumber plyr_idx, struct RoomSpace *roomspace)
     memcpy(&player->roomspace, roomspace, sizeof(player->roomspace));
     // Init
     player->roomspace.is_active = true;
-    if (!player->roomspace.drag_mode)
-    {
-        player->roomspace.buildx = roomspace->left;
-        player->roomspace.buildy = roomspace->top;
-    }
-    else
-    {
-        player->roomspace.buildx = roomspace->drag_start_x;
-        player->roomspace.buildy = roomspace->drag_start_y;
-    }
-    if (!roomspace->is_roomspace_a_box)
-    {
-        if (!player->roomspace.drag_mode)
-        {
-            player->roomspace.buildx--; // We want to find first point
-        }
-        find_next_point(&player->roomspace, roomspace->drag_direction);
-    }
+    // Initialize spiral to start from center
+    player->roomspace.buildx = roomspace->centreX;
+    player->roomspace.buildy = roomspace->centreY;
+    player->roomspace.spiral.forward_direction = 0; // Start facing NORTH
+    player->roomspace.spiral.turns_made = 0;
+    player->roomspace.spiral.steps_to_take_before_turning = 0;
+    player->roomspace.spiral.steps_remaining_before_turn = 0;
 }
 
 static void keeper_update_roomspace(struct RoomSpace *roomspace)
 {
     if (!roomspace->is_active)
         return;
-    // build a room
+    
+    // build a room or sell at current point
     if (roomspace->rkind == RoK_SELL)
         sell_at_point(roomspace);
     else
@@ -1229,127 +1224,113 @@ static void keeper_update_roomspace(struct RoomSpace *roomspace)
         }
         keeper_build_room(slab_subtile(roomspace->buildx, 0), slab_subtile(roomspace->buildy, 0), roomspace->plyr_idx, roomspace->rkind);
     }
-    // find next point
-    if (roomspace->drag_mode)
+    
+    // Use spiral pattern to find next point
+    int slabs_checked = 0;
+    int max_slabs_to_check = roomspace->width * roomspace->height * 2; // Safety limit
+    
+    // Move to next position in spiral
+    if (roomspace->spiral.steps_remaining_before_turn > 0)
     {
-        switch (roomspace->drag_direction)
+        // Move in current direction
+        const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
+        roomspace->buildx += dir->delta_x;
+        roomspace->buildy += dir->delta_y;
+    }
+    
+    roomspace->spiral.steps_remaining_before_turn--;
+    if (roomspace->spiral.steps_remaining_before_turn <= 0)
+    {
+        // Time to turn
+        roomspace->spiral.turns_made++;
+        if (roomspace->spiral.turns_made & 1)  // On odd turns, increase step count
         {
-            case top_left_to_bottom_right:
+            roomspace->spiral.steps_to_take_before_turning++;
+        }
+        roomspace->spiral.steps_remaining_before_turn = roomspace->spiral.steps_to_take_before_turning;
+        roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & 3; // Rotate clockwise
+    }
+    
+    // Find next valid build position
+    while (slabs_checked < max_slabs_to_check)
+    {
+        slabs_checked++;
+        
+        // Check if position is within bounds
+        if (roomspace->buildx < roomspace->left || roomspace->buildx > roomspace->right ||
+            roomspace->buildy < roomspace->top || roomspace->buildy > roomspace->bottom)
+        {
+            // Move to next position in spiral
+            if (roomspace->spiral.steps_remaining_before_turn > 0)
             {
-                do
-                {
-                    roomspace->buildx++;
-                    if (roomspace->buildx > roomspace->right)
-                    {
-                        roomspace->buildx = roomspace->left;
-                        roomspace->buildy++;
-                    }
-                    if (!roomspace->is_roomspace_a_box)
-                    {
-                        find_next_point(roomspace, roomspace->drag_direction);
-                    }
-                    if ((roomspace->buildy > roomspace->bottom) || (roomspace->buildx > roomspace->right))
-                    {
-                        roomspace->is_active = false;
-                        return;
-                    }
-                }
-                while ( (roomspace->rkind != RoK_SELL) && (!can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy)) );
-                break;
+                const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
+                roomspace->buildx += dir->delta_x;
+                roomspace->buildy += dir->delta_y;
             }
-            case bottom_right_to_top_left:
+            
+            roomspace->spiral.steps_remaining_before_turn--;
+            if (roomspace->spiral.steps_remaining_before_turn <= 0)
             {
-                do
+                roomspace->spiral.turns_made++;
+                if (roomspace->spiral.turns_made & 1)
                 {
-                    roomspace->buildx--;
-                    if (roomspace->buildx < roomspace->left)
-                    {
-                        roomspace->buildx = roomspace->right;
-                        roomspace->buildy--;
-                    }
-                    if (!roomspace->is_roomspace_a_box)
-                    {
-                        find_next_point(roomspace, roomspace->drag_direction);
-                    }
-                    if ((roomspace->buildy < roomspace->top) || (roomspace->buildx < roomspace->left))
-                    {
-                        roomspace->is_active = false;
-                        return;
-                    }
+                    roomspace->spiral.steps_to_take_before_turning++;
                 }
-                while ( (roomspace->rkind != RoK_SELL) && (!can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy)) );
-                break;
+                roomspace->spiral.steps_remaining_before_turn = roomspace->spiral.steps_to_take_before_turning;
+                roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & 3;
             }
-            case top_right_to_bottom_left:
+            continue;
+        }
+        
+        // Check if this position should be built
+        if (roomspace->is_roomspace_a_box)
+        {
+            // For box roomspace, all positions within bounds are valid
+            if (roomspace->rkind == RoK_SELL || can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy))
             {
-                do
-                {
-                    roomspace->buildx--;
-                    if (roomspace->buildx < roomspace->left)
-                    {
-                        roomspace->buildx = roomspace->right;
-                        roomspace->buildy++;
-                    }
-                    if (!roomspace->is_roomspace_a_box)
-                    {
-                        find_next_point(roomspace, roomspace->drag_direction);
-                    }
-                    if ((roomspace->buildy > roomspace->bottom) || (roomspace->buildx < roomspace->left))
-                    {
-                        roomspace->is_active = false;
-                        return;
-                    }
-                }
-                while ( (roomspace->rkind != RoK_SELL) && (!can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy)) );
-                break;
-            }
-            case bottom_left_to_top_right:
-            {
-                do
-                {
-                    roomspace->buildx++;
-                    if (roomspace->buildx > roomspace->right)
-                    {
-                        roomspace->buildx = roomspace->left;
-                        roomspace->buildy--;
-                    }
-                    if (!roomspace->is_roomspace_a_box)
-                    {
-                        find_next_point(roomspace, roomspace->drag_direction);
-                    }
-                    if ((roomspace->buildy < roomspace->top) || (roomspace->buildx > roomspace->right))
-                    {
-                        roomspace->is_active = false;
-                        return;
-                    }
-                }
-                while ( (roomspace->rkind != RoK_SELL) && (!can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy)) );
-                break;
+                return; // Found valid position
             }
         }
-    }
-    else
-    {
-        do
+        else
         {
-            roomspace->buildx++;
-            if (roomspace->buildx > roomspace->right)
+            // For non-box roomspace, check the slab_grid
+            int grid_x = roomspace->buildx - roomspace->left;
+            int grid_y = roomspace->buildy - roomspace->top;
+            if (grid_x >= 0 && grid_x < roomspace->width && grid_y >= 0 && grid_y < roomspace->height)
             {
-                roomspace->buildx = roomspace->left;
-                roomspace->buildy++;
-            }
-            if (!roomspace->is_roomspace_a_box)
-            {
-                find_next_point(roomspace, top_left_to_bottom_right);
-            }
-            if ((roomspace->buildy > roomspace->bottom) || (roomspace->buildx > roomspace->right))
-            {
-                roomspace->is_active = false;
-                return;
+                if (roomspace->slab_grid[grid_x][grid_y])
+                {
+                    if (roomspace->rkind == RoK_SELL || can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy))
+                    {
+                        return; // Found valid position
+                    }
+                }
             }
         }
-        while ( (roomspace->rkind != RoK_SELL) && (!can_build_room_at_slab(roomspace->plyr_idx, roomspace->rkind, roomspace->buildx, roomspace->buildy)) );
+        
+        // Move to next position in spiral
+        if (roomspace->spiral.steps_remaining_before_turn > 0)
+        {
+            const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
+            roomspace->buildx += dir->delta_x;
+            roomspace->buildy += dir->delta_y;
+        }
+        
+        roomspace->spiral.steps_remaining_before_turn--;
+        if (roomspace->spiral.steps_remaining_before_turn <= 0)
+        {
+            roomspace->spiral.turns_made++;
+            if (roomspace->spiral.turns_made & 1)
+            {
+                roomspace->spiral.steps_to_take_before_turning++;
+            }
+            roomspace->spiral.steps_remaining_before_turn = roomspace->spiral.steps_to_take_before_turning;
+            roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & 3;
+        }
     }
+    
+    // If we've checked all possible positions, deactivate
+    roomspace->is_active = false;
 }
 
 void update_roomspaces()
