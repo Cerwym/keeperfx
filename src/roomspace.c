@@ -1181,13 +1181,7 @@ void keeper_sell_roomspace(PlayerNumber plyr_idx, struct RoomSpace *roomspace)
     memcpy(&player->roomspace, roomspace, sizeof(player->roomspace));
     // Init
     player->roomspace.is_active = true;
-    // Initialize spiral to start from center
-    player->roomspace.buildx = roomspace->centreX;
-    player->roomspace.buildy = roomspace->centreY;
-    player->roomspace.spiral.forward_direction = 0; // Start facing NORTH
-    player->roomspace.spiral.turns_made = 0;
-    player->roomspace.spiral.steps_to_take_before_turning = 0;
-    player->roomspace.spiral.steps_remaining_before_turn = 0;
+    initialize_spiral_state(&player->roomspace);
 }
 
 void keeper_build_roomspace(PlayerNumber plyr_idx, struct RoomSpace *roomspace)
@@ -1201,32 +1195,29 @@ void keeper_build_roomspace(PlayerNumber plyr_idx, struct RoomSpace *roomspace)
     memcpy(&player->roomspace, roomspace, sizeof(player->roomspace));
     // Init
     player->roomspace.is_active = true;
-    // Initialize spiral to start from center
-    player->roomspace.buildx = roomspace->centreX;
-    player->roomspace.buildy = roomspace->centreY;
-    player->roomspace.spiral.forward_direction = 0; // Start facing NORTH
-    player->roomspace.spiral.turns_made = 0;
-    player->roomspace.spiral.steps_to_take_before_turning = 0;
-    player->roomspace.spiral.steps_remaining_before_turn = 0;
+    initialize_spiral_state(&player->roomspace);
+}
+
+static void initialize_spiral_state(struct RoomSpace *roomspace)
+{
+    roomspace->buildx = roomspace->centreX;
+    roomspace->buildy = roomspace->centreY;
+    roomspace->spiral.forward_direction = 0; // Start facing NORTH
+    roomspace->spiral.turns_made = 0;
+    roomspace->spiral.steps_to_take_before_turning = 0;  // Will be incremented on first turn
+    roomspace->spiral.steps_remaining_before_turn = 0;   // Will trigger immediate turn on first advance
 }
 
 static void advance_spiral(struct RoomSpace *roomspace)
 {
-    // Move to next position in spiral if we have steps remaining
-    if (roomspace->spiral.steps_remaining_before_turn > 0)
-    {
-        const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
-        roomspace->buildx += dir->delta_x;
-        roomspace->buildy += dir->delta_y;
-    }
-    
-    // Update spiral state
     roomspace->spiral.steps_remaining_before_turn--;
     if (roomspace->spiral.steps_remaining_before_turn <= 0)
     {
+        // Time to turn
         roomspace->spiral.turns_made++;
         // On odd turns (1st, 3rd, 5th...), increase the number of steps before next turn
-        // This creates the expanding spiral: 1N, 1E, 2S, 2W, 3N, 3E, 4S, 4W, ...
+        // Turn sequence: 1st turn→1step, 2nd turn→1step, 3rd turn→2steps, 4th turn→2steps, 5th turn→3steps...
+        // This creates: center, then 1N, 1E, 2S, 2W, 3N, 3E, 4S, 4W, ...
         if (roomspace->spiral.turns_made & 1)
         {
             roomspace->spiral.steps_to_take_before_turning++;
@@ -1235,6 +1226,11 @@ static void advance_spiral(struct RoomSpace *roomspace)
         // Rotate direction clockwise: North -> East -> South -> West -> North
         roomspace->spiral.forward_direction = (roomspace->spiral.forward_direction + 1) & SPIRAL_DIRECTION_MASK;
     }
+    
+    // Move to next position in spiral
+    const struct SpiralDirectionLookup *dir = &spiral_directions[roomspace->spiral.forward_direction];
+    roomspace->buildx += dir->delta_x;
+    roomspace->buildy += dir->delta_y;
 }
 
 static void keeper_update_roomspace(struct RoomSpace *roomspace)
