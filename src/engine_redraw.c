@@ -101,28 +101,33 @@ static void draw_creature_view_icons(struct Thing* creatng)
     }
     struct CreatureControl *cctrl = creature_control_get_from_thing(creatng);
     
-    // Track which spell types have already been drawn to avoid duplicates
-    TbBool spell_drawn[CREATURE_MAX_SPELLS_CASTED_AT] = {false};
+    // Track which spell slots have already been drawn to avoid duplicates
+    TbBool spell_slot_drawn[CREATURE_MAX_SPELLS_CASTED_AT] = {false};
     
     struct SpellConfig *spconf;
     for (SpellKind spell_idx = 0; spell_idx < CREATURE_MAX_SPELLS_CASTED_AT; spell_idx++)
     {
-        // Skip if this spell type was already drawn
-        if (spell_drawn[spell_idx])
+        // Skip if this spell slot was already drawn
+        if (spell_slot_drawn[spell_idx])
             continue;
             
         SpellKind current_spell = cctrl->casted_spells[spell_idx].spkind;
+        
+        // Skip empty spell slots (spkind == 0)
+        if (current_spell == 0)
+            continue;
+            
         spconf = get_spell_config(current_spell);
         long spridx = spconf->medsym_sprite_idx;
         
-        // Count how many of this spell type are active
+        // Count how many of this spell type are active and mark them as drawn
         int spell_count = 0;
         for (SpellKind j = 0; j < CREATURE_MAX_SPELLS_CASTED_AT; j++)
         {
             if (cctrl->casted_spells[j].spkind == current_spell)
             {
                 spell_count++;
-                spell_drawn[j] = true;  // Mark this slot as drawn
+                spell_slot_drawn[j] = true;  // Mark this slot as drawn
             }
         }
         
