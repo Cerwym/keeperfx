@@ -138,16 +138,19 @@ static void draw_creature_view_icons(struct Thing* creatng)
             lbDisplay.DrawColour = LbTextGetFontFaceColor();
             lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
             char text[16];
-            // Special handling for timebomb countdown
+            // Calculate duration in seconds
+            unsigned int duration_seconds;
             if (flag_is_set(spconf->spell_flags, CSAfF_Timebomb))
             {
-                snprintf(text, sizeof(text), "%u", (cctrl->timebomb_countdown / game_num_fps));
+                // Timebomb uses special countdown field
+                duration_seconds = (unsigned int)(cctrl->timebomb_countdown / game_num_fps);
             }
             else
             {
-                // Show spell duration in seconds
-                snprintf(text, sizeof(text), "%u", (unsigned int)(spell_duration / game_num_fps));
+                // Regular spells use their duration field
+                duration_seconds = (unsigned int)(spell_duration / game_num_fps);
             }
+            snprintf(text, sizeof(text), "%u", duration_seconds);
             LbTextDrawResized(0, 0, tx_units_per_px, text);
         }
         draw_gui_panel_sprite_left(x, y, ps_units_per_px, spridx);
