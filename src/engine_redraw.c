@@ -100,11 +100,32 @@ static void draw_creature_view_icons(struct Thing* creatng)
         y = MyScreenHeight - scale_ui_value_lofi(spr->SHeight * 2);
     }
     struct CreatureControl *cctrl = creature_control_get_from_thing(creatng);
+    
+    // Track which spell types have already been drawn to avoid duplicates
+    TbBool spell_drawn[CREATURE_MAX_SPELLS_CASTED_AT] = {false};
+    
     struct SpellConfig *spconf;
     for (SpellKind spell_idx = 0; spell_idx < CREATURE_MAX_SPELLS_CASTED_AT; spell_idx++)
     {
-        spconf = get_spell_config(cctrl->casted_spells[spell_idx].spkind);
+        // Skip if this spell type was already drawn
+        if (spell_drawn[spell_idx])
+            continue;
+            
+        SpellKind current_spell = cctrl->casted_spells[spell_idx].spkind;
+        spconf = get_spell_config(current_spell);
         long spridx = spconf->medsym_sprite_idx;
+        
+        // Count how many of this spell type are active
+        int spell_count = 0;
+        for (SpellKind j = 0; j < CREATURE_MAX_SPELLS_CASTED_AT; j++)
+        {
+            if (cctrl->casted_spells[j].spkind == current_spell)
+            {
+                spell_count++;
+                spell_drawn[j] = true;  // Mark this slot as drawn
+            }
+        }
+        
         if (flag_is_set(spconf->spell_flags, CSAfF_Invisibility))
         {
             if (cctrl->force_visible & 2)
@@ -112,7 +133,29 @@ static void draw_creature_view_icons(struct Thing* creatng)
                 spridx++;
             }
         }
-        if (flag_is_set(spconf->spell_flags, CSAfF_Timebomb))
+        
+        // Display spell count if more than 1 of this type
+        if (spell_count > 1)
+        {
+            int tx_units_per_px = (dbc_language > 0) ? scale_ui_value_lofi(16) : (22 * units_per_pixel) / LbTextLineHeight();
+            int h = LbTextLineHeight() * tx_units_per_px / 16;
+            int w = scale_ui_value_lofi(spr->SWidth);
+            if (dbc_language > 0)
+            {
+                if (MyScreenHeight < 400)
+                {
+                    w *= 2;
+                }
+            }
+            LbTextSetWindow(x + scale_ui_value_lofi(spr->SWidth / 2), y - scale_ui_value_lofi(spr->SHeight), w, h);
+            lbDisplay.DrawFlags = Lb_TEXT_HALIGN_CENTER;
+            lbDisplay.DrawColour = LbTextGetFontFaceColor();
+            lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
+            char text[16];
+            snprintf(text, sizeof(text), "x%d", spell_count);
+            LbTextDrawResized(0, 0, tx_units_per_px, text);
+        }
+        else if (flag_is_set(spconf->spell_flags, CSAfF_Timebomb))
         {
             int tx_units_per_px = (dbc_language > 0) ? scale_ui_value_lofi(16) : (22 * units_per_pixel) / LbTextLineHeight();
             int h = LbTextLineHeight() * tx_units_per_px / 16;
