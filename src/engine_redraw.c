@@ -100,37 +100,17 @@ static void draw_creature_view_icons(struct Thing* creatng)
         y = MyScreenHeight - scale_ui_value_lofi(spr->SHeight * 2);
     }
     struct CreatureControl *cctrl = creature_control_get_from_thing(creatng);
-    
-    // Track which spell slots have already been drawn to avoid duplicates
-    TbBool spell_slot_drawn[CREATURE_MAX_SPELLS_CASTED_AT] = {false};
-    
     struct SpellConfig *spconf;
     for (SpellKind spell_idx = 0; spell_idx < CREATURE_MAX_SPELLS_CASTED_AT; spell_idx++)
     {
-        // Skip if this spell slot was already drawn
-        if (spell_slot_drawn[spell_idx])
-            continue;
-            
         SpellKind current_spell = cctrl->casted_spells[spell_idx].spkind;
         
-        // Skip empty spell slots (spkind == 0)
+        // Skip empty spell slots
         if (current_spell == 0)
             continue;
-            
+        
         spconf = get_spell_config(current_spell);
         long spridx = spconf->medsym_sprite_idx;
-        
-        // Count how many of this spell type are active and mark them as drawn
-        int spell_count = 0;
-        for (SpellKind j = 0; j < CREATURE_MAX_SPELLS_CASTED_AT; j++)
-        {
-            if (cctrl->casted_spells[j].spkind == current_spell)
-            {
-                spell_count++;
-                spell_slot_drawn[j] = true;  // Mark this slot as drawn
-            }
-        }
-        
         if (flag_is_set(spconf->spell_flags, CSAfF_Invisibility))
         {
             if (cctrl->force_visible & 2)
@@ -139,8 +119,9 @@ static void draw_creature_view_icons(struct Thing* creatng)
             }
         }
         
-        // Display spell count if more than 1 of this type
-        if (spell_count > 1)
+        // Display duration countdown for all spells (if they have duration)
+        GameTurnDelta spell_duration = cctrl->casted_spells[spell_idx].duration;
+        if (spell_duration > 0)
         {
             int tx_units_per_px = (dbc_language > 0) ? scale_ui_value_lofi(16) : (22 * units_per_pixel) / LbTextLineHeight();
             int h = LbTextLineHeight() * tx_units_per_px / 16;
@@ -157,27 +138,16 @@ static void draw_creature_view_icons(struct Thing* creatng)
             lbDisplay.DrawColour = LbTextGetFontFaceColor();
             lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
             char text[16];
-            snprintf(text, sizeof(text), "x%d", spell_count);
-            LbTextDrawResized(0, 0, tx_units_per_px, text);
-        }
-        else if (flag_is_set(spconf->spell_flags, CSAfF_Timebomb))
-        {
-            int tx_units_per_px = (dbc_language > 0) ? scale_ui_value_lofi(16) : (22 * units_per_pixel) / LbTextLineHeight();
-            int h = LbTextLineHeight() * tx_units_per_px / 16;
-            int w = scale_ui_value_lofi(spr->SWidth);
-            if (dbc_language > 0)
+            // Special handling for timebomb countdown
+            if (flag_is_set(spconf->spell_flags, CSAfF_Timebomb))
             {
-                if (MyScreenHeight < 400)
-                {
-                    w *= 2;
-                }
+                snprintf(text, sizeof(text), "%u", (cctrl->timebomb_countdown / game_num_fps));
             }
-            LbTextSetWindow(x + scale_ui_value_lofi(spr->SWidth / 2), y - scale_ui_value_lofi(spr->SHeight), w, h);
-            lbDisplay.DrawFlags = Lb_TEXT_HALIGN_CENTER;
-            lbDisplay.DrawColour = LbTextGetFontFaceColor();
-            lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
-            char text[16];
-            snprintf(text, sizeof(text), "%u", (cctrl->timebomb_countdown / game_num_fps));
+            else
+            {
+                // Show spell duration in seconds
+                snprintf(text, sizeof(text), "%u", (unsigned int)(spell_duration / game_num_fps));
+            }
             LbTextDrawResized(0, 0, tx_units_per_px, text);
         }
         draw_gui_panel_sprite_left(x, y, ps_units_per_px, spridx);
