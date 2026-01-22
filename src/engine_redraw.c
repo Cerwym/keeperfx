@@ -124,14 +124,17 @@ static void draw_creature_view_icons(struct Thing* creatng)
             }
         }
         
+        // Get the actual spell icon sprite for proper sizing
+        const struct TbSprite* spell_spr = get_panel_sprite(spridx);
+        int spell_icon_width = scale_ui_value_lofi(spell_spr->SWidth);
+        
         // Display duration countdown for all spells (if they have duration)
         GameTurnDelta spell_duration = cctrl->casted_spells[spell_idx].duration;
         if (spell_duration > 0)
         {
             int tx_units_per_px = (dbc_language > 0) ? scale_ui_value_lofi(16) : (22 * units_per_pixel) / LbTextLineHeight();
             int h = LbTextLineHeight() * tx_units_per_px / 16;
-            int icon_width = scale_ui_value_lofi(spr->SWidth);
-            int w = icon_width;
+            int w = spell_icon_width;
             if (dbc_language > 0)
             {
                 if (MyScreenHeight < 400)
@@ -140,7 +143,7 @@ static void draw_creature_view_icons(struct Thing* creatng)
                 }
             }
             // Center text window on the icon horizontally
-            LbTextSetWindow(x, y - scale_ui_value_lofi(spr->SHeight), w, h);
+            LbTextSetWindow(x, y - scale_ui_value_lofi(spell_spr->SHeight), w, h);
             lbDisplay.DrawFlags = Lb_TEXT_HALIGN_CENTER;
             lbDisplay.DrawColour = LbTextGetFontFaceColor();
             lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
@@ -161,8 +164,8 @@ static void draw_creature_view_icons(struct Thing* creatng)
             LbTextDrawResized(0, 0, tx_units_per_px, text);
         }
         draw_gui_panel_sprite_left(x, y, ps_units_per_px, spridx);
-        // Add padding between icons
-        x += scale_ui_value_lofi(spr->SWidth) + scale_ui_value_lofi(4);
+        // Add padding between icons using actual spell icon width
+        x += spell_icon_width + scale_ui_value_lofi(4);
     }
     if ( (cctrl->dragtng_idx != 0) && ((creatng->alloc_flags & TAlF_IsDragged) == 0) )
     {
