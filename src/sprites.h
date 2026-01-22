@@ -29,6 +29,7 @@ enum GUIButtonSprite {
     GBS_options_button_sound = 24,
     GBS_options_button_graphc = 25,
     GBS_options_button_exit = 26,
+    GBS_options_button_keys = 26, // Reuse exit button sprite temporarily for Define Keys
     GBS_options_button_grph_shadow0 = 27,
     GBS_options_button_grph_shadow1 = 28,
     GBS_options_button_grph_shadow2 = 29,
