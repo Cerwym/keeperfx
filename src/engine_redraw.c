@@ -126,6 +126,8 @@ static void draw_creature_view_icons(struct Thing* creatng)
         
         // Get the actual spell icon sprite for proper sizing
         const struct TbSprite* spell_spr = get_panel_sprite(spridx);
+        if (spell_spr == NULL)
+            continue;
         int spell_icon_width = scale_ui_value_lofi(spell_spr->SWidth);
         
         // Display duration countdown for all spells (if they have duration)
