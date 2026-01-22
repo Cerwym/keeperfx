@@ -100,6 +100,11 @@ static void draw_creature_view_icons(struct Thing* creatng)
         y = MyScreenHeight - scale_ui_value_lofi(spr->SHeight * 2);
     }
     struct CreatureControl *cctrl = creature_control_get_from_thing(creatng);
+    
+    // Validate creature control to ensure we have valid data
+    if (creature_control_invalid(cctrl))
+        return;
+    
     struct SpellConfig *spconf;
     for (SpellKind spell_idx = 0; spell_idx < CREATURE_MAX_SPELLS_CASTED_AT; spell_idx++)
     {
@@ -125,7 +130,8 @@ static void draw_creature_view_icons(struct Thing* creatng)
         {
             int tx_units_per_px = (dbc_language > 0) ? scale_ui_value_lofi(16) : (22 * units_per_pixel) / LbTextLineHeight();
             int h = LbTextLineHeight() * tx_units_per_px / 16;
-            int w = scale_ui_value_lofi(spr->SWidth);
+            int icon_width = scale_ui_value_lofi(spr->SWidth);
+            int w = icon_width;
             if (dbc_language > 0)
             {
                 if (MyScreenHeight < 400)
@@ -133,7 +139,8 @@ static void draw_creature_view_icons(struct Thing* creatng)
                     w *= 2;
                 }
             }
-            LbTextSetWindow(x + scale_ui_value_lofi(spr->SWidth / 2), y - scale_ui_value_lofi(spr->SHeight), w, h);
+            // Center text window on the icon horizontally
+            LbTextSetWindow(x, y - scale_ui_value_lofi(spr->SHeight), w, h);
             lbDisplay.DrawFlags = Lb_TEXT_HALIGN_CENTER;
             lbDisplay.DrawColour = LbTextGetFontFaceColor();
             lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
@@ -154,7 +161,8 @@ static void draw_creature_view_icons(struct Thing* creatng)
             LbTextDrawResized(0, 0, tx_units_per_px, text);
         }
         draw_gui_panel_sprite_left(x, y, ps_units_per_px, spridx);
-        x += scale_ui_value_lofi(spr->SWidth);
+        // Add padding between icons
+        x += scale_ui_value_lofi(spr->SWidth) + scale_ui_value_lofi(4);
     }
     if ( (cctrl->dragtng_idx != 0) && ((creatng->alloc_flags & TAlF_IsDragged) == 0) )
     {
