@@ -97,7 +97,8 @@ static void draw_creature_view_icons(struct Thing* creatng)
     {
         spr = get_panel_sprite(488);
         ps_units_per_px = (22 * units_per_pixel) / spr->SHeight;
-        y = MyScreenHeight - scale_ui_value_lofi(spr->SHeight * 2);
+        // Add padding from bottom of screen so sprites are fully visible
+        y = MyScreenHeight - scale_ui_value_lofi(spr->SHeight * 2) - scale_ui_value_lofi(8);
     }
     struct CreatureControl *cctrl = creature_control_get_from_thing(creatng);
     
