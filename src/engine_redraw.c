@@ -63,6 +63,7 @@
 #include "creature_instances.h"
 #include "packets.h"
 #include "custom_sprites.h"
+#include "config_keeperfx.h"
 #include "keeperfx.hpp"
 #include "post_inc.h"
 
@@ -89,6 +90,10 @@ static long draw_spell_cost;
 /******************************************************************************/
 static void draw_creature_view_icons(struct Thing* creatng)
 {
+    // Check if spell display is disabled
+    if (possession_spell_display_mode == PSDpM_Off)
+        return;
+    
     struct GuiMenu *gmnu = get_active_menu(menu_id_to_number(GMnu_MAIN));
     ScreenCoord x = gmnu->width + scale_value_by_horizontal_resolution(5);
     ScreenCoord y;
@@ -130,10 +135,11 @@ static void draw_creature_view_icons(struct Thing* creatng)
         if (spell_spr == NULL)
             continue;
         int spell_icon_width = scale_ui_value_lofi(spell_spr->SWidth);
+        int spell_icon_height = scale_ui_value_lofi(spell_spr->SHeight);
         
-        // Display duration countdown for all spells (if they have duration)
+        // Display duration countdown based on mode
         GameTurnDelta spell_duration = cctrl->casted_spells[spell_idx].duration;
-        if (spell_duration > 0)
+        if (spell_duration > 0 && possession_spell_display_mode != PSDpM_IconsOnly)
         {
             int tx_units_per_px = (dbc_language > 0) ? scale_ui_value_lofi(16) : (22 * units_per_pixel) / LbTextLineHeight();
             int h = LbTextLineHeight() * tx_units_per_px / 16;
@@ -145,12 +151,7 @@ static void draw_creature_view_icons(struct Thing* creatng)
                     w *= 2;
                 }
             }
-            // Center text window on the icon horizontally
-            LbTextSetWindow(x, y - scale_ui_value_lofi(spell_spr->SHeight), w, h);
-            lbDisplay.DrawFlags = Lb_TEXT_HALIGN_CENTER;
-            lbDisplay.DrawColour = LbTextGetFontFaceColor();
-            lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
-            char text[16];
+            
             // Calculate duration in seconds
             unsigned int duration_seconds;
             if (flag_is_set(spconf->spell_flags, CSAfF_Timebomb))
@@ -163,8 +164,65 @@ static void draw_creature_view_icons(struct Thing* creatng)
                 // Regular spells use their duration field
                 duration_seconds = (unsigned int)(spell_duration / game_num_fps);
             }
-            snprintf(text, sizeof(text), "%u", duration_seconds);
-            LbTextDrawResized(0, 0, tx_units_per_px, text);
+            
+            // Display based on mode
+            if (possession_spell_display_mode == PSDpM_TextAbove)
+            {
+                // Text above sprite
+                LbTextSetWindow(x, y - spell_icon_height, w, h);
+                lbDisplay.DrawFlags = Lb_TEXT_HALIGN_CENTER;
+                lbDisplay.DrawColour = LbTextGetFontFaceColor();
+                lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
+                char text[16];
+                snprintf(text, sizeof(text), "%u", duration_seconds);
+                LbTextDrawResized(0, 0, tx_units_per_px, text);
+            }
+            else if (possession_spell_display_mode == PSDpM_TextBelow)
+            {
+                // Text below sprite
+                LbTextSetWindow(x, y + spell_icon_height + scale_ui_value_lofi(2), w, h);
+                lbDisplay.DrawFlags = Lb_TEXT_HALIGN_CENTER;
+                lbDisplay.DrawColour = LbTextGetFontFaceColor();
+                lbDisplayEx.ShadowColour = LbTextGetFontBackColor();
+                char text[16];
+                snprintf(text, sizeof(text), "%u", duration_seconds);
+                LbTextDrawResized(0, 0, tx_units_per_px, text);
+            }
+            else if (possession_spell_display_mode == PSDpM_ProgressBar)
+            {
+                // Progress bar underneath sprite
+                // Calculate progress percentage (0-100)
+                long max_duration = spconf->duration;
+                if (max_duration > 0)
+                {
+                    int progress_percent = (int)((spell_duration * 100) / max_duration);
+                    if (progress_percent > 100) progress_percent = 100;
+                    
+                    // Draw progress bar background (dark)
+                    int bar_y = y + spell_icon_height + scale_ui_value_lofi(2);
+                    int bar_height = scale_ui_value_lofi(3);
+                    int bar_width = spell_icon_width;
+                    
+                    // Background bar (empty portion)
+                    for (int by = 0; by < bar_height; by++)
+                    {
+                        for (int bx = 0; bx < bar_width; bx++)
+                        {
+                            LbDrawPixel(x + bx, bar_y + by, colours[0][0][0]);
+                        }
+                    }
+                    
+                    // Filled bar (based on progress)
+                    int filled_width = (bar_width * progress_percent) / 100;
+                    for (int by = 0; by < bar_height; by++)
+                    {
+                        for (int bx = 0; bx < filled_width; bx++)
+                        {
+                            LbDrawPixel(x + bx, bar_y + by, colours[0][15][0]);
+                        }
+                    }
+                }
+            }
         }
         draw_gui_panel_sprite_left(x, y, ps_units_per_px, spridx);
         // Add padding between icons using actual spell icon width
