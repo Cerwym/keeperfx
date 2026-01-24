@@ -339,6 +339,8 @@ obj/KeeperSpeechImp.o \
 obj/spritesheet.o \
 obj/windows.o \
 obj/bflib_imgui.o \
+obj/imgui_integration.o \
+obj/imgui_possession_config.o \
 obj/imgui/imgui.o \
 obj/imgui/imgui_draw.o \
 obj/imgui/imgui_tables.o \
