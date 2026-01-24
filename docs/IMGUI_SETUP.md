@@ -48,7 +48,25 @@ Remove-Item -Recurse -Force imgui-temp
 
 ### 2. Enable ImGui in your build
 
-Add this to your build command or set as environment variable:
+**Option A: Use local configuration (recommended for permanent setup)**
+
+Create a local config file that's automatically loaded:
+
+```bash
+# Copy the template
+cp config.local.mk.template config.local.mk
+
+# Edit config.local.mk and set:
+# ENABLE_IMGUI = 1
+```
+
+Then just build normally:
+
+```bash
+make
+```
+
+**Option B: Set environment variable**
 
 ```bash
 make ENABLE_IMGUI=1

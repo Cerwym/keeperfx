@@ -21,6 +21,10 @@
 #      (at your option) any later version.
 #
 #******************************************************************************
+
+# Include local configuration if it exists (for developer-specific settings)
+-include config.local.mk
+
 # Executable files extension on host environment
 ifneq (,$(findstring Windows,$(OS)))
   CROSS_EXEEXT = .exe
