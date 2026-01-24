@@ -26,6 +26,7 @@
 #include "config_settings.h"
 #include "globals.h"
 #include "input_manager.hpp"
+#include "imgui_integration.h"
 
 #include <SDL2/SDL.h>
 
@@ -208,6 +209,9 @@ extern "C" void ImGui_Render(void) {
             ImGui_ShowAudioDeviceWindow(&open);
             g_show_audio_device_window = open;
         }
+        
+        // Render custom integration windows
+        ImGui_RenderCustomWindows();
     }
     
     // Always call Render to finish the frame
@@ -424,6 +428,12 @@ extern "C" void ImGui_ShowDeveloperMenu(TbBool* p_open) {
             if (ImGui::MenuItem("Audio Device Selector", nullptr, &audio_window_open)) {
                 g_show_audio_device_window = audio_window_open ? 1 : 0;
             }
+            
+            ImGui::Separator();
+            
+            // Custom game configuration windows
+            ImGui_RenderCustomMenuItems();
+            
             ImGui::EndMenu();
         }
         
