@@ -338,15 +338,7 @@ obj/vidmode.o \
 obj/KeeperSpeechImp.o \
 obj/spritesheet.o \
 obj/windows.o \
-obj/bflib_imgui.o \
-obj/imgui_integration.o \
-obj/imgui_possession_config.o \
-obj/imgui/imgui.o \
-obj/imgui/imgui_draw.o \
-obj/imgui/imgui_tables.o \
-obj/imgui/imgui_widgets.o \
-obj/imgui/imgui_impl_sdl2.o \
-obj/imgui/imgui_impl_sdlrenderer2.o \
+$(IMGUI_OBJS) \
 $(FTEST_OBJS) \
 $(RES)
 
@@ -432,14 +424,33 @@ else
   endif
 endif
 
+# ImGui debug overlay support (for local development)
+# Set ENABLE_IMGUI=1 to enable ImGui integration
+ENABLE_IMGUI ?= 0
+ifeq ($(ENABLE_IMGUI), 1)
+  IMGUI_FLAGS = -DENABLE_IMGUI=1
+  IMGUI_OBJS = obj/bflib_imgui.o \
+               obj/imgui_integration.o \
+               obj/imgui_possession_config.o \
+               obj/imgui/imgui.o \
+               obj/imgui/imgui_draw.o \
+               obj/imgui/imgui_tables.o \
+               obj/imgui/imgui_widgets.o \
+               obj/imgui/imgui_impl_sdl2.o \
+               obj/imgui/imgui_impl_sdlrenderer2.o
+else
+  IMGUI_FLAGS =
+  IMGUI_OBJS =
+endif
+
 # logging level flags
 STLOGFLAGS = -DBFDEBUG_LEVEL=0
 HVLOGFLAGS = -DBFDEBUG_LEVEL=10
 # compiler warning generation flags
 WARNFLAGS = -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-maybe-uninitialized -Wno-sign-compare -Wno-strict-aliasing -Wno-unknown-pragmas -Werror
 # disabled warnings: -Wextra -Wtype-limits
-CXXFLAGS = $(CXXINCS) -c -std=gnu++1y -fmessage-length=0 $(WARNFLAGS) $(DEPFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(FTEST_DBGFLAGS) $(INCFLAGS)
-CFLAGS = $(INCS) -c -std=gnu11 -fmessage-length=0 $(WARNFLAGS) -Werror=implicit $(DEPFLAGS) $(FTEST_DBGFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(INCFLAGS)
+CXXFLAGS = $(CXXINCS) -c -std=gnu++1y -fmessage-length=0 $(WARNFLAGS) $(DEPFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(FTEST_DBGFLAGS) $(IMGUI_FLAGS) $(INCFLAGS)
+CFLAGS = $(INCS) -c -std=gnu11 -fmessage-length=0 $(WARNFLAGS) -Werror=implicit $(DEPFLAGS) $(FTEST_DBGFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(IMGUI_FLAGS) $(INCFLAGS)
 LDFLAGS = $(LINKLIB) $(OPTFLAGS) $(DBGFLAGS) $(FTEST_DBGFLAGS) $(LINKFLAGS) -Wl,-Map,"$(@:%.exe=%.map)"
 
 ifeq ($(USE_PRE_FILE), 1)
