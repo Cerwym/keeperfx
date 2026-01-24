@@ -113,6 +113,7 @@ obj/bflib_fileio.o \
 obj/bflib_filelst.o \
 obj/bflib_fmvids.o \
 obj/bflib_guibtns.o \
+obj/bflib_imgui.o \
 obj/bflib_inputctrl.o \
 obj/input_manager.o \
 obj/bflib_keybrd.o \
@@ -433,10 +434,7 @@ endif
 ENABLE_IMGUI ?= 0
 ifeq ($(ENABLE_IMGUI), 1)
   IMGUI_FLAGS = -DENABLE_IMGUI=1
-  IMGUI_OBJS = obj/bflib_imgui.o \
-               obj/imgui_integration.o \
-               obj/imgui_possession_config.o \
-               obj/imgui/imgui.o \
+  IMGUI_OBJS = obj/imgui/imgui.o \
                obj/imgui/imgui_draw.o \
                obj/imgui/imgui_tables.o \
                obj/imgui/imgui_widgets.o \

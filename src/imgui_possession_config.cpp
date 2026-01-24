@@ -1,6 +1,3 @@
-/******************************************************************************/
-// Free implementation of Bullfrog's Dungeon Keeper strategy game.
-/******************************************************************************/
 /** @file imgui_possession_config.cpp
  *     ImGui integration for possession spell display configuration.
  * @par Purpose:
@@ -21,8 +18,10 @@
 
 #ifdef ENABLE_IMGUI
 
+#include "pre_inc.h"
 #include "imgui.h"
 #include "config_keeperfx.h"
+#include "post_inc.h"
 
 extern "C" {
     extern unsigned char possession_spell_display_mode;

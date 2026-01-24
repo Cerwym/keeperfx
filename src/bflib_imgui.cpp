@@ -26,15 +26,21 @@
 #include "config_settings.h"
 #include "globals.h"
 #include "input_manager.hpp"
-#include "imgui_integration.h"
+#include "config_keeperfx.h"
 
 #include <SDL2/SDL.h>
 
 #include "post_inc.h"
 
+#ifdef ENABLE_IMGUI
+
 /******************************************************************************/
 // External variables
 extern SDL_Window *lbWindow;
+
+/******************************************************************************/
+// Forward declarations
+extern "C" void ImGui_ShowPossessionSpellDisplayWindow(TbBool* p_open);
 
 /******************************************************************************/
 // Local variables
@@ -42,6 +48,7 @@ namespace {    SDL_Window* g_imgui_window = nullptr;    SDL_Renderer* g_imgui_re
     bool g_imgui_initialized = false;
     bool g_debug_overlay_visible = false;
     TbBool g_show_audio_device_window = false;
+    TbBool g_show_possession_spell_config = false;
     TbBool g_show_developer_menu = true;
     SDL_bool g_previous_relative_mouse_mode = SDL_FALSE;
 }
@@ -210,8 +217,12 @@ extern "C" void ImGui_Render(void) {
             g_show_audio_device_window = open;
         }
         
-        // Render custom integration windows
-        ImGui_RenderCustomWindows();
+        // Show possession spell display config window
+        if (g_show_possession_spell_config) {
+            TbBool open = g_show_possession_spell_config;
+            ImGui_ShowPossessionSpellDisplayWindow(&open);
+            g_show_possession_spell_config = open;
+        }
     }
     
     // Always call Render to finish the frame
@@ -431,8 +442,11 @@ extern "C" void ImGui_ShowDeveloperMenu(TbBool* p_open) {
             
             ImGui::Separator();
             
-            // Custom game configuration windows
-            ImGui_RenderCustomMenuItems();
+            // Possession spell display configuration
+            bool possession_window_open = (g_show_possession_spell_config != 0);
+            if (ImGui::MenuItem("Possession Spell Display", "Ctrl+P", &possession_window_open)) {
+                g_show_possession_spell_config = possession_window_open ? 1 : 0;
+            }
             
             ImGui::EndMenu();
         }
@@ -468,6 +482,81 @@ extern "C" void ImGui_ShowDeveloperMenu(TbBool* p_open) {
             g_show_audio_device_window = true;
         }
     }
+
+    if (ImGui::CollapsingHeader("Possession Spell Display")) {
+
+                if (ImGui::Button("Open Possession Spell Display")) {  
+            g_show_possession_spell_config = true;
+        }
+    }
     
     ImGui::End();
 }
+
+extern "C" void ImGui_ShowPossessionSpellDisplayWindow(TbBool* p_open) {
+    bool open = (*p_open != 0);
+    if (!ImGui::Begin("Possession: Spell Display", &open, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::End();
+        *p_open = open ? 1 : 0;
+        return;
+    }
+    *p_open = open ? 1 : 0;
+    
+    ImGui::Text("Configure how spell durations are displayed in possession mode.");
+    ImGui::Separator();
+    
+    const char* modes[] = {
+        "Off - No spell duration display",
+        "Icons Only - Show spell icons without duration",
+        "Text Above - Show duration above icons",
+        "Text Below - Show duration below icons", 
+        "Progress Bar - Show graphical duration bar"
+    };
+    
+    int current_mode = (int)possession_spell_display_mode;
+    if (ImGui::Combo("Display Mode", &current_mode, modes, 5)) {
+        possession_spell_display_mode = (unsigned char)current_mode;
+    }
+    
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    
+    ImGui::TextWrapped("You need to be in possession (first-person) mode and have cast spells to see the effect.");
+    
+    ImGui::End();
+}
+
+#else // ENABLE_IMGUI not defined - provide stub implementations
+
+#include "bflib_basics.h"
+
+extern "C" TbBool ImGui_Initialize(void) {
+    return false;
+}
+
+extern "C" void ImGui_Shutdown(void) {
+}
+
+extern "C" void ImGui_NewFrame(void) {
+}
+
+extern "C" void ImGui_Render(void) {
+}
+
+extern "C" void ImGui_ProcessEvent(void* event) {
+}
+
+extern "C" void ImGui_ToggleDebugOverlay(void) {
+}
+
+extern "C" void ImGui_ShowDeveloperMenu(TbBool* p_open) {
+}
+
+extern "C" void ImGui_ShowAudioDeviceWindow(TbBool* p_open) {
+}
+
+extern "C" void ImGui_ShowPossessionSpellDisplayWindow(TbBool* p_open) {
+}
+
+#endif // ENABLE_IMGUI
