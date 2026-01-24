@@ -90,6 +90,14 @@ enum StartupFlags {
     SFlg_Intro        =  0x10,
 };
 
+enum PossessionSpellDisplayMode {
+    PSDpM_Off           = 0,
+    PSDpM_IconsOnly     = 1,
+    PSDpM_TextAbove     = 2,
+    PSDpM_TextBelow     = 3,
+    PSDpM_ProgressBar   = 4,
+};
+
 
 #pragma pack(1)
 
@@ -122,6 +130,7 @@ extern uint16_t api_port;
 extern TbBool exit_on_lua_error;
 extern TbBool FLEE_BUTTON_DEFAULT;
 extern TbBool IMPRISON_BUTTON_DEFAULT;
+extern unsigned char possession_spell_display_mode;
 /******************************************************************************/
 void load_configuration_for_mod_all(void);
 short load_configuration(void);

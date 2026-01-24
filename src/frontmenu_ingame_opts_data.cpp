@@ -108,6 +108,7 @@ struct GuiButtonInit sound_menu_buttons[] = {
   {LbBtnT_HorizSlider,BID_SOUND_VOL, 0, 0, gui_set_sound_volume,NULL,       NULL,               0,  66,  58,  66,  58,190, 30, gui_area_slider,                   0, GUIStr_OptionSoundFx,    0, {0}, 255, NULL },
   {LbBtnT_HorizSlider,BID_MUSIC_VOL, 0, 0, gui_set_music_volume,NULL,       NULL,               0,  66, 110,  66, 110,190, 30, gui_area_slider,                   0, GUIStr_OptionMusic,      0, {0}, 255, NULL },
   {LbBtnT_HorizSlider,BID_MENTOR_VOL, 0, 0, gui_set_mentor_volume,NULL,      NULL,               0,  66, 162,  66, 162,190, 30, gui_area_slider,                   0, GUIStr_OptionVoice,      0, {0}, 255, NULL },
+  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, gui_cycle_audio_device,gui_display_audio_device,NULL,    0,  28, 184,  30, 184, 46, 64, gui_area_no_anim_button, GBS_options_button_sound, GUIStr_OptionAudioDeviceDesc,        0, {0}, 0, NULL },
   {              -1,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,               0,   0,   0,   0,   0,  0,  0, NULL,                              0,   0,                     0,       {0},            0, NULL },
 };
 

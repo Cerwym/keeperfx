@@ -60,6 +60,7 @@ unsigned long features_enabled = 0;
 TbBool exit_on_lua_error = false;
 TbBool FLEE_BUTTON_DEFAULT = false;
 TbBool IMPRISON_BUTTON_DEFAULT = false;
+unsigned char possession_spell_display_mode = PSDpM_TextAbove; // Default to text above
 
 /**
  * Language 3-char abbreviations.
@@ -113,6 +114,15 @@ const struct NamedCommand atmos_freq[] = {
   {NULL,  0},
   };
 
+const struct NamedCommand possession_spell_display_modes[] = {
+  {"OFF",           PSDpM_Off},
+  {"ICONS_ONLY",    PSDpM_IconsOnly},
+  {"TEXT_ABOVE",    PSDpM_TextAbove},
+  {"TEXT_BELOW",    PSDpM_TextBelow},
+  {"PROGRESS_BAR",  PSDpM_ProgressBar},
+  {NULL,  0},
+  };
+
 const struct NamedCommand conf_commands[] = {
   {"INSTALL_PATH",         1},
   {"INSTALL_TYPE",         2},
@@ -155,6 +165,7 @@ const struct NamedCommand conf_commands[] = {
   {"FRAMES_PER_SECOND"             , 39},
   {"TAG_MODE_TOGGLING"             , 40},
   {"DEFAULT_TAG_MODE"              , 41},
+  {"POSSESSION_SPELL_DISPLAY"      , 42},
   {NULL,                   0},
   };
 
@@ -902,6 +913,17 @@ static void load_file_configuration(const char *fname, const char *sname, const 
           else
           {
             default_tag_mode = i;
+          }
+          break;
+      case 42: // POSSESSION_SPELL_DISPLAY
+          i = recognize_conf_parameter(buf,&pos,len,possession_spell_display_modes);
+          if (i < 0)
+          {
+            CONFWRNLOG("Couldn't recognize \"%s\" command parameter in %s file.",COMMAND_TEXT(cmd_num),config_textname);
+          }
+          else
+          {
+            possession_spell_display_mode = (unsigned char)i;
           }
           break;
       case ccr_comment:

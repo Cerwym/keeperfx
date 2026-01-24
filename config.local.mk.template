@@ -1,0 +1,22 @@
+# Local Development Configuration for KeeperFX
+# Copy this file to 'config.local.mk' and customize for your environment
+# config.local.mk is gitignored and won't be committed
+
+# Enable ImGui debug overlay (1 = enabled, 0 = disabled)
+ENABLE_IMGUI = 1
+
+# Enable debug builds (1 = debug symbols + no optimization, 0 = optimized)
+# DEBUG = 1
+
+# Enable functional testing
+# FTEST_DEBUG = 1
+
+# Custom compiler flags (add your own)
+# EXTRA_CFLAGS = -DMY_CUSTOM_FLAG
+# EXTRA_CXXFLAGS = -DMY_CUSTOM_FLAG
+
+# Build number override
+# BUILD_NUMBER = 9999
+
+# Package suffix for custom builds
+# PACKAGE_SUFFIX = MyCustomBuild

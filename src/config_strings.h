@@ -427,6 +427,8 @@ enum GUIStrings {
     GUIStr_NetUnsyncedMap = STRINGS_MAX + 1006,
     GUIStr_DisplayResolution = STRINGS_MAX + 1007,
     GUIStr_OptionVoice = STRINGS_MAX + 1008,
+    GUIStr_OptionAudioDevice = STRINGS_MAX + 1082,
+    GUIStr_OptionAudioDeviceDesc = STRINGS_MAX + 1083,
     GUIStr_CtrlTiltUp = STRINGS_MAX + 1063,
     GUIStr_CtrlTiltDown = STRINGS_MAX + 1064,
     GUIStr_CtrlTiltReset = STRINGS_MAX + 1065,
