@@ -435,13 +435,16 @@ static void process_event(const SDL_Event *ev)
         if (x != KC_UNASSIGNED)
         {
             if (ev->key.repeat == 0)
+            {
                 num_keys_down++;
+                
+                // Route to InputManager
+                InputManager::instance().updateKey((TbKeyCode)x, true);
 
-            // Route to InputManager
-            InputManager::instance().updateKey((TbKeyCode)x, true);
-
-            // Also update legacy globals for backward compatibility during migration
-            keyboardControl(KActn_KEYDOWN,x,keyboard_mods_mapping(&ev->key), ev->key.keysym.sym);
+                // Also update legacy globals for backward compatibility during migration
+                // Only process non-repeat key events to prevent menu toggling when holding keys
+                keyboardControl(KActn_KEYDOWN,x,keyboard_mods_mapping(&ev->key), ev->key.keysym.sym);
+            }
         }
         break;
 

@@ -2427,9 +2427,9 @@ void get_dungeon_control_nonaction_inputs(void)
     clear_key_pressed(KC_X);
     turn_on_menu(GMnu_QUIT);
   }
-  if (input_key_pressed(KC_ESCAPE))
+  if (is_key_pressed(KC_ESCAPE, KMod_DONTCARE))
   {
-      lbKeyOn[KC_ESCAPE] = 0;
+      clear_key_pressed(KC_ESCAPE);
       if (a_menu_window_is_active())
       {
           turn_off_all_window_menus();
