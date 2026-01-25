@@ -27,6 +27,7 @@
 #include "bflib_vidraw.h"
 #include "bflib_datetm.h"
 #include "bflib_sound.h"
+#include "input_manager.hpp"
 #include "kjm_input.h"
 #include "gui_frontbtns.h"
 #include "gui_soundmsgs.h"
@@ -122,7 +123,7 @@ unsigned short input_eastegg_keycodes(unsigned char *counter,short allow,struct 
     if ((*counter) < codes->length)
     {
         TbKeyCode currkey = codes->keys[(*counter)];
-        if (lbKeyOn[currkey])
+        if (input_key_pressed(currkey))
         {
             (*counter)++;
             result = 1;
@@ -146,7 +147,7 @@ unsigned short input_eastegg_keycodes(unsigned char *counter,short allow,struct 
 void input_eastegg(void)
 {
     // Maintain the FECKOFF cheat
-    short allow = (lbKeyOn[KC_LSHIFT] != 0);
+    short allow = (input_key_pressed(KC_LSHIFT) != 0);
     unsigned short state = input_eastegg_keycodes(&game.eastegg01_cntr, allow, &eastegg_feckoff_codes);
     if ((state == 2) || (state == 3)) {
       play_non_3d_sample(60);
@@ -154,7 +155,7 @@ void input_eastegg(void)
     // Maintain the JLW cheat
     if (game.easter_eggs_enabled == true)
     {
-      allow = (lbKeyOn[KC_LSHIFT]) && (lbKeyOn[KC_RSHIFT]);
+      allow = (input_key_pressed(KC_LSHIFT)) && (input_key_pressed(KC_RSHIFT));
       state = input_eastegg_keycodes(&game.eastegg02_cntr,allow,&eastegg_jlw_codes);
       if ((state == 1) || (state == 2) || (state == 3)) {
         play_non_3d_sample(159);
@@ -163,7 +164,7 @@ void input_eastegg(void)
     // Maintain the BBKING cheat
     if (game.easter_eggs_enabled == true)
     {
-      allow = lbKeyOn[KC_RSHIFT];
+      allow = input_key_pressed(KC_RSHIFT);
       static unsigned char length = 0;
       state = input_eastegg_keycodes(&length, allow, &eastegg_bbking_codes);
       if (length == eastegg_bbking_codes.length) {
@@ -173,7 +174,7 @@ void input_eastegg(void)
       }
     }
     // Maintain the SKEKSIS cheat
-    allow = (lbKeyOn[KC_LSHIFT] != 0);
+    allow = (input_key_pressed(KC_LSHIFT) != 0);
     state = input_eastegg_keycodes(&eastegg_skeksis_cntr,allow,&eastegg_skeksis_codes);
     if (state == 3) {
       output_message(SMsg_PantsTooTight, 0);

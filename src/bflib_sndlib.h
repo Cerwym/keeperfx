@@ -53,6 +53,11 @@ void pause_music(void);
 void resume_music(void);
 void stop_music(void);
 
+// Audio device management
+char** get_audio_device_list(int* count);
+void free_audio_device_list(char** list, int count);
+const char* get_current_audio_device(void);
+
 #ifdef __cplusplus
 }
 #endif

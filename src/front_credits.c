@@ -28,6 +28,7 @@
 #include "bflib_keybrd.h"
 #include "bflib_filelst.h"
 #include "bflib_datetm.h"
+#include "input_manager.hpp"
 
 #include "gui_frontbtns.h"
 #include "front_simple.h"
@@ -146,13 +147,13 @@ TbBool frontcredits_input(void)
     credits_scroll_speed = 1 * units_per_pixel / 16;
     int fontid = 1;
     int speed;
-    if ( lbKeyOn[KC_DOWN] )
+    if ( input_key_pressed(KC_DOWN) )
     {
         LbTextSetFont(frontend_font[fontid]);
         speed = LbTextLineHeight() * units_per_pixel / 16;
         credits_scroll_speed = speed;
     } else
-    if ((lbKeyOn[KC_UP]) && (credits_offset <= 0))
+    if ((input_key_pressed(KC_UP)) && (credits_offset <= 0))
     {
         LbTextSetFont(frontend_font[fontid]);
         speed = -LbTextLineHeight() * units_per_pixel / 16;

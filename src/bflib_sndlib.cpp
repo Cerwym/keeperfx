@@ -1,5 +1,6 @@
 #include "pre_inc.h"
 #include "config_keeperfx.h"
+#include "config_settings.h"
 #include "cdrom.h"
 #include "bflib_sndlib.h"
 #include "bflib_datetm.h"
@@ -454,6 +455,64 @@ void print_device_info() {
 	}
 }
 
+// Get list of available audio devices (caller must free the returned array)
+extern "C" char** get_audio_device_list(int* count) {
+	*count = 0;
+	std::vector<std::string> device_names;
+	
+	JUSTMSG("Enumerating audio devices...");
+	
+	if (alcIsExtensionPresent(nullptr, "ALC_ENUMERATE_ALL_EXT")) {
+		JUSTMSG("Using ALC_ENUMERATE_ALL_EXT for device enumeration");
+		const auto devices = alcGetString(nullptr, ALC_ALL_DEVICES_SPECIFIER);
+		for (auto device = devices; device[0] != 0; device += strlen(device) + 1) {
+			JUSTMSG("  Found device: %s", device);
+			device_names.push_back(device);
+		}
+	} else if (alcIsExtensionPresent(nullptr, "ALC_ENUMERATION_EXT")) {
+		JUSTMSG("Using ALC_ENUMERATION_EXT for device enumeration");
+		const auto devices = alcGetString(nullptr, ALC_DEVICE_SPECIFIER);
+		for (auto device = devices; device[0] != 0; device += strlen(device) + 1) {
+			JUSTMSG("  Found device: %s", device);
+			device_names.push_back(device);
+		}
+	} else {
+		WARNMSG("No device enumeration extension available");
+	}
+	
+	if (device_names.empty()) {
+		WARNMSG("No audio devices found during enumeration");
+		return nullptr;
+	}
+	
+	JUSTMSG("Total devices enumerated: %d", static_cast<int>(device_names.size()));
+	
+	*count = static_cast<int>(device_names.size());
+	char** result = (char**)malloc(sizeof(char*) * device_names.size());
+	for (size_t i = 0; i < device_names.size(); ++i) {
+		result[i] = strdup(device_names[i].c_str());
+	}
+	return result;
+}
+
+// Free the device list returned by get_audio_device_list
+extern "C" void free_audio_device_list(char** list, int count) {
+	if (list) {
+		for (int i = 0; i < count; ++i) {
+			free(list[i]);
+		}
+		free(list);
+	}
+}
+
+// Get the currently selected audio device name
+extern "C" const char* get_current_audio_device() {
+	if (g_openal_device) {
+		return alcGetString(g_openal_device.get(), ALC_DEVICE_SPECIFIER);
+	}
+	return nullptr;
+}
+
 Mix_Chunk * g_streamed_sample = nullptr;
 std::mutex g_mix_mutex;
 
@@ -605,7 +664,7 @@ extern "C" void StopAllSamples() {
 	}
 }
 
-extern "C" TbBool InitAudio(const SoundSettings * settings) {
+extern "C" TbBool InitAudio(const SoundSettings * snd_settings) {
 	try {
 		if (game.easter_eggs_enabled == true) {
 			TbDate date;
@@ -630,7 +689,64 @@ extern "C" TbBool InitAudio(const SoundSettings * settings) {
 		setenv("ALSOFT_DRIVERS", "core", 1);
 #endif
 		print_device_info();
-		ALCdevice_ptr device(alcOpenDevice(nullptr));
+		
+		// Try to open audio device with fallback logic
+		const char* device_name = nullptr;
+		
+		// First, try user's preferred device from settings
+		if (::settings.audio_device_name[0] != '\0') {
+			device_name = ::settings.audio_device_name;
+			JUSTMSG("Attempting to open user-selected audio device: %s", device_name);
+		}
+		
+		ALCdevice_ptr device(alcOpenDevice(device_name));
+		
+		// If preferred device failed and it wasn't null, try system default
+		if (!device && device_name != nullptr) {
+			WARNMSG("Failed to open preferred audio device '%s', falling back to system default", device_name);
+			device_name = nullptr;
+			device = ALCdevice_ptr(alcOpenDevice(nullptr));
+		}
+		
+		// Check if we ended up with "No Output" and try first available device
+		if (device) {
+			const char* opened_device = alcGetString(device.get(), ALC_DEVICE_SPECIFIER);
+			JUSTMSG("Opened device: %s", opened_device ? opened_device : "NULL");
+			
+			if (opened_device && (strstr(opened_device, "No Output") || strstr(opened_device, "Null"))) {
+				WARNMSG("System default is 'No Output', attempting to find first real audio device");
+				
+				int device_count = 0;
+				char** device_list = get_audio_device_list(&device_count);
+				
+				if (device_count == 0) {
+					ERRORMSG("No devices found during fallback enumeration");
+				} else {
+					JUSTMSG("Found %d devices during fallback enumeration", device_count);
+					// Try to find first non-null device
+					for (int i = 0; i < device_count; ++i) {
+						if (!strstr(device_list[i], "No Output") && !strstr(device_list[i], "Null")) {
+							JUSTMSG("Attempting to open audio device [%d/%d]: %s", i+1, device_count, device_list[i]);
+							device.reset();
+							device = ALCdevice_ptr(alcOpenDevice(device_list[i]));
+							if (device) {
+								JUSTMSG("Successfully opened audio device: %s", device_list[i]);
+								break;
+							} else {
+								WARNMSG("Failed to open device: %s", device_list[i]);
+							}
+						} else {
+							JUSTMSG("Skipping null/no-output device: %s", device_list[i]);
+						}
+					}
+				}
+				
+				free_audio_device_list(device_list, device_count);
+			}
+		} else {
+			ERRORMSG("Failed to open any audio device");
+		}
+		
 		if (!device) {
 			throw openal_error("Cannot open default audio device");
 		}
@@ -640,7 +756,7 @@ extern "C" TbBool InitAudio(const SoundSettings * settings) {
 		} else if (!alcMakeContextCurrent(context.get())) {
 			throw openal_error("Cannot make context current");
 		}
-		g_sources.resize(settings->max_number_of_samples);
+		g_sources.resize(snd_settings->max_number_of_samples);
 		for (size_t i = 0; i < g_sources.size(); ++i) {
 			g_sources[i].mss_id = i + 1;
 		}
@@ -807,6 +923,16 @@ extern "C" int InitialiseSDLAudio()
 		return 0;
 	}
 	int flags = Mix_Init(MIX_INIT_OGG|MIX_INIT_MP3);
+
+	// It's not a fatal error if some formats are not available, just log it
+	if (!(flags & MIX_INIT_MP3)) {
+    	WARNLOG("MP3 support not available - missing libmpg123-0.dll or smpeg2.dll");
+	}
+
+	if (!(flags & MIX_INIT_OGG)) {
+    	WARNLOG("OGG support not available - missing libvorbis DLL");
+	}
+	
 	if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 4096) < 0)
 	{
 		ERRORLOG("Could not open audio device for SDL mixer: %s", Mix_GetError());

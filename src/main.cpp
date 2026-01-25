@@ -20,6 +20,7 @@
 #include "bflib_math.h"
 #include "bflib_keybrd.h"
 #include "bflib_inputctrl.h"
+#include "input_manager.hpp"
 #include "bflib_datetm.h"
 #include "bflib_sprfnt.h"
 #include "bflib_fileio.h"
@@ -130,6 +131,7 @@
 #include "net_input_lag.h"
 #include "moonphase.h"
 #include "frontmenu_ingame_map.h"
+#include "bflib_imgui.h"
 #include <stdint.h>
 
 #ifdef FUNCTESTING
@@ -3280,6 +3282,11 @@ TbBool keeper_screen_swap(void)
       LbScreenUnlock();
     }*/
   LbScreenSwap();
+  
+  // ImGui frame - NewFrame must be called every frame
+  ImGui_NewFrame();
+  ImGui_Render();
+  
   return true;
 }
 
@@ -4011,6 +4018,10 @@ short reset_game(void)
     free_gui_strings_data();
     free_level_strings_data();
     FreeAudio();
+    
+    // Shutdown ImGui
+    ImGui_Shutdown();
+    
     return 1;
 }
 
@@ -4373,6 +4384,12 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     LbSetIcon(1);
     LbScreenSetDoubleBuffering(true);
     srand(LbTimerClock());
+    
+    // Initialize ImGui debug overlay
+    ImGui_Initialize();
+    
+    // Initialize Input Manager
+    InputManager::instance().initialize();
 
 #ifdef FUNCTESTING
     ftest_srand();

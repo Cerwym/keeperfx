@@ -39,3 +39,11 @@ res/keeperfx_icon.ico
 /deps/*.tar.gz
 /cppcheck.cache
 /src/ver_defs.h
+
+# ImGui vendored library (local development only)
+deps/imgui/
+
+
+deps/imgui/
+
+config.local.mk

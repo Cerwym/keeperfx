@@ -404,4 +404,54 @@ void init_audio_menu(struct GuiMenu *gmnu)
     get_gui_button_init(gmnu, BID_SOUND_VOL)->content.lval = make_audio_slider_linear(settings.sound_volume);
     get_gui_button_init(gmnu, BID_MENTOR_VOL)->content.lval = make_audio_slider_linear(settings.mentor_volume);
 }
+
+void gui_cycle_audio_device(struct GuiButton *gbtn)
+{
+    int device_count = 0;
+    char** device_list = get_audio_device_list(&device_count);
+    
+    if (!device_list || device_count == 0) {
+        WARNLOG("No audio devices available");
+        if (device_list) {
+            free_audio_device_list(device_list, device_count);
+        }
+        return;
+    }
+    
+    // Find current device in list
+    int current_index = -1;
+    for (int i = 0; i < device_count; ++i) {
+        if (strcmp(settings.audio_device_name, device_list[i]) == 0) {
+            current_index = i;
+            break;
+        }
+    }
+    
+    // If current device not found or empty, start at -1 (which will become 0)
+    if (current_index == -1 && settings.audio_device_name[0] == '\0') {
+        current_index = -1; // Will wrap to 0 on next increment
+    }
+    
+    // Cycle to next device
+    int next_index = (current_index + 1) % device_count;
+    strncpy(settings.audio_device_name, device_list[next_index], sizeof(settings.audio_device_name) - 1);
+    settings.audio_device_name[sizeof(settings.audio_device_name) - 1] = '\0';
+    
+    JUSTLOG("Selected audio device: %s", settings.audio_device_name);
+    
+    free_audio_device_list(device_list, device_count);
+    save_settings();
+}
+
+void gui_display_audio_device(struct GuiButton *gbtn)
+{
+    const char* current_device = get_current_audio_device();
+    if (current_device) {
+        // Display just the device name, truncate if too long
+        const char* display_name = settings.audio_device_name[0] != '\0' ? settings.audio_device_name : "System Default";
+        message_add_fmt(MsgType_Player, my_player_number, "Audio Device: %s", display_name);
+    } else {
+        message_add_fmt(MsgType_Player, my_player_number, "Audio Device: Not initialized");
+    }
+}
 /******************************************************************************/

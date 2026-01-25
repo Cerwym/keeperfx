@@ -29,6 +29,7 @@
 #include "bflib_planar.h"
 #include "bflib_sndlib.h"
 #include "bflib_mshandler.hpp"
+#include "input_manager.hpp"
 #include "frontmenu_ingame_tabs.h"
 #include "config_keeperfx.h"
 #include "config_settings.h"
@@ -36,6 +37,7 @@
 #include "sounds.h"
 #include "game_legacy.h" // needed for paused and possession_mode below - maybe there is a neater way than this...
 #include "keeperfx.hpp" // for start_params
+#include "bflib_imgui.h"
 #include <SDL2/SDL.h>
 #include "post_inc.h"
 
@@ -434,7 +436,11 @@ static void process_event(const SDL_Event *ev)
         {
             if (ev->key.repeat == 0)
                 num_keys_down++;
-            
+
+            // Route to InputManager
+            InputManager::instance().updateKey((TbKeyCode)x, true);
+
+            // Also update legacy globals for backward compatibility during migration
             keyboardControl(KActn_KEYDOWN,x,keyboard_mods_mapping(&ev->key), ev->key.keysym.sym);
         }
         break;
@@ -445,6 +451,11 @@ static void process_event(const SDL_Event *ev)
         {
             if (num_keys_down > 0)
                 num_keys_down--;
+
+            // Route to InputManager
+            InputManager::instance().updateKey((TbKeyCode)x, false);
+
+            // Also update legacy globals
             keyboardControl(KActn_KEYUP,x,keyboard_mods_mapping(&ev->key), ev->key.keysym.sym);
         }
         break;
@@ -472,6 +483,11 @@ static void process_event(const SDL_Event *ev)
                 mouseDelta.y = 0;
             }
         }
+
+        // Route to InputManager
+        InputManager::instance().updateMousePosition(ev->motion.x, ev->motion.y);
+
+        // Also update legacy system
         mouseControl(MActn_MOUSEMOVE, &mouseDelta);
         break;
 
@@ -484,6 +500,13 @@ static void process_event(const SDL_Event *ev)
             {
             return;
             }
+
+            // Route to InputManager
+            int button = (ev->button.button == SDL_BUTTON_LEFT) ? 0 :
+                         (ev->button.button == SDL_BUTTON_RIGHT) ? 1 : 2;
+            InputManager::instance().updateMouseButton(button, ev->type == SDL_MOUSEBUTTONDOWN);
+
+            // Also update legacy system
             mouseDelta.x = 0;
             mouseDelta.y = 0;
             mouseControl(mouse_button_actions_mapping(ev->type, &ev->button), &mouseDelta);
@@ -495,16 +518,24 @@ static void process_event(const SDL_Event *ev)
             {
                 if (ev->type == SDL_MOUSEBUTTONDOWN)
                 {
+                    InputManager::instance().updateKey((TbKeyCode)x, true);
                     lbKeyOn[x] = 1;
                     lbInkey = x;
                 }
                 else
+                {
+                    InputManager::instance().updateKey((TbKeyCode)x, false);
                     lbKeyOn[x] = 0;
+                }
             }
         }
         break;
 
     case SDL_MOUSEWHEEL:
+        // Route to InputManager
+        InputManager::instance().updateMouseWheel(ev->wheel.y > 0);
+
+        // Also update legacy system
         mouseDelta.x = 0;
         mouseDelta.y = 0;
         mouseControl(ev->wheel.y > 0 ? MActn_WHEELMOVEUP : MActn_WHEELMOVEDOWN, &mouseDelta);
@@ -944,8 +975,31 @@ static void poll_controller()
 TbBool LbWindowsControl(void)
 {
     SDL_Event ev;
+    
+    // Start new input frame
+    InputManager::instance().newFrame();
+    
     //process events until event queue is empty
     while (SDL_PollEvent(&ev)) {
+        // Pass events to ImGui first if debug overlay is active
+        ImGui_ProcessEvent(&ev);
+        
+        // Handle F3 key to toggle ImGui overlay
+        if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_F3) {
+            ImGui_ToggleDebugOverlay();
+            continue; // Don't let game process F3
+        }
+        
+        // Check active input context to decide routing
+        auto activeContext = InputManager::instance().getActiveContext();
+        
+        // If in Debug context, only ImGui gets the input (skip game processing)
+        if (activeContext == InputManager::Context::Debug) {
+            // ImGui already processed above, skip game's process_event
+            continue;
+        }
+        
+        // For Game or UI context, process normally (routes to InputManager + legacy)
         process_event(&ev);
     }
     

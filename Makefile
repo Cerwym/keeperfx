@@ -21,6 +21,10 @@
 #      (at your option) any later version.
 #
 #******************************************************************************
+
+# Include local configuration if it exists (for developer-specific settings)
+-include config.local.mk
+
 # Executable files extension on host environment
 ifneq (,$(findstring Windows,$(OS)))
   CROSS_EXEEXT = .exe
@@ -109,7 +113,9 @@ obj/bflib_fileio.o \
 obj/bflib_filelst.o \
 obj/bflib_fmvids.o \
 obj/bflib_guibtns.o \
+obj/bflib_imgui.o \
 obj/bflib_inputctrl.o \
+obj/input_manager.o \
 obj/bflib_keybrd.o \
 obj/bflib_main.o \
 obj/bflib_math.o \
@@ -337,6 +343,7 @@ obj/vidmode.o \
 obj/KeeperSpeechImp.o \
 obj/spritesheet.o \
 obj/windows.o \
+$(IMGUI_OBJS) \
 $(FTEST_OBJS) \
 $(RES)
 
@@ -387,7 +394,9 @@ INCS = \
 	-I"deps/openal/include" \
 	-I"deps/luajit/include" \
 	-I"deps/miniupnpc/include" \
-	-I"deps/libnatpmp/include"
+	-I"deps/libnatpmp/include" \
+	-I"deps/imgui" \
+	-I"deps/imgui/backends"
 CXXINCS =  $(INCS)
 
 STDOBJS   = $(subst obj/,obj/std/,$(OBJS))
@@ -420,14 +429,30 @@ else
   endif
 endif
 
+# ImGui debug overlay support (for local development)
+# Set ENABLE_IMGUI=1 to enable ImGui integration
+ENABLE_IMGUI ?= 0
+ifeq ($(ENABLE_IMGUI), 1)
+  IMGUI_FLAGS = -DENABLE_IMGUI=1
+  IMGUI_OBJS = obj/imgui/imgui.o \
+               obj/imgui/imgui_draw.o \
+               obj/imgui/imgui_tables.o \
+               obj/imgui/imgui_widgets.o \
+               obj/imgui/imgui_impl_sdl2.o \
+               obj/imgui/imgui_impl_sdlrenderer2.o
+else
+  IMGUI_FLAGS =
+  IMGUI_OBJS =
+endif
+
 # logging level flags
 STLOGFLAGS = -DBFDEBUG_LEVEL=0
 HVLOGFLAGS = -DBFDEBUG_LEVEL=10
 # compiler warning generation flags
 WARNFLAGS = -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-maybe-uninitialized -Wno-sign-compare -Wno-strict-aliasing -Wno-unknown-pragmas -Werror
 # disabled warnings: -Wextra -Wtype-limits
-CXXFLAGS = $(CXXINCS) -c -std=gnu++1y -fmessage-length=0 $(WARNFLAGS) $(DEPFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(FTEST_DBGFLAGS) $(INCFLAGS)
-CFLAGS = $(INCS) -c -std=gnu11 -fmessage-length=0 $(WARNFLAGS) -Werror=implicit $(DEPFLAGS) $(FTEST_DBGFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(INCFLAGS)
+CXXFLAGS = $(CXXINCS) -c -std=gnu++1y -fmessage-length=0 $(WARNFLAGS) $(DEPFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(FTEST_DBGFLAGS) $(IMGUI_FLAGS) $(INCFLAGS)
+CFLAGS = $(INCS) -c -std=gnu11 -fmessage-length=0 $(WARNFLAGS) -Werror=implicit $(DEPFLAGS) $(FTEST_DBGFLAGS) $(OPTFLAGS) $(DBGFLAGS) $(IMGUI_FLAGS) $(INCFLAGS)
 LDFLAGS = $(LINKLIB) $(OPTFLAGS) $(DBGFLAGS) $(FTEST_DBGFLAGS) $(LINKFLAGS) -Wl,-Map,"$(@:%.exe=%.map)"
 
 ifeq ($(USE_PRE_FILE), 1)
@@ -596,6 +621,25 @@ obj/std/%.o: src/%.c libexterns $(GENSRC)
 
 obj/hvlog/%.o: src/%.c libexterns $(GENSRC)
 	$(BUILD_CC_FILES_CMD)
+
+
+# ImGui library compilation (no pre/post checks for external library)
+
+obj/std/imgui/%.o: deps/imgui/%.cpp
+	-$(ECHO) 'Building ImGui file: $<'
+	$(CPP) $(CXXFLAGS) -Wno-error -o"$@" "$<"
+
+obj/hvlog/imgui/%.o: deps/imgui/%.cpp
+	-$(ECHO) 'Building ImGui file: $<'
+	$(CPP) $(CXXFLAGS) -Wno-error -o"$@" "$<"
+
+obj/std/imgui/%.o: deps/imgui/backends/%.cpp
+	-$(ECHO) 'Building ImGui backend file: $<'
+	$(CPP) $(CXXFLAGS) -Wno-error -o"$@" "$<"
+
+obj/hvlog/imgui/%.o: deps/imgui/backends/%.cpp
+	-$(ECHO) 'Building ImGui backend file: $<'
+	$(CPP) $(CXXFLAGS) -Wno-error -o"$@" "$<"
 
 
 # Windows resources compilation
