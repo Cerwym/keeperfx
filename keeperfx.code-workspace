@@ -172,6 +172,9 @@
             "xloctime": "c",
             "format": "c",
             "xstring": "c"
+        },
+        "chat.tools.terminal.autoApprove": {
+            "gh": true
         }
     }
 }
