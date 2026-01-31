@@ -346,7 +346,8 @@ TESTS_OBJ = obj/tests/tst_main.o \
 obj/tests/tst_fixes.o \
 obj/tests/001_test.o \
 obj/tests/tst_enet_server.o \
-obj/tests/tst_enet_client.o
+obj/tests/tst_enet_client.o \
+obj/tests/tst_example_standalone.o
 
 CU_DIR = deps/CUnit-2.1-3/CUnit
 CU_INC = -I"$(CU_DIR)/Headers"
