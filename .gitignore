@@ -1,3 +1,4 @@
+/.local
 /bin
 /obj
 /sdl
@@ -39,3 +40,4 @@ res/keeperfx_icon.ico
 /deps/*.tar.gz
 /cppcheck.cache
 /src/ver_defs.h
+.vscode/compile_and_copy_files.ps1
