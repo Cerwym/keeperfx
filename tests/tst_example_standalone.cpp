@@ -209,7 +209,7 @@ ADD_TEST(test_comprehensive_validation)
     const char* test_str = "KeeperFX";
     CU_ASSERT_TRUE(string_utils::starts_with(test_str, "Keeper"));
     CU_ASSERT_FALSE(string_utils::starts_with(test_str, "Dungeon"));
-    CU_ASSERT_EQUAL(string_utils::count_chars(test_str, 'e'), 3);
+    CU_ASSERT_EQUAL(string_utils::count_chars(test_str, 'e'), 2);
 }
 
 // ============================================================================

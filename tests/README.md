@@ -64,7 +64,7 @@ Common CUnit assertion macros you can use:
 | `CU_ASSERT_STRING_EQUAL(actual, expected)` | Assert string equality |
 | `CU_ASSERT_DOUBLE_EQUAL(actual, expected, epsilon)` | Assert doubles are equal within epsilon |
 
-For more assertions, see the [CUnit documentation](http://cunit.sourceforge.net/doc/writing_tests.html).
+For more assertions, see the [CUnit documentation](https://cunit.sourceforge.net/doc/writing_tests.html).
 
 ### Test File Naming Convention
 
@@ -244,6 +244,6 @@ When adding new tests:
 
 ## Resources
 
-- [CUnit Documentation](http://cunit.sourceforge.net/)
-- [CUnit API Reference](http://cunit.sourceforge.net/doc/writing_tests.html)
+- [CUnit Documentation](https://cunit.sourceforge.net/)
+- [CUnit API Reference](https://cunit.sourceforge.net/doc/writing_tests.html)
 - KeeperFX Build Instructions: `docs/build_instructions.txt`
