@@ -437,7 +437,6 @@ void load_sound_banks() {
 void print_device_info() {
 	if (alcIsExtensionPresent(nullptr, "ALC_ENUMERATE_ALL_EXT")) {
 		const auto devices = alcGetString(nullptr, ALC_ALL_DEVICES_SPECIFIER);
-		("Available audio devices:");
 		for (auto device = devices; device[0] != 0; device += strlen(device)) {
 			("  %s", device);
 		}
@@ -445,7 +444,6 @@ void print_device_info() {
 		("Default audio device: %s", default_device);
 	} else if (alcIsExtensionPresent(nullptr, "ALC_ENUMERATION_EXT")) {
 		const auto devices = alcGetString(nullptr, ALC_DEVICE_SPECIFIER);
-		("Available audio devices:");
 		for (auto device = devices; device[0] != 0; device += strlen(device)) {
 			("  %s", device);
 		}
@@ -542,7 +540,6 @@ extern "C" TbBool play_music_track(int track) {
 }
 
 extern "C" void pause_music() {
-	("Pausing music");
 	if (features_enabled & Ft_NoCdMusic) {
 		Mix_PauseMusic();
 	} else {
@@ -551,7 +548,6 @@ extern "C" void pause_music() {
 }
 
 extern "C" void resume_music() {
-	("Resuming music");
 	if (features_enabled & Ft_NoCdMusic) {
 		Mix_ResumeMusic();
 	} else {

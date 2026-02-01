@@ -1,0 +1,4075 @@
+[common]
+ThingsCount = 397
+
+[thing0]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 13
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [136, 128]
+SubtileY = [70, 128]
+SubtileZ = [5, 0]
+
+[thing1]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 28
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [160, 128]
+SubtileY = [70, 128]
+SubtileZ = [5, 0]
+
+[thing2]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 26
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [175, 128]
+SubtileY = [79, 128]
+SubtileZ = [5, 0]
+
+[thing3]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 12
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [124, 128]
+SubtileY = [85, 128]
+SubtileZ = [5, 0]
+
+[thing4]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 11
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [100, 128]
+SubtileY = [88, 128]
+SubtileZ = [5, 0]
+
+[thing5]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 25
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [175, 128]
+SubtileY = [91, 128]
+SubtileZ = [5, 0]
+
+[thing6]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 10
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [100, 128]
+SubtileY = [94, 128]
+SubtileZ = [5, 0]
+
+[thing7]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 27
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [154, 128]
+SubtileY = [103, 128]
+SubtileZ = [5, 0]
+
+[thing8]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 9
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [109, 128]
+SubtileY = [106, 128]
+SubtileZ = [5, 0]
+
+[thing9]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 8
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [121, 128]
+SubtileY = [109, 128]
+SubtileZ = [5, 0]
+
+[thing10]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 7
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [124, 128]
+SubtileY = [115, 128]
+SubtileZ = [5, 0]
+
+[thing11]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 6
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [130, 128]
+SubtileY = [115, 128]
+SubtileZ = [5, 0]
+
+[thing12]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 24
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [154, 128]
+SubtileY = [115, 128]
+SubtileZ = [5, 0]
+
+[thing13]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 1
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [142, 128]
+SubtileY = [124, 128]
+SubtileZ = [5, 0]
+
+[thing14]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 5
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [118, 128]
+SubtileY = [127, 128]
+SubtileZ = [5, 0]
+
+[thing15]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 21
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [199, 128]
+SubtileY = [127, 128]
+SubtileZ = [5, 0]
+
+[thing16]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 2
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [142, 128]
+SubtileY = [130, 128]
+SubtileZ = [5, 0]
+
+[thing17]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 4
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [124, 128]
+SubtileY = [136, 128]
+SubtileZ = [5, 0]
+
+[thing18]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 3
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [130, 128]
+SubtileY = [136, 128]
+SubtileZ = [5, 0]
+
+[thing19]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 23
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [154, 128]
+SubtileY = [139, 128]
+SubtileZ = [5, 0]
+
+[thing20]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 20
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [154, 128]
+SubtileY = [151, 128]
+SubtileZ = [5, 0]
+
+[thing21]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 34
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [175, 128]
+SubtileY = [154, 128]
+SubtileZ = [5, 0]
+
+[thing22]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 14
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [124, 128]
+SubtileY = [160, 128]
+SubtileZ = [5, 0]
+
+[thing23]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 15
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [130, 128]
+SubtileY = [160, 128]
+SubtileZ = [5, 0]
+
+[thing24]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 33
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [163, 128]
+SubtileY = [160, 128]
+SubtileZ = [5, 0]
+
+[thing25]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 32
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [151, 128]
+SubtileY = [169, 128]
+SubtileZ = [5, 0]
+
+[thing26]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 29
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [169, 128]
+SubtileY = [169, 128]
+SubtileZ = [5, 0]
+
+[thing27]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 40
+DoorOrientation = 0
+DoorLocked = 0
+SubtileX = [157, 128]
+SubtileY = [181, 128]
+SubtileZ = [5, 0]
+
+[thing28]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 30
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [169, 128]
+SubtileY = [184, 128]
+SubtileZ = [5, 0]
+
+[thing29]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 39
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [136, 128]
+SubtileY = [187, 128]
+SubtileZ = [5, 0]
+
+[thing30]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 31
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [145, 128]
+SubtileY = [187, 128]
+SubtileZ = [5, 0]
+
+[thing31]
+ThingType = "Door"
+Subtype = 1
+Ownership = 5
+Index = 45
+DoorOrientation = 1
+DoorLocked = 0
+SubtileX = [196, 128]
+SubtileY = [67, 128]
+SubtileZ = [5, 0]
+
+[thing32]
+ThingType = "Object"
+Subtype = 49
+Ownership = 4
+ParentTile = 65535
+HerogateNumber = 5
+Orientation = 0
+SubtileX = [52, 128]
+SubtileY = [10, 128]
+SubtileZ = [1, 0]
+
+[thing33]
+ThingType = "Object"
+Subtype = 49
+Ownership = 4
+ParentTile = 65535
+HerogateNumber = 1
+Orientation = 0
+SubtileX = [211, 128]
+SubtileY = [28, 128]
+SubtileZ = [1, 0]
+
+[thing34]
+ThingType = "Object"
+Subtype = 87
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [235, 128]
+SubtileY = [40, 128]
+SubtileZ = [1, 0]
+
+[thing35]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 1757
+Orientation = 0
+SubtileX = [172, 128]
+SubtileY = [59, 192]
+SubtileZ = [2, 224]
+
+[thing36]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 1759
+Orientation = 0
+SubtileX = [178, 128]
+SubtileY = [59, 192]
+SubtileZ = [2, 224]
+
+[thing37]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 1759
+Orientation = 0
+SubtileX = [178, 128]
+SubtileY = [63, 64]
+SubtileZ = [2, 224]
+
+[thing38]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 1839
+Orientation = 0
+SubtileX = [161, 128]
+SubtileY = [64, 128]
+SubtileZ = [2, 224]
+
+[thing39]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 1861
+Orientation = 0
+SubtileX = [229, 128]
+SubtileY = [64, 128]
+SubtileZ = [1, 0]
+
+[thing40]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 1865
+Orientation = 0
+SubtileX = [241, 128]
+SubtileY = [64, 128]
+SubtileZ = [1, 0]
+
+[thing41]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 1917
+Orientation = 0
+SubtileX = [142, 128]
+SubtileY = [65, 192]
+SubtileZ = [2, 224]
+
+[thing42]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 1920
+Orientation = 0
+SubtileX = [151, 128]
+SubtileY = [65, 192]
+SubtileZ = [2, 224]
+
+[thing43]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 1926
+Orientation = 0
+SubtileX = [171, 64]
+SubtileY = [67, 128]
+SubtileZ = [2, 224]
+
+[thing44]
+ThingType = "Object"
+Subtype = 95
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [175, 128]
+SubtileY = [67, 128]
+SubtileZ = [1, 0]
+
+[thing45]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2001
+Orientation = 0
+SubtileX = [137, 128]
+SubtileY = [70, 128]
+SubtileZ = [6, 224]
+
+[thing46]
+ThingType = "Object"
+Subtype = 95
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [175, 128]
+SubtileY = [70, 128]
+SubtileZ = [1, 0]
+
+[thing47]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2016
+Orientation = 0
+SubtileX = [186, 64]
+SubtileY = [70, 128]
+SubtileZ = [2, 224]
+
+[thing48]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 2031
+Orientation = 0
+SubtileX = [229, 128]
+SubtileY = [70, 128]
+SubtileZ = [1, 0]
+
+[thing49]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 2035
+Orientation = 0
+SubtileX = [241, 128]
+SubtileY = [70, 128]
+SubtileZ = [1, 0]
+
+[thing50]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2096
+Orientation = 0
+SubtileX = [171, 64]
+SubtileY = [73, 128]
+SubtileZ = [2, 224]
+
+[thing51]
+ThingType = "Object"
+Subtype = 95
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [175, 128]
+SubtileY = [73, 128]
+SubtileZ = [1, 0]
+
+[thing52]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2156
+Orientation = 0
+SubtileX = [94, 192]
+SubtileY = [76, 192]
+SubtileZ = [2, 0]
+
+[thing53]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2160
+Orientation = 0
+SubtileX = [106, 64]
+SubtileY = [76, 192]
+SubtileZ = [2, 0]
+
+[thing54]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2178
+Orientation = 0
+SubtileX = [158, 192]
+SubtileY = [76, 128]
+SubtileZ = [2, 224]
+
+[thing55]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2178
+Orientation = 0
+SubtileX = [162, 64]
+SubtileY = [76, 128]
+SubtileZ = [2, 224]
+
+[thing56]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2411
+Orientation = 0
+SubtileX = [94, 192]
+SubtileY = [85, 64]
+SubtileZ = [2, 0]
+
+[thing57]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2415
+Orientation = 0
+SubtileX = [106, 64]
+SubtileY = [85, 64]
+SubtileZ = [2, 0]
+
+[thing58]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2600
+Orientation = 0
+SubtileX = [153, 64]
+SubtileY = [91, 128]
+SubtileZ = [2, 224]
+
+[thing59]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2605
+Orientation = 0
+SubtileX = [164, 192]
+SubtileY = [91, 128]
+SubtileZ = [2, 224]
+
+[thing60]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2623
+Orientation = 0
+SubtileX = [218, 192]
+SubtileY = [91, 128]
+SubtileZ = [2, 224]
+
+[thing61]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2670
+Orientation = 0
+SubtileX = [106, 128]
+SubtileY = [92, 192]
+SubtileZ = [2, 224]
+
+[thing62]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2673
+Orientation = 0
+SubtileX = [113, 192]
+SubtileY = [94, 128]
+SubtileZ = [2, 224]
+
+[thing63]
+ThingType = "Object"
+Subtype = 26
+Ownership = 5
+ParentTile = 2750
+Orientation = 0
+SubtileX = [91, 128]
+SubtileY = [97, 128]
+SubtileZ = [1, 0]
+
+[thing64]
+ThingType = "Object"
+Subtype = 26
+Ownership = 5
+ParentTile = 2755
+Orientation = 0
+SubtileX = [106, 128]
+SubtileY = [97, 128]
+SubtileZ = [1, 0]
+
+[thing65]
+ThingType = "Object"
+Subtype = 108
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [175, 128]
+SubtileY = [97, 128]
+SubtileZ = [1, 0]
+
+[thing66]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 2858
+Orientation = 0
+SubtileX = [160, 128]
+SubtileY = [98, 192]
+SubtileZ = [2, 224]
+
+[thing67]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 2836
+Orientation = 0
+SubtileX = [94, 128]
+SubtileY = [100, 128]
+SubtileZ = [1, 0]
+
+[thing68]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 2837
+Orientation = 0
+SubtileX = [97, 128]
+SubtileY = [100, 128]
+SubtileZ = [1, 0]
+
+[thing69]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 2838
+Orientation = 0
+SubtileX = [100, 128]
+SubtileY = [100, 128]
+SubtileZ = [1, 0]
+
+[thing70]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 2839
+Orientation = 0
+SubtileX = [103, 128]
+SubtileY = [100, 128]
+SubtileZ = [1, 0]
+
+[thing71]
+ThingType = "Object"
+Subtype = 108
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [175, 128]
+SubtileY = [100, 128]
+SubtileZ = [1, 0]
+
+[thing72]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 2921
+Orientation = 0
+SubtileX = [94, 128]
+SubtileY = [103, 128]
+SubtileZ = [1, 0]
+
+[thing73]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 2922
+Orientation = 0
+SubtileX = [97, 128]
+SubtileY = [103, 128]
+SubtileZ = [1, 0]
+
+[thing74]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 2923
+Orientation = 0
+SubtileX = [100, 128]
+SubtileY = [103, 128]
+SubtileZ = [1, 0]
+
+[thing75]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 2924
+Orientation = 0
+SubtileX = [103, 128]
+SubtileY = [103, 128]
+SubtileZ = [1, 0]
+
+[thing76]
+ThingType = "Object"
+Subtype = 108
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [175, 128]
+SubtileY = [103, 128]
+SubtileZ = [1, 0]
+
+[thing77]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 3006
+Orientation = 0
+SubtileX = [94, 128]
+SubtileY = [106, 128]
+SubtileZ = [1, 0]
+
+[thing78]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 3007
+Orientation = 0
+SubtileX = [97, 128]
+SubtileY = [106, 128]
+SubtileZ = [1, 0]
+
+[thing79]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 3008
+Orientation = 0
+SubtileX = [100, 128]
+SubtileY = [106, 128]
+SubtileZ = [1, 0]
+
+[thing80]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 3009
+Orientation = 0
+SubtileX = [103, 128]
+SubtileY = [106, 128]
+SubtileZ = [1, 0]
+
+[thing81]
+ThingType = "Object"
+Subtype = 119
+Ownership = 5
+ParentTile = 3017
+Orientation = 0
+SubtileX = [127, 128]
+SubtileY = [106, 128]
+SubtileZ = [2, 0]
+
+[thing82]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3024
+Orientation = 0
+SubtileX = [150, 64]
+SubtileY = [106, 128]
+SubtileZ = [2, 224]
+
+[thing83]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3096
+Orientation = 0
+SubtileX = [109, 128]
+SubtileY = [107, 128]
+SubtileZ = [6, 224]
+
+[thing84]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3119
+Orientation = 0
+SubtileX = [178, 128]
+SubtileY = [107, 192]
+SubtileZ = [2, 224]
+
+[thing85]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 3091
+Orientation = 0
+SubtileX = [94, 128]
+SubtileY = [109, 128]
+SubtileZ = [1, 0]
+
+[thing86]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 3092
+Orientation = 0
+SubtileX = [97, 128]
+SubtileY = [109, 128]
+SubtileZ = [1, 0]
+
+[thing87]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 3093
+Orientation = 0
+SubtileX = [100, 128]
+SubtileY = [109, 128]
+SubtileZ = [1, 0]
+
+[thing88]
+ThingType = "Object"
+Subtype = 114
+Ownership = 5
+ParentTile = 3094
+Orientation = 0
+SubtileX = [103, 128]
+SubtileY = [109, 128]
+SubtileZ = [1, 0]
+
+[thing89]
+ThingType = "Object"
+Subtype = 119
+Ownership = 5
+ParentTile = 3111
+Orientation = 0
+SubtileX = [154, 128]
+SubtileY = [109, 128]
+SubtileZ = [2, 0]
+
+[thing90]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3183
+Orientation = 0
+SubtileX = [115, 128]
+SubtileY = [110, 192]
+SubtileZ = [2, 224]
+
+[thing91]
+ThingType = "Object"
+Subtype = 49
+Ownership = 4
+ParentTile = 65535
+HerogateNumber = 4
+Orientation = 0
+SubtileX = [28, 128]
+SubtileY = [112, 128]
+SubtileZ = [1, 0]
+
+[thing92]
+ThingType = "Object"
+Subtype = 26
+Ownership = 5
+ParentTile = 3175
+Orientation = 0
+SubtileX = [91, 128]
+SubtileY = [112, 128]
+SubtileZ = [1, 0]
+
+[thing93]
+ThingType = "Object"
+Subtype = 26
+Ownership = 5
+ParentTile = 3180
+Orientation = 0
+SubtileX = [106, 128]
+SubtileY = [112, 128]
+SubtileZ = [1, 0]
+
+[thing94]
+ThingType = "Object"
+Subtype = 87
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [241, 128]
+SubtileY = [112, 128]
+SubtileZ = [1, 0]
+
+[thing95]
+ThingType = "Object"
+Subtype = 30
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [127, 128]
+SubtileY = [118, 128]
+SubtileZ = [1, 0]
+
+[thing96]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3359
+Orientation = 0
+SubtileX = [131, 192]
+SubtileY = [118, 128]
+SubtileZ = [2, 224]
+
+[thing97]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3374
+Orientation = 0
+SubtileX = [178, 128]
+SubtileY = [120, 64]
+SubtileZ = [2, 224]
+
+[thing98]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3376
+Orientation = 0
+SubtileX = [184, 128]
+SubtileY = [120, 64]
+SubtileZ = [2, 224]
+
+[thing99]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3524
+Orientation = 0
+SubtileX = [120, 64]
+SubtileY = [124, 128]
+SubtileZ = [2, 224]
+
+[thing100]
+ThingType = "Object"
+Subtype = 120
+Ownership = 1
+ParentTile = 3526
+Orientation = 0
+SubtileX = [124, 128]
+SubtileY = [124, 128]
+SubtileZ = [2, 0]
+
+[thing101]
+ThingType = "Object"
+Subtype = 120
+Ownership = 1
+ParentTile = 3528
+Orientation = 0
+SubtileX = [130, 128]
+SubtileY = [124, 128]
+SubtileZ = [2, 0]
+
+[thing102]
+ThingType = "Object"
+Subtype = 5
+Ownership = 1
+ParentTile = 3612
+Orientation = 0
+SubtileX = [127, 128]
+SubtileY = [127, 128]
+SubtileZ = [3, 0]
+
+[thing103]
+ThingType = "Object"
+Subtype = 30
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [139, 128]
+SubtileY = [127, 128]
+SubtileZ = [1, 0]
+
+[thing104]
+ThingType = "Object"
+Subtype = 30
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [181, 128]
+SubtileY = [127, 128]
+SubtileZ = [1, 0]
+
+[thing105]
+ThingType = "Object"
+Subtype = 120
+Ownership = 1
+ParentTile = 3696
+Orientation = 0
+SubtileX = [124, 128]
+SubtileY = [130, 128]
+SubtileZ = [2, 0]
+
+[thing106]
+ThingType = "Object"
+Subtype = 120
+Ownership = 1
+ParentTile = 3698
+Orientation = 0
+SubtileX = [130, 128]
+SubtileY = [130, 128]
+SubtileZ = [2, 0]
+
+[thing107]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3786
+Orientation = 0
+SubtileX = [139, 128]
+SubtileY = [131, 192]
+SubtileZ = [2, 224]
+
+[thing108]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3779
+Orientation = 0
+SubtileX = [120, 64]
+SubtileY = [133, 128]
+SubtileZ = [2, 224]
+
+[thing109]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3793
+Orientation = 0
+SubtileX = [158, 192]
+SubtileY = [133, 128]
+SubtileZ = [2, 224]
+
+[thing110]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3793
+Orientation = 0
+SubtileX = [162, 64]
+SubtileY = [133, 128]
+SubtileZ = [2, 224]
+
+[thing111]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3867
+Orientation = 0
+SubtileX = [127, 128]
+SubtileY = [134, 192]
+SubtileZ = [2, 224]
+
+[thing112]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3869
+Orientation = 0
+SubtileX = [133, 128]
+SubtileY = [134, 192]
+SubtileZ = [2, 224]
+
+[thing113]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3960
+Orientation = 0
+SubtileX = [151, 128]
+SubtileY = [137, 192]
+SubtileZ = [2, 224]
+
+[thing114]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3864
+Orientation = 0
+SubtileX = [118, 128]
+SubtileY = [138, 64]
+SubtileZ = [2, 224]
+
+[thing115]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3867
+Orientation = 0
+SubtileX = [127, 128]
+SubtileY = [138, 64]
+SubtileZ = [2, 224]
+
+[thing116]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3870
+Orientation = 0
+SubtileX = [136, 128]
+SubtileY = [138, 64]
+SubtileZ = [2, 224]
+
+[thing117]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [118, 128]
+SubtileY = [139, 128]
+SubtileZ = [1, 0]
+
+[thing118]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [136, 128]
+SubtileY = [139, 128]
+SubtileZ = [1, 0]
+
+[thing119]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3960
+Orientation = 0
+SubtileX = [151, 128]
+SubtileY = [141, 64]
+SubtileZ = [2, 224]
+
+[thing120]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 3962
+Orientation = 0
+SubtileX = [157, 128]
+SubtileY = [141, 64]
+SubtileZ = [2, 224]
+
+[thing121]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4050
+Orientation = 0
+SubtileX = [166, 192]
+SubtileY = [142, 192]
+SubtileZ = [2, 0]
+
+[thing122]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4055
+Orientation = 0
+SubtileX = [181, 64]
+SubtileY = [142, 192]
+SubtileZ = [2, 0]
+
+[thing123]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4118
+Orientation = 0
+SubtileX = [117, 64]
+SubtileY = [145, 128]
+SubtileZ = [2, 224]
+
+[thing124]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [118, 128]
+SubtileY = [145, 128]
+SubtileZ = [1, 0]
+
+[thing125]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [136, 128]
+SubtileY = [145, 128]
+SubtileZ = [1, 0]
+
+[thing126]
+ThingType = "Object"
+Subtype = 119
+Ownership = 5
+ParentTile = 4131
+Orientation = 0
+SubtileX = [154, 128]
+SubtileY = [145, 128]
+SubtileZ = [2, 0]
+
+[thing127]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4302
+Orientation = 0
+SubtileX = [157, 128]
+SubtileY = [149, 192]
+SubtileZ = [2, 224]
+
+[thing128]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [118, 128]
+SubtileY = [151, 128]
+SubtileZ = [1, 0]
+
+[thing129]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [136, 128]
+SubtileY = [151, 128]
+SubtileZ = [1, 0]
+
+[thing130]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4305
+Orientation = 0
+SubtileX = [166, 192]
+SubtileY = [151, 64]
+SubtileZ = [2, 0]
+
+[thing131]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4310
+Orientation = 0
+SubtileX = [181, 64]
+SubtileY = [151, 64]
+SubtileZ = [2, 0]
+
+[thing132]
+ThingType = "Object"
+Subtype = 91
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [7, 128]
+SubtileY = [154, 128]
+SubtileZ = [1, 0]
+
+[thing133]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4384
+Orientation = 0
+SubtileX = [148, 192]
+SubtileY = [154, 192]
+SubtileZ = [3, 0]
+
+[thing134]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4388
+Orientation = 0
+SubtileX = [160, 64]
+SubtileY = [154, 192]
+SubtileZ = [3, 0]
+
+[thing135]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4391
+Orientation = 0
+SubtileX = [169, 128]
+SubtileY = [156, 64]
+SubtileZ = [2, 224]
+
+[thing136]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [118, 128]
+SubtileY = [157, 128]
+SubtileZ = [1, 0]
+
+[thing137]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [136, 128]
+SubtileY = [157, 128]
+SubtileZ = [1, 0]
+
+[thing138]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4470
+Orientation = 0
+SubtileX = [151, 128]
+SubtileY = [157, 128]
+SubtileZ = [1, 0]
+
+[thing139]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4471
+Orientation = 0
+SubtileX = [154, 128]
+SubtileY = [157, 128]
+SubtileZ = [1, 0]
+
+[thing140]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4472
+Orientation = 0
+SubtileX = [157, 128]
+SubtileY = [157, 128]
+SubtileZ = [1, 0]
+
+[thing141]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4563
+Orientation = 0
+SubtileX = [175, 128]
+SubtileY = [158, 192]
+SubtileZ = [2, 224]
+
+[thing142]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4555
+Orientation = 0
+SubtileX = [151, 128]
+SubtileY = [160, 128]
+SubtileZ = [1, 0]
+
+[thing143]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4556
+Orientation = 0
+SubtileX = [154, 128]
+SubtileY = [160, 128]
+SubtileZ = [1, 0]
+
+[thing144]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4557
+Orientation = 0
+SubtileX = [157, 128]
+SubtileY = [160, 128]
+SubtileZ = [1, 0]
+
+[thing145]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4640
+Orientation = 0
+SubtileX = [151, 128]
+SubtileY = [163, 128]
+SubtileZ = [1, 0]
+
+[thing146]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4641
+Orientation = 0
+SubtileX = [154, 128]
+SubtileY = [163, 128]
+SubtileZ = [1, 0]
+
+[thing147]
+ThingType = "Object"
+Subtype = 31
+Ownership = 5
+ParentTile = 4642
+Orientation = 0
+SubtileX = [157, 128]
+SubtileY = [163, 128]
+SubtileZ = [1, 0]
+
+[thing148]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4714
+Orientation = 0
+SubtileX = [120, 64]
+SubtileY = [166, 128]
+SubtileZ = [2, 224]
+
+[thing149]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4724
+Orientation = 0
+SubtileX = [148, 192]
+SubtileY = [166, 64]
+SubtileZ = [3, 0]
+
+[thing150]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4728
+Orientation = 0
+SubtileX = [160, 64]
+SubtileY = [166, 64]
+SubtileZ = [3, 0]
+
+[thing151]
+ThingType = "Object"
+Subtype = 97
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [181, 128]
+SubtileY = [166, 128]
+SubtileZ = [1, 0]
+
+[thing152]
+ThingType = "Object"
+Subtype = 96
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [184, 128]
+SubtileY = [166, 128]
+SubtileZ = [1, 0]
+
+[thing153]
+ThingType = "Object"
+Subtype = 98
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [187, 128]
+SubtileY = [166, 128]
+SubtileZ = [1, 0]
+
+[thing154]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4809
+Orientation = 0
+SubtileX = [148, 128]
+SubtileY = [171, 64]
+SubtileZ = [2, 224]
+
+[thing155]
+ThingType = "Object"
+Subtype = 97
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [181, 128]
+SubtileY = [172, 128]
+SubtileZ = [1, 0]
+
+[thing156]
+ThingType = "Object"
+Subtype = 96
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [184, 128]
+SubtileY = [172, 128]
+SubtileZ = [1, 0]
+
+[thing157]
+ThingType = "Object"
+Subtype = 98
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [187, 128]
+SubtileY = [172, 128]
+SubtileZ = [1, 0]
+
+[thing158]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4975
+Orientation = 0
+SubtileX = [134, 192]
+SubtileY = [175, 128]
+SubtileZ = [2, 224]
+
+[thing159]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5055
+Orientation = 0
+SubtileX = [121, 128]
+SubtileY = [176, 192]
+SubtileZ = [2, 224]
+
+[thing160]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5072
+Orientation = 0
+SubtileX = [172, 128]
+SubtileY = [176, 192]
+SubtileZ = [2, 224]
+
+[thing161]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5077
+Orientation = 0
+SubtileX = [187, 128]
+SubtileY = [176, 192]
+SubtileZ = [2, 224]
+
+[thing162]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4979
+Orientation = 0
+SubtileX = [148, 128]
+SubtileY = [177, 64]
+SubtileZ = [2, 224]
+
+[thing163]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5068
+Orientation = 0
+SubtileX = [158, 192]
+SubtileY = [178, 128]
+SubtileZ = [2, 224]
+
+[thing164]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5072
+Orientation = 0
+SubtileX = [172, 128]
+SubtileY = [180, 64]
+SubtileZ = [2, 224]
+
+[thing165]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 5141
+Orientation = 0
+SubtileX = [124, 128]
+SubtileY = [181, 128]
+SubtileZ = [1, 0]
+
+[thing166]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5144
+Orientation = 0
+SubtileX = [133, 64]
+SubtileY = [181, 192]
+SubtileZ = [3, 0]
+
+[thing167]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5146
+Orientation = 0
+SubtileX = [141, 64]
+SubtileY = [181, 128]
+SubtileZ = [2, 224]
+
+[thing168]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5233
+Orientation = 0
+SubtileX = [147, 64]
+SubtileY = [184, 128]
+SubtileZ = [2, 224]
+
+[thing169]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5325
+Orientation = 0
+SubtileX = [166, 128]
+SubtileY = [185, 192]
+SubtileZ = [2, 224]
+
+[thing170]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5326
+Orientation = 0
+SubtileX = [171, 64]
+SubtileY = [187, 128]
+SubtileZ = [2, 224]
+
+[thing171]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5402
+Orientation = 0
+SubtileX = [142, 128]
+SubtileY = [188, 192]
+SubtileZ = [2, 224]
+
+[thing172]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5403
+Orientation = 0
+SubtileX = [147, 64]
+SubtileY = [190, 128]
+SubtileZ = [2, 224]
+
+[thing173]
+ThingType = "Object"
+Subtype = 108
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [151, 128]
+SubtileY = [190, 128]
+SubtileZ = [1, 0]
+
+[thing174]
+ThingType = "Object"
+Subtype = 108
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [154, 128]
+SubtileY = [190, 128]
+SubtileZ = [1, 0]
+
+[thing175]
+ThingType = "Object"
+Subtype = 108
+Ownership = 0
+ParentTile = 65535
+Orientation = 0
+SubtileX = [157, 128]
+SubtileY = [190, 128]
+SubtileZ = [1, 0]
+
+[thing176]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 5481
+Orientation = 0
+SubtileX = [124, 128]
+SubtileY = [193, 128]
+SubtileZ = [1, 0]
+
+[thing177]
+ThingType = "Object"
+Subtype = 28
+Ownership = 5
+ParentTile = 5484
+Orientation = 0
+SubtileX = [133, 128]
+SubtileY = [193, 128]
+SubtileZ = [1, 0]
+
+[thing178]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 5494
+Orientation = 0
+SubtileX = [161, 192]
+SubtileY = [193, 128]
+SubtileZ = [2, 224]
+
+[thing179]
+ThingType = "Object"
+Subtype = 49
+Ownership = 4
+ParentTile = 65535
+HerogateNumber = 3
+Orientation = 0
+SubtileX = [43, 128]
+SubtileY = [214, 128]
+SubtileZ = [1, 0]
+
+[thing180]
+ThingType = "Object"
+Subtype = 49
+Ownership = 4
+ParentTile = 65535
+HerogateNumber = 2
+Orientation = 0
+SubtileX = [232, 128]
+SubtileY = [223, 128]
+SubtileZ = [1, 0]
+
+[thing181]
+ThingType = "Object"
+Subtype = 119
+Ownership = 5
+ParentTile = 1933
+Orientation = 0
+SubtileX = [190, 160]
+SubtileY = [67, 128]
+SubtileZ = [2, 0]
+
+[thing182]
+ThingType = "Object"
+Subtype = 137
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [230, 128]
+SubtileY = [221, 128]
+SubtileZ = [1, 0]
+
+[thing183]
+ThingType = "Object"
+Subtype = 138
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [234, 128]
+SubtileY = [224, 128]
+SubtileZ = [1, 0]
+
+[thing184]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [229, 128]
+SubtileY = [226, 128]
+SubtileZ = [1, 0]
+
+[thing185]
+ThingType = "Object"
+Subtype = 140
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [235, 128]
+SubtileY = [220, 128]
+SubtileZ = [1, 0]
+
+[thing186]
+ThingType = "Object"
+Subtype = 140
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [229, 128]
+SubtileY = [223, 128]
+SubtileZ = [1, 0]
+
+[thing187]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [239, 128]
+SubtileY = [220, 128]
+SubtileZ = [0, 0]
+
+[thing188]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [235, 128]
+SubtileY = [216, 128]
+SubtileZ = [0, 0]
+
+[thing189]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [225, 128]
+SubtileY = [220, 128]
+SubtileZ = [0, 0]
+
+[thing190]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [224, 128]
+SubtileY = [223, 128]
+SubtileZ = [0, 0]
+
+[thing191]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [228, 128]
+SubtileY = [229, 128]
+SubtileZ = [0, 0]
+
+[thing192]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [49, 128]
+SubtileY = [7, 128]
+SubtileZ = [1, 0]
+
+[thing193]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [55, 128]
+SubtileY = [13, 128]
+SubtileZ = [1, 0]
+
+[thing194]
+ThingType = "Object"
+Subtype = 140
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [54, 128]
+SubtileY = [10, 128]
+SubtileZ = [1, 0]
+
+[thing195]
+ThingType = "Object"
+Subtype = 140
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [49, 128]
+SubtileY = [13, 128]
+SubtileZ = [1, 0]
+
+[thing196]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [58, 128]
+SubtileY = [13, 128]
+SubtileZ = [0, 0]
+
+[thing197]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [56, 128]
+SubtileY = [16, 128]
+SubtileZ = [0, 0]
+
+[thing198]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [51, 128]
+SubtileY = [19, 128]
+SubtileZ = [0, 0]
+
+[thing199]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [48, 128]
+SubtileY = [16, 128]
+SubtileZ = [0, 0]
+
+[thing200]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [46, 128]
+SubtileY = [10, 128]
+SubtileZ = [0, 0]
+
+[thing201]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [46, 128]
+SubtileY = [21, 128]
+SubtileZ = [0, 0]
+
+[thing202]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [60, 128]
+SubtileY = [20, 128]
+SubtileZ = [0, 0]
+
+[thing203]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [41, 128]
+SubtileY = [10, 128]
+SubtileZ = [0, 0]
+
+[thing204]
+ThingType = "Object"
+Subtype = 137
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [60, 128]
+SubtileY = [163, 128]
+SubtileZ = [1, 0]
+
+[thing205]
+ThingType = "Object"
+Subtype = 137
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [81, 128]
+SubtileY = [167, 128]
+SubtileZ = [1, 0]
+
+[thing206]
+ThingType = "Object"
+Subtype = 137
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [99, 128]
+SubtileY = [177, 128]
+SubtileZ = [1, 0]
+
+[thing207]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [58, 128]
+SubtileY = [152, 128]
+SubtileZ = [1, 0]
+
+[thing208]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [55, 128]
+SubtileY = [157, 128]
+SubtileZ = [1, 0]
+
+[thing209]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [69, 128]
+SubtileY = [164, 128]
+SubtileZ = [1, 0]
+
+[thing210]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [73, 128]
+SubtileY = [170, 128]
+SubtileZ = [1, 0]
+
+[thing211]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [92, 128]
+SubtileY = [170, 128]
+SubtileZ = [1, 0]
+
+[thing212]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [87, 128]
+SubtileY = [174, 128]
+SubtileZ = [1, 0]
+
+[thing213]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [116, 128]
+SubtileY = [185, 128]
+SubtileZ = [1, 0]
+
+[thing214]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [104, 128]
+SubtileY = [175, 128]
+SubtileZ = [1, 0]
+
+[thing215]
+ThingType = "Object"
+Subtype = 155
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [54, 128]
+SubtileY = [151, 128]
+SubtileZ = [1, 0]
+
+[thing216]
+ThingType = "Object"
+Subtype = 155
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [80, 128]
+SubtileY = [171, 128]
+SubtileZ = [1, 0]
+
+[thing217]
+ThingType = "Object"
+Subtype = 155
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [110, 128]
+SubtileY = [180, 128]
+SubtileZ = [1, 0]
+
+[thing218]
+ThingType = "Object"
+Subtype = 30
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [187, 128]
+SubtileY = [127, 128]
+SubtileZ = [1, 0]
+
+[thing219]
+ThingType = "Object"
+Subtype = 142
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [233, 128]
+SubtileY = [114, 128]
+SubtileZ = [1, 0]
+
+[thing220]
+ThingType = "Object"
+Subtype = 137
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [227, 128]
+SubtileY = [110, 128]
+SubtileZ = [1, 0]
+
+[thing221]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [231, 128]
+SubtileY = [111, 128]
+SubtileZ = [1, 0]
+
+[thing222]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [226, 128]
+SubtileY = [115, 128]
+SubtileZ = [1, 0]
+
+[thing223]
+ThingType = "Object"
+Subtype = 155
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [231, 128]
+SubtileY = [116, 128]
+SubtileZ = [1, 0]
+
+[thing224]
+ThingType = "Object"
+Subtype = 141
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [231, 128]
+SubtileY = [228, 128]
+SubtileZ = [1, 0]
+
+[thing225]
+ThingType = "Object"
+Subtype = 155
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [236, 128]
+SubtileY = [227, 128]
+SubtileZ = [1, 0]
+
+[thing226]
+ThingType = "Object"
+Subtype = 155
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [228, 128]
+SubtileY = [218, 128]
+SubtileZ = [1, 0]
+
+[thing227]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [48, 128]
+SubtileY = [142, 128]
+SubtileZ = [1, 0]
+
+[thing228]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [106, 128]
+SubtileY = [181, 128]
+SubtileZ = [1, 0]
+
+[thing229]
+ThingType = "Object"
+Subtype = 155
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [26, 128]
+SubtileY = [114, 128]
+SubtileZ = [1, 0]
+
+[thing230]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [25, 128]
+SubtileY = [109, 128]
+SubtileZ = [1, 0]
+
+[thing231]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [31, 128]
+SubtileY = [115, 128]
+SubtileZ = [1, 0]
+
+[thing232]
+ThingType = "Object"
+Subtype = 137
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [54, 128]
+SubtileY = [8, 128]
+SubtileZ = [1, 0]
+
+[thing233]
+ThingType = "Object"
+Subtype = 141
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [56, 128]
+SubtileY = [6, 128]
+SubtileZ = [1, 0]
+
+[thing234]
+ThingType = "Object"
+Subtype = 141
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [48, 128]
+SubtileY = [6, 128]
+SubtileZ = [1, 0]
+
+[thing235]
+ThingType = "Object"
+Subtype = 137
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [211, 128]
+SubtileY = [25, 128]
+SubtileZ = [1, 0]
+
+[thing236]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [214, 128]
+SubtileY = [31, 128]
+SubtileZ = [1, 0]
+
+[thing237]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [207, 128]
+SubtileY = [25, 128]
+SubtileZ = [1, 0]
+
+[thing238]
+ThingType = "Object"
+Subtype = 155
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [214, 128]
+SubtileY = [27, 128]
+SubtileZ = [1, 0]
+
+[thing239]
+ThingType = "Object"
+Subtype = 156
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [226, 128]
+SubtileY = [83, 128]
+SubtileZ = [0, 0]
+
+[thing240]
+ThingType = "Object"
+Subtype = 156
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [216, 128]
+SubtileY = [129, 128]
+SubtileZ = [0, 0]
+
+[thing241]
+ThingType = "Object"
+Subtype = 156
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [202, 128]
+SubtileY = [101, 128]
+SubtileZ = [0, 0]
+
+[thing242]
+ThingType = "Object"
+Subtype = 156
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [230, 128]
+SubtileY = [38, 128]
+SubtileZ = [0, 0]
+
+[thing243]
+ThingType = "Object"
+Subtype = 156
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [244, 128]
+SubtileY = [55, 128]
+SubtileZ = [0, 0]
+
+[thing244]
+ThingType = "Object"
+Subtype = 156
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [190, 128]
+SubtileY = [145, 128]
+SubtileZ = [0, 0]
+
+[thing245]
+ThingType = "Object"
+Subtype = 156
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [249, 128]
+SubtileY = [72, 128]
+SubtileZ = [0, 0]
+
+[thing246]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [11, 128]
+SubtileY = [200, 128]
+SubtileZ = [0, 0]
+
+[thing247]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [22, 128]
+SubtileY = [224, 128]
+SubtileZ = [0, 0]
+
+[thing248]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [217, 128]
+SubtileY = [234, 128]
+SubtileZ = [0, 0]
+
+[thing249]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [236, 128]
+SubtileY = [189, 128]
+SubtileZ = [0, 0]
+
+[thing250]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [239, 128]
+SubtileY = [155, 128]
+SubtileZ = [0, 0]
+
+[thing251]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [211, 128]
+SubtileY = [13, 128]
+SubtileZ = [0, 0]
+
+[thing252]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [100, 128]
+SubtileY = [12, 128]
+SubtileZ = [0, 0]
+
+[thing253]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [71, 128]
+SubtileY = [18, 128]
+SubtileZ = [0, 0]
+
+[thing254]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [21, 128]
+SubtileY = [41, 128]
+SubtileZ = [0, 0]
+
+[thing255]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [9, 128]
+SubtileY = [155, 128]
+SubtileZ = [0, 0]
+
+[thing256]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [23, 128]
+SubtileY = [136, 128]
+SubtileZ = [0, 0]
+
+[thing257]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [13, 128]
+SubtileY = [67, 128]
+SubtileZ = [0, 0]
+
+[thing258]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [16, 128]
+SubtileY = [106, 128]
+SubtileZ = [0, 0]
+
+[thing259]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [66, 128]
+SubtileY = [239, 128]
+SubtileZ = [0, 0]
+
+[thing260]
+ThingType = "Object"
+Subtype = 137
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [46, 128]
+SubtileY = [211, 128]
+SubtileZ = [1, 0]
+
+[thing261]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [41, 128]
+SubtileY = [216, 128]
+SubtileZ = [1, 0]
+
+[thing262]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [41, 128]
+SubtileY = [212, 128]
+SubtileZ = [1, 0]
+
+[thing263]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [46, 128]
+SubtileY = [216, 128]
+SubtileZ = [1, 0]
+
+[thing264]
+ThingType = "Object"
+Subtype = 138
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [209, 128]
+SubtileY = [30, 128]
+SubtileZ = [1, 0]
+
+[thing265]
+ThingType = "Object"
+Subtype = 138
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [50, 128]
+SubtileY = [11, 128]
+SubtileZ = [1, 0]
+
+[thing266]
+ThingType = "Object"
+Subtype = 138
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [30, 128]
+SubtileY = [110, 128]
+SubtileZ = [1, 0]
+
+[thing267]
+ThingType = "Object"
+Subtype = 138
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [52, 128]
+SubtileY = [147, 128]
+SubtileZ = [1, 0]
+
+[thing268]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [144, 128]
+SubtileY = [144, 128]
+SubtileZ = [0, 0]
+
+[thing269]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [141, 128]
+SubtileY = [168, 128]
+SubtileZ = [0, 0]
+
+[thing270]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [141, 128]
+SubtileY = [105, 128]
+SubtileZ = [0, 0]
+
+[thing271]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [120, 128]
+SubtileY = [95, 128]
+SubtileZ = [0, 0]
+
+[thing272]
+ThingType = "Object"
+Subtype = 154
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [147, 128]
+SubtileY = [73, 128]
+SubtileZ = [0, 0]
+
+[thing273]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [138, 128]
+SubtileY = [114, 128]
+SubtileZ = [0, 0]
+
+[thing274]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [118, 128]
+SubtileY = [98, 128]
+SubtileZ = [0, 0]
+
+[thing275]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [119, 128]
+SubtileY = [92, 128]
+SubtileZ = [0, 0]
+
+[thing276]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [123, 128]
+SubtileY = [95, 128]
+SubtileZ = [0, 0]
+
+[thing277]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [139, 128]
+SubtileY = [117, 128]
+SubtileZ = [0, 0]
+
+[thing278]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [140, 128]
+SubtileY = [100, 128]
+SubtileZ = [0, 0]
+
+[thing279]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [143, 128]
+SubtileY = [102, 128]
+SubtileZ = [0, 0]
+
+[thing280]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [137, 128]
+SubtileY = [105, 128]
+SubtileZ = [0, 0]
+
+[thing281]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [142, 128]
+SubtileY = [109, 128]
+SubtileZ = [0, 0]
+
+[thing282]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [146, 128]
+SubtileY = [71, 128]
+SubtileZ = [0, 0]
+
+[thing283]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [146, 128]
+SubtileY = [80, 128]
+SubtileZ = [0, 0]
+
+[thing284]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [148, 128]
+SubtileY = [85, 128]
+SubtileZ = [0, 0]
+
+[thing285]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [145, 128]
+SubtileY = [93, 128]
+SubtileZ = [0, 0]
+
+[thing286]
+ThingType = "Object"
+Subtype = 2
+Ownership = 5
+ParentTile = 4124
+Orientation = 0
+SubtileX = [131, 192]
+SubtileY = [145, 128]
+SubtileZ = [2, 224]
+
+[thing287]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [241, 128]
+SubtileY = [157, 128]
+SubtileZ = [0, 0]
+
+[thing288]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [238, 128]
+SubtileY = [160, 128]
+SubtileZ = [0, 0]
+
+[thing289]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [234, 128]
+SubtileY = [186, 128]
+SubtileZ = [0, 0]
+
+[thing290]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [233, 128]
+SubtileY = [190, 128]
+SubtileZ = [0, 0]
+
+[thing291]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [239, 128]
+SubtileY = [190, 128]
+SubtileZ = [0, 0]
+
+[thing292]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [219, 128]
+SubtileY = [231, 128]
+SubtileZ = [0, 0]
+
+[thing293]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [214, 128]
+SubtileY = [234, 128]
+SubtileZ = [0, 0]
+
+[thing294]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [216, 128]
+SubtileY = [238, 128]
+SubtileZ = [0, 0]
+
+[thing295]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [64, 128]
+SubtileY = [236, 128]
+SubtileZ = [0, 0]
+
+[thing296]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [66, 128]
+SubtileY = [241, 128]
+SubtileZ = [0, 0]
+
+[thing297]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [70, 128]
+SubtileY = [239, 128]
+SubtileZ = [0, 0]
+
+[thing298]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [24, 128]
+SubtileY = [221, 128]
+SubtileZ = [0, 0]
+
+[thing299]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [18, 128]
+SubtileY = [230, 128]
+SubtileZ = [0, 0]
+
+[thing300]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [28, 128]
+SubtileY = [227, 128]
+SubtileZ = [0, 0]
+
+[thing301]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [14, 128]
+SubtileY = [197, 128]
+SubtileZ = [0, 0]
+
+[thing302]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [8, 128]
+SubtileY = [201, 128]
+SubtileZ = [0, 0]
+
+[thing303]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [13, 128]
+SubtileY = [203, 128]
+SubtileZ = [0, 0]
+
+[thing304]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [229, 128]
+SubtileY = [24, 128]
+SubtileZ = [0, 0]
+
+[thing305]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [211, 128]
+SubtileY = [10, 128]
+SubtileZ = [0, 0]
+
+[thing306]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [205, 128]
+SubtileY = [14, 128]
+SubtileZ = [0, 0]
+
+[thing307]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [215, 128]
+SubtileY = [14, 128]
+SubtileZ = [0, 0]
+
+[thing308]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [169, 128]
+SubtileY = [7, 128]
+SubtileZ = [0, 0]
+
+[thing309]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [164, 128]
+SubtileY = [11, 128]
+SubtileZ = [0, 0]
+
+[thing310]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [223, 128]
+SubtileY = [19, 128]
+SubtileZ = [0, 0]
+
+[thing311]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [232, 128]
+SubtileY = [169, 128]
+SubtileZ = [0, 0]
+
+[thing312]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [236, 128]
+SubtileY = [209, 128]
+SubtileZ = [0, 0]
+
+[thing313]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [203, 128]
+SubtileY = [242, 128]
+SubtileZ = [0, 0]
+
+[thing314]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [122, 128]
+SubtileY = [235, 128]
+SubtileZ = [0, 0]
+
+[thing315]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [27, 128]
+SubtileY = [213, 128]
+SubtileZ = [0, 0]
+
+[thing316]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [119, 128]
+SubtileY = [15, 128]
+SubtileZ = [0, 0]
+
+[thing317]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [102, 128]
+SubtileY = [15, 128]
+SubtileZ = [0, 0]
+
+[thing318]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [97, 128]
+SubtileY = [11, 128]
+SubtileZ = [0, 0]
+
+[thing319]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [107, 128]
+SubtileY = [10, 128]
+SubtileZ = [0, 0]
+
+[thing320]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [24, 128]
+SubtileY = [38, 128]
+SubtileZ = [0, 0]
+
+[thing321]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [27, 128]
+SubtileY = [43, 128]
+SubtileZ = [0, 0]
+
+[thing322]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [10, 128]
+SubtileY = [151, 128]
+SubtileZ = [0, 0]
+
+[thing323]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [5, 128]
+SubtileY = [156, 128]
+SubtileZ = [0, 0]
+
+[thing324]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [7, 128]
+SubtileY = [162, 128]
+SubtileZ = [0, 0]
+
+[thing325]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [11, 128]
+SubtileY = [158, 128]
+SubtileZ = [0, 0]
+
+[thing326]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [20, 128]
+SubtileY = [134, 128]
+SubtileZ = [0, 0]
+
+[thing327]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [25, 128]
+SubtileY = [132, 128]
+SubtileZ = [0, 0]
+
+[thing328]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [25, 128]
+SubtileY = [140, 128]
+SubtileZ = [0, 0]
+
+[thing329]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [16, 128]
+SubtileY = [109, 128]
+SubtileZ = [0, 0]
+
+[thing330]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [18, 128]
+SubtileY = [101, 128]
+SubtileZ = [0, 0]
+
+[thing331]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [16, 128]
+SubtileY = [126, 128]
+SubtileZ = [0, 0]
+
+[thing332]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [15, 128]
+SubtileY = [64, 128]
+SubtileZ = [0, 0]
+
+[thing333]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [17, 128]
+SubtileY = [71, 128]
+SubtileZ = [0, 0]
+
+[thing334]
+ThingType = "Object"
+Subtype = 146
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [35, 128]
+SubtileY = [25, 128]
+SubtileZ = [0, 0]
+
+[thing335]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [124, 128]
+SubtileY = [230, 128]
+SubtileZ = [0, 0]
+
+[thing336]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [132, 128]
+SubtileY = [233, 128]
+SubtileZ = [0, 0]
+
+[thing337]
+ThingType = "Object"
+Subtype = 147
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [126, 128]
+SubtileY = [239, 128]
+SubtileZ = [0, 0]
+
+[thing338]
+ThingType = "Object"
+Subtype = 49
+Ownership = 5
+ParentTile = 65535
+HerogateNumber = 6
+Orientation = 0
+SubtileX = [235, 128]
+SubtileY = [67, 128]
+SubtileZ = [1, 0]
+
+[thing339]
+ThingType = "Object"
+Subtype = 30
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [154, 128]
+SubtileY = [73, 128]
+SubtileZ = [1, 0]
+
+[thing340]
+ThingType = "Object"
+Subtype = 30
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [148, 128]
+SubtileY = [172, 128]
+SubtileZ = [1, 0]
+
+[thing341]
+ThingType = "Object"
+Subtype = 30
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [181, 128]
+SubtileY = [85, 128]
+SubtileZ = [1, 0]
+
+[thing342]
+ThingType = "Object"
+Subtype = 30
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [145, 128]
+SubtileY = [127, 128]
+SubtileZ = [1, 0]
+
+[thing343]
+ThingType = "Object"
+Subtype = 4
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [49, 128]
+SubtileY = [145, 128]
+SubtileZ = [1, 0]
+
+[thing344]
+ThingType = "Object"
+Subtype = 4
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [61, 128]
+SubtileY = [159, 128]
+SubtileZ = [1, 0]
+
+[thing345]
+ThingType = "Object"
+Subtype = 4
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [73, 128]
+SubtileY = [167, 128]
+SubtileZ = [1, 0]
+
+[thing346]
+ThingType = "Object"
+Subtype = 4
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [97, 128]
+SubtileY = [174, 128]
+SubtileZ = [1, 0]
+
+[thing347]
+ThingType = "Object"
+Subtype = 4
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [114, 128]
+SubtileY = [183, 128]
+SubtileZ = [1, 0]
+
+[thing348]
+ThingType = "Object"
+Subtype = 141
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [240, 128]
+SubtileY = [111, 128]
+SubtileZ = [1, 0]
+
+[thing349]
+ThingType = "Object"
+Subtype = 139
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [242, 128]
+SubtileY = [113, 128]
+SubtileZ = [1, 0]
+
+[thing350]
+ThingType = "Object"
+Subtype = 140
+Ownership = 5
+ParentTile = 65535
+Orientation = 0
+SubtileX = [236, 128]
+SubtileY = [40, 128]
+SubtileZ = [1, 0]
+
+[thing351]
+ThingType = "Creature"
+Subtype = 28
+Ownership = 5
+Index = 50
+CreatureLevel = 2
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [126, 64]
+SubtileY = [82, 128]
+SubtileZ = [1, 0]
+
+[thing352]
+ThingType = "Creature"
+Subtype = 23
+Ownership = 1
+Index = 38
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [124, 128]
+SubtileY = [121, 128]
+SubtileZ = [1, 0]
+
+[thing353]
+ThingType = "Creature"
+Subtype = 23
+Ownership = 1
+Index = 37
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [130, 128]
+SubtileY = [121, 128]
+SubtileZ = [1, 0]
+
+[thing354]
+ThingType = "Creature"
+Subtype = 23
+Ownership = 1
+Index = 42
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [121, 128]
+SubtileY = [124, 128]
+SubtileZ = [1, 0]
+
+[thing355]
+ThingType = "Creature"
+Subtype = 23
+Ownership = 1
+Index = 36
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [133, 128]
+SubtileY = [124, 128]
+SubtileZ = [1, 0]
+
+[thing356]
+ThingType = "Creature"
+Subtype = 23
+Ownership = 1
+Index = 44
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [121, 128]
+SubtileY = [127, 128]
+SubtileZ = [1, 0]
+
+[thing357]
+ThingType = "Creature"
+Subtype = 23
+Ownership = 1
+Index = 43
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [133, 128]
+SubtileY = [127, 128]
+SubtileZ = [1, 0]
+
+[thing358]
+ThingType = "Creature"
+Subtype = 23
+Ownership = 1
+Index = 41
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [121, 128]
+SubtileY = [130, 128]
+SubtileZ = [1, 0]
+
+[thing359]
+ThingType = "Creature"
+Subtype = 23
+Ownership = 1
+Index = 35
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [133, 128]
+SubtileY = [130, 128]
+SubtileZ = [1, 0]
+
+[thing360]
+ThingType = "Creature"
+Subtype = 28
+Ownership = 5
+Index = 48
+CreatureLevel = 2
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [175, 128]
+SubtileY = [184, 128]
+SubtileZ = [1, 0]
+
+[thing361]
+ThingType = "Creature"
+Subtype = 24
+Ownership = 5
+Index = 22
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [100, 128]
+SubtileY = [127, 128]
+SubtileZ = [1, 0]
+
+[thing362]
+ThingType = "Creature"
+Subtype = 24
+Ownership = 5
+Index = 46
+CreatureLevel = 1
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [102, 128]
+SubtileY = [131, 128]
+SubtileZ = [1, 0]
+
+[thing363]
+ThingType = "Creature"
+Subtype = 17
+Ownership = 5
+Index = 47
+CreatureLevel = 2
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [229, 128]
+SubtileY = [109, 128]
+SubtileZ = [1, 0]
+
+[thing364]
+ThingType = "Creature"
+Subtype = 29
+Ownership = 5
+Index = 49
+CreatureLevel = 5
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [240, 128]
+SubtileY = [155, 128]
+SubtileZ = [0, 0]
+
+[thing365]
+ThingType = "Creature"
+Subtype = 29
+Ownership = 5
+Index = 51
+CreatureLevel = 5
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [167, 128]
+SubtileY = [8, 128]
+SubtileZ = [0, 0]
+
+[thing366]
+ThingType = "Creature"
+Subtype = 16
+Ownership = 5
+Index = 52
+CreatureLevel = 2
+CreatureName = "Knud"
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [106, 128]
+SubtileY = [102, 128]
+SubtileZ = [1, 0]
+
+[thing367]
+ThingType = "Creature"
+Subtype = 15
+Ownership = 5
+Index = 16
+CreatureLevel = 2
+CreatureName = "Bane"
+CreatureGold = 0
+CreatureInitialHealth = 100
+SubtileX = [159, 128]
+SubtileY = [160, 128]
+SubtileZ = [1, 0]
+
+[thing368]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [4, 0]
+ParentTile = 269
+Orientation = 0
+SubtileX = [43, 128]
+SubtileY = [10, 128]
+SubtileZ = [1, 0]
+
+[thing369]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 409
+Orientation = 0
+SubtileX = [208, 128]
+SubtileY = [13, 128]
+SubtileZ = [1, 0]
+
+[thing370]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 621
+Orientation = 0
+SubtileX = [79, 128]
+SubtileY = [22, 128]
+SubtileZ = [1, 0]
+
+[thing371]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [4, 0]
+ParentTile = 1112
+Orientation = 0
+SubtileX = [22, 128]
+SubtileY = [40, 128]
+SubtileZ = [1, 0]
+
+[thing372]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [6, 192]
+ParentTile = 2449
+Orientation = 0
+SubtileX = [208, 128]
+SubtileY = [85, 128]
+SubtileZ = [1, 0]
+
+[thing373]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [6, 192]
+ParentTile = 2541
+Orientation = 0
+SubtileX = [229, 128]
+SubtileY = [88, 128]
+SubtileZ = [1, 0]
+
+[thing374]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 2957
+Orientation = 0
+SubtileX = [202, 128]
+SubtileY = [103, 128]
+SubtileZ = [1, 0]
+
+[thing375]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 3297
+Orientation = 0
+SubtileX = [202, 128]
+SubtileY = [115, 128]
+SubtileZ = [1, 0]
+
+[thing376]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 3642
+Orientation = 0
+SubtileX = [217, 128]
+SubtileY = [127, 128]
+SubtileZ = [1, 0]
+
+[thing377]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [4, 0]
+ParentTile = 3833
+Orientation = 0
+SubtileX = [25, 128]
+SubtileY = [136, 128]
+SubtileZ = [1, 0]
+
+[thing378]
+ThingType = "EffectGen"
+Subtype = 5
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 4337
+Orientation = 0
+SubtileX = [7, 128]
+SubtileY = [154, 128]
+SubtileZ = [1, 0]
+
+[thing379]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [6, 0]
+ParentTile = 4422
+Orientation = 0
+SubtileX = [7, 128]
+SubtileY = [157, 128]
+SubtileZ = [1, 0]
+
+[thing380]
+ThingType = "EffectGen"
+Subtype = 4
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 4802
+Orientation = 0
+SubtileX = [127, 128]
+SubtileY = [169, 128]
+SubtileZ = [1, 0]
+
+[thing381]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 5433
+Orientation = 0
+SubtileX = [235, 128]
+SubtileY = [190, 128]
+SubtileZ = [1, 0]
+
+[thing382]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 5614
+Orientation = 0
+SubtileX = [13, 128]
+SubtileY = [199, 128]
+SubtileZ = [1, 0]
+
+[thing383]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [4, 0]
+ParentTile = 6279
+Orientation = 0
+SubtileX = [223, 128]
+SubtileY = [220, 128]
+SubtileZ = [1, 0]
+
+[thing384]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 6382
+Orientation = 0
+SubtileX = [22, 128]
+SubtileY = [226, 128]
+SubtileZ = [1, 0]
+
+[thing385]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 6786
+Orientation = 0
+SubtileX = [214, 128]
+SubtileY = [238, 128]
+SubtileZ = [1, 0]
+
+[thing386]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 3387
+Orientation = 0
+SubtileX = [217, 128]
+SubtileY = [119, 128]
+SubtileZ = [0, 0]
+
+[thing387]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 1266
+Orientation = 0
+SubtileX = [230, 128]
+SubtileY = [44, 128]
+SubtileZ = [0, 0]
+
+[thing388]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 4143
+Orientation = 0
+SubtileX = [189, 128]
+SubtileY = [145, 128]
+SubtileZ = [0, 0]
+
+[thing389]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 3893
+Orientation = 0
+SubtileX = [206, 128]
+SubtileY = [135, 128]
+SubtileZ = [0, 0]
+
+[thing390]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 2284
+Orientation = 0
+SubtileX = [224, 128]
+SubtileY = [80, 128]
+SubtileZ = [0, 0]
+
+[thing391]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 2192
+Orientation = 0
+SubtileX = [202, 128]
+SubtileY = [75, 128]
+SubtileZ = [0, 0]
+
+[thing392]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 2292
+Orientation = 0
+SubtileX = [246, 128]
+SubtileY = [78, 128]
+SubtileZ = [0, 0]
+
+[thing393]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 1605
+Orientation = 0
+SubtileX = [225, 128]
+SubtileY = [55, 128]
+SubtileZ = [0, 0]
+
+[thing394]
+ThingType = "EffectGen"
+Subtype = 1
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 1682
+Orientation = 0
+SubtileX = [201, 128]
+SubtileY = [59, 128]
+SubtileZ = [0, 0]
+
+[thing395]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 4499
+Orientation = 0
+SubtileX = [239, 128]
+SubtileY = [157, 128]
+SubtileZ = [0, 0]
+
+[thing396]
+ThingType = "EffectGen"
+Subtype = 2
+Ownership = 5
+EffectRange = [5, 0]
+ParentTile = 310
+Orientation = 0
+SubtileX = [166, 128]
+SubtileY = [9, 128]
+SubtileZ = [0, 0]

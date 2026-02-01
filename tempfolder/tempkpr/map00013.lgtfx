@@ -1,0 +1,42 @@
+[common]
+LightsCount = 5
+
+[light0]
+LightIntensity = 45
+LightRange = [11, 0]
+ParentTile = 65535
+SubtileX = [223, 128]
+SubtileY = [157, 128]
+SubtileZ = [3, 0]
+
+[light1]
+LightIntensity = 45
+LightRange = [10, 0]
+ParentTile = 65535
+SubtileX = [218, 128]
+SubtileY = [162, 128]
+SubtileZ = [3, 0]
+
+[light2]
+LightIntensity = 45
+LightRange = [10, 0]
+ParentTile = 65535
+SubtileX = [218, 128]
+SubtileY = [152, 128]
+SubtileZ = [3, 0]
+
+[light3]
+LightIntensity = 45
+LightRange = [10, 0]
+ParentTile = 65535
+SubtileX = [228, 128]
+SubtileY = [152, 128]
+SubtileZ = [3, 0]
+
+[light4]
+LightIntensity = 45
+LightRange = [10, 0]
+ParentTile = 65535
+SubtileX = [228, 128]
+SubtileY = [162, 128]
+SubtileZ = [3, 0]
