@@ -1,0 +1,310 @@
+================================================================================
+                        KfxModStudio - UI Preview
+================================================================================
+
+Since the application cannot run in a headless environment, here's a detailed
+description of the user interface:
+
+================================================================================
+MAIN WINDOW LAYOUT (1200x800)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ KeeperFX Mod Studio                                            [_] [□] [×] │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ File   Tools   Help                                                         │
+├───────────────┬─────────────────────────────────────────────────────────────┤
+│               │ ┌─────────────────────────────────────────────────────────┐ │
+│  Mod Contents │ │ Metadata  │  Files  │  Preview  │  Raw JSON          │ │
+│               │ └─────────────────────────────────────────────────────────┘ │
+│ ┌───────────┐ │                                                             │
+│ │ Convert   │ │  ┌──────────────────────────────────────────────────────┐  │
+│ │ Folder to │ │  │ Basic Information                                    │  │
+│ │  .kfxmod  │ │  │                                                      │  │
+│ └───────────┘ │  │ Mod ID:        ┌──────────────────────────────────┐ │  │
+│               │  │                │ tempest_keeper                   │ │  │
+│ ┌───────────┐ │  │                └──────────────────────────────────┘ │  │
+│ │   Open    │ │  │                                                      │  │
+│ │  .kfxmod  │ │  │ Name:          ┌──────────────────────────────────┐ │  │
+│ │   File    │ │  │                │ Tempest Keeper Campaign          │ │  │
+│ └───────────┘ │  │                └──────────────────────────────────┘ │  │
+│               │  │                                                      │  │
+│               │  │ Version:       ┌──────────────────────────────────┐ │  │
+│ [No mod       │  │                │ 1.0.0                            │ │  │
+│  loaded]      │  │                └──────────────────────────────────┘ │  │
+│               │  │                                                      │  │
+│               │  │ Author:        ┌──────────────────────────────────┐ │  │
+│               │  │                │ CommunityMember                  │ │  │
+│               │  │                └──────────────────────────────────┘ │  │
+│               │  │                                                      │  │
+│               │  │ Type:          ┌──────────────────────────────────┐ │  │
+│               │  │                │ Campaign                      ▼  │ │  │
+│               │  │                └──────────────────────────────────┘ │  │
+│               │  │                                                      │  │
+│               │  │ Description:   ┌──────────────────────────────────┐ │  │
+│               │  │                │ An extremely feature-filled      │ │  │
+│               │  │                │ campaign with 15 single-player   │ │  │
+│               │  │                │ levels, custom Angel creature,   │ │  │
+│               │  │                │ unique voice acting, custom      │ │  │
+│               │  │                │ music, and land view graphics.   │ │  │
+│               │  │                │                                  │ │  │
+│               │  │                └──────────────────────────────────┘ │  │
+│               │  └──────────────────────────────────────────────────────┘  │
+│               │                                                             │
+│               │  ┌──────────────────────────────────────────────────────┐  │
+│               │  │ Dependencies                                         │  │
+│               │  │                                                      │  │
+│               │  │ ☐ No dependencies configured                        │  │
+│               │  │                                                      │  │
+│               │  └──────────────────────────────────────────────────────┘  │
+│               │                                                             │
+│               │  ┌──────────────────────────────────────────────────────┐  │
+│               │  │ Content Manifest                                     │  │
+│               │  │                                                      │  │
+│               │  │ ☑ Creatures   ☑ Configs   ☑ Levels                 │  │
+│               │  │ ☑ Audio       ☑ Graphics                            │  │
+│               │  │                                                      │  │
+│               │  └──────────────────────────────────────────────────────┘  │
+├───────────────┴─────────────────────────────────────────────────────────────┤
+│ Ready                                  Type: Campaign    Compression: ZLib │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+UI ELEMENTS BREAKDOWN
+================================================================================
+
+TITLE BAR:
+- Application name: "KeeperFX Mod Studio"
+- Workshop icon (256x256 PNG from FXGraphics)
+- Standard window controls (minimize, maximize, close)
+
+MENU BAR:
+File Menu:
+  ├─ New Mod...              (Ctrl+N)
+  ├─ Open Mod...             (Ctrl+O)
+  ├─ Convert Folder to Mod... 
+  ├─ ─────────────
+  ├─ Save                    (Ctrl+S)
+  ├─ Save As...              (Ctrl+Shift+S)
+  ├─ ─────────────
+  └─ Exit                    (Alt+F4)
+
+Tools Menu:
+  ├─ Validate Mod            (F5)
+  └─ View Metadata           
+
+Help Menu:
+  ├─ About
+  └─ Documentation           (F1)
+
+LEFT PANEL (300px width):
+- Title: "Mod Contents"
+- Two prominent buttons:
+  1. "Convert Folder to .kfxmod" (blue accent)
+  2. "Open .kfxmod File" (blue accent)
+- File path display (when mod loaded)
+- Mod name (bold, larger)
+- Version number
+- Future: File tree view
+
+CENTER PANEL (Main content area):
+Four tabs across the top:
+
+1. METADATA TAB (active by default):
+   - Basic Information section:
+     * Mod ID (text box)
+     * Name (text box)
+     * Version (text box)
+     * Author (text box)
+     * Type (combo box with mod types)
+     * Description (multi-line text box)
+   
+   - Dependencies section:
+     * List of dependencies (with checkboxes)
+     * Add/Remove buttons
+   
+   - Content Manifest section:
+     * Checkboxes: Creatures, Configs, Levels, Audio, Graphics
+     * Indicates what the mod provides
+
+2. FILES TAB:
+   - "File contents will be displayed here"
+   - File count display
+   - Future: Tree view of all files in pack
+
+3. PREVIEW TAB:
+   - "Map preview and asset preview will be shown here"
+   - Future: Map 2D visualization
+   - Future: Image/audio preview
+
+4. RAW JSON TAB:
+   - Monospace text box
+   - Read-only view of metadata JSON
+   - Good for debugging
+
+STATUS BAR (bottom):
+- Left side: Status messages ("Ready", "Loading...", etc.)
+- Right side:
+  * Mod type indicator ("Type: Campaign")
+  * Compression type ("Compression: ZLib")
+
+================================================================================
+COLOR SCHEME (Dark Theme)
+================================================================================
+
+Background:     #1e1e1e (Dark gray)
+Surface:        #252525 (Slightly lighter)
+Borders:        #404040 (Medium gray)
+Text:           #ffffff (White)
+Muted Text:     #808080 (Gray)
+Accent:         #0078d4 (Blue)
+Success:        #107c10 (Green)
+Warning:        #ff8c00 (Orange)
+Error:          #e81123 (Red)
+
+================================================================================
+INTERACTIVE ELEMENTS
+================================================================================
+
+BUTTONS:
+- "Convert Folder to .kfxmod" - Opens folder picker and conversion wizard
+- "Open .kfxmod File" - Opens file picker to load existing mod
+- Menu items trigger commands defined in ViewModel
+
+TEXT BOXES:
+- All metadata fields are editable when in edit mode
+- Data binding updates model in real-time
+- Validation on blur (e.g., version must be x.y.z format)
+
+COMBO BOX (Mod Type):
+- Unknown
+- Campaign
+- Creature Pack
+- Texture Pack
+- Audio Pack
+- Config Mod
+- Content Pack
+- Total Conversion
+
+CHECKBOXES:
+- Content Manifest checkboxes update the manifest object
+- Dependency required/optional flags
+
+TABS:
+- Click to switch between Metadata, Files, Preview, and Raw JSON
+- Content area updates based on selected tab
+
+STATUS BAR:
+- Updates with user actions
+- Shows progress during operations
+- Displays errors in red
+
+================================================================================
+PLANNED VISUALIZATIONS (Future)
+================================================================================
+
+MAP VIEWER (Preview Tab):
+┌────────────────────────────────────────┐
+│ Map: map00001 - Ambergarde             │
+├────────────────────────────────────────┤
+│                                        │
+│  ┌──────────────────────────────────┐ │
+│  │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │ │
+│  │ ▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓ │ │
+│  │ ▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓ │ │
+│  │ ▓░░░░░░░░░░♥░░░░░░░░░░░░░░░░░▓ │ │  ♥ = Dungeon Heart
+│  │ ▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓ │ │  ░ = Claimed path
+│  │ ▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▓ │ │  ▓ = Rock/Wall
+│  │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │ │  ○ = Spawn point
+│  └──────────────────────────────────┘ │
+│                                        │
+│ Dimensions: 85x85 tiles                │
+│ Players: 2                             │
+│ Heart: (42, 42)                        │
+└────────────────────────────────────────┘
+
+DEPENDENCY GRAPH (Future):
+┌────────────────────────────────────────┐
+│     [Tempest Keeper Campaign]          │
+│              │                          │
+│              ├──requires──┐             │
+│              │            │             │
+│    [Angel Pack]    [Base Textures]     │
+│              │                          │
+│              └──optional──┐             │
+│                           │             │
+│                    [HD Graphics]        │
+└────────────────────────────────────────┘
+
+ASSET PREVIEW (Images):
+┌────────────────────────────────────────┐
+│ Selected: angel_walk_01.png            │
+├────────────────────────────────────────┤
+│                                        │
+│      [    Angel Walk Animation    ]   │
+│      [      Frame 1/8             ]   │
+│                                        │
+│  ◄◄  ◄  ||  ►  ►►                    │
+│                                        │
+│ Size: 256x512px                        │
+│ Format: PNG                            │
+└────────────────────────────────────────┘
+
+================================================================================
+ANIMATION & FEEDBACK
+================================================================================
+
+LOADING STATES:
+- Progress bars during conversion
+- Spinning indicator during file I/O
+- Status message updates
+
+HOVER EFFECTS:
+- Buttons highlight on hover
+- Menu items highlight
+- Tooltips appear after 1 second
+
+VALIDATION:
+- Invalid fields show red border
+- Error messages in status bar
+- Success confirmations (green checkmark)
+
+TRANSITIONS:
+- Smooth tab switching
+- Fade-in for content
+- Slide animations for panels
+
+================================================================================
+ACCESSIBILITY
+================================================================================
+
+- Full keyboard navigation (Tab, Arrow keys)
+- Keyboard shortcuts for common actions
+- Screen reader friendly (Avalonia accessibility)
+- High contrast mode support
+- Clear focus indicators
+- Tooltips on all interactive elements
+
+================================================================================
+BRANDING
+================================================================================
+
+Icon: Workshop room sprite from KeeperFX/FXGraphics
+- 256x256 PNG
+- Dungeon Keeper style
+- Represents mod creation/workshop
+
+Color Scheme: Professional dark theme
+- Matches modern IDEs
+- Reduces eye strain
+- Highlights important elements
+
+Typography:
+- Default: Segoe UI / San Francisco / Ubuntu
+- Monospace: Consolas / Monaco / DejaVu Sans Mono (for JSON)
+
+================================================================================
+
+This is the complete visual design of KfxModStudio. The application provides
+a modern, professional interface for KeeperFX mod creation with room for
+advanced features like map viewing and asset management.
