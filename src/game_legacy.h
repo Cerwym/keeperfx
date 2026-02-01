@@ -112,6 +112,23 @@ struct PerExpLevelValues {
   unsigned char value[10];
 };
 
+/**
+ * All game configuration data loaded from stats files.
+ * 
+ * SAVE/LOAD BEHAVIOR:
+ * This entire struct is saved as part of struct Game (game.conf field).
+ * However, it is RELOADED from files during load_game_chunks() via load_stats_files().
+ * 
+ * This means:
+ * - Saved values are overwritten by file contents on load
+ * - Mod updates to stats files ARE picked up when loading old saves
+ * - Balance changes, new creatures, etc. in mods work with existing saves
+ * 
+ * OPTIMIZATION OPPORTUNITY:
+ * Since this data is always reloaded from files, it could theoretically be excluded
+ * from saves to reduce save file size (~several KB) and improve version compatibility.
+ * However, keeping it provides a fallback if files are missing or corrupted.
+ */
 struct Configs {
     struct SlabsConfig slab_conf;
     struct PowerHandConfig power_hand_conf;
@@ -183,6 +200,33 @@ struct LogDetailedSnapshot {
     int room_count;
 };
 
+/**
+ * Complete game state structure.
+ * 
+ * This massive struct (~194KB) contains virtually all runtime game state and is
+ * saved/loaded as a single binary chunk in save files.
+ * 
+ * SAVE FILE CONTENTS:
+ * When saved, this includes:
+ * - CRUCIAL: Game state (turns, seeds, player states, creatures, rooms, dungeons)
+ * - CRUCIAL: Map data (slabs, tiles, navigation, columns)
+ * - CRUCIAL: Active entities (things, effects, battles)
+ * - CRUCIAL: GUI state, messages, timers
+ * - SIDE-EFFECT: game.conf (Configs) - reloaded from files on load
+ * - SIDE-EFFECT: game.lightst (LightSystemState) - could be rebuilt from map
+ * 
+ * LOAD BEHAVIOR:
+ * After loading this struct, load_game_chunks() immediately reloads from files:
+ * - Stats files (overwriting game.conf)
+ * - Custom sprites (reindexing sprite references)
+ * - Custom sounds (reindexing sound references)
+ * 
+ * This design makes saves resilient to mod updates for configs/sprites/sounds,
+ * but brittle to changes in entity counts or types (CREATURE_TYPES_MAX, etc).
+ * 
+ * @see game_saves.c:save_game_chunks() for what gets saved
+ * @see game_saves.c:load_game_chunks() for load-time file reloading
+ */
 struct Game {
     LevelNumber continue_level_number;
     unsigned char system_flags;

@@ -127,6 +127,23 @@ struct TextScrollWindow {
 /**
  * Structure which stores data copied between levels.
  * This data is not lost between levels of a campaign.
+ * 
+ * SAVE FILE CONTENTS:
+ * This is saved as a separate chunk and contains:
+ * - CRUCIAL: bonuses_found[] - Which bonus levels have been found/completed
+ * - CRUCIAL: transferred_creatures[][] - Creatures carried between campaign levels
+ * - CRUCIAL: campaign_flags[][] - Script-controlled persistent flags
+ * - CRUCIAL: next_level - Campaign progression state
+ * 
+ * This data must persist across levels and is essential for campaign continuity.
+ * Unlike game.conf, this data cannot be regenerated from files and must be saved.
+ * 
+ * MOD COMPATIBILITY:
+ * This struct has fixed-size arrays, so:
+ * ✓ Safe: Adding/removing bonus levels (within array bounds)
+ * ✓ Safe: Changing campaign flag meanings (script-controlled)
+ * ✗ Breaks: Changing TRANSFER_CREATURE_STORAGE_COUNT
+ * ✗ Breaks: Changing PLAYERS_COUNT or CAMPAIGN_FLAGS_PER_PLAYER
  */
 struct IntralevelData {
     unsigned char bonuses_found[BONUS_LEVEL_STORAGE_COUNT];

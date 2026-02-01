@@ -80,13 +80,50 @@ TbBool is_primitive_save_version(long filesize)
     return false;
 }
 
+/**
+ * Save game state to file in chunks.
+ * 
+ * SAVE FORMAT OVERVIEW:
+ * This function saves 4 main chunks of data:
+ * 1. InfoBlock (CatalogueEntry) - Metadata about the save
+ * 2. GameOrig (struct Game) - Complete game state (~194KB)
+ * 3. IntralevelData - Campaign-persistent data
+ * 4. LuaData - Serialized Lua script state
+ * 
+ * CRITICAL DATA (must be saved):
+ * - Game turn counters and random seeds (for determinism/multiplayer)
+ * - Player states, creature instances, room/dungeon data
+ * - Map state (slabs, tiles, navigation data)
+ * - Active game objects (things, effects, traps, doors)
+ * - Campaign progress flags and transferred creatures
+ * - Lua script state (custom level logic)
+ * 
+ * RELOADED ON LOAD (already in files, but saved as side-effect):
+ * - game.conf (Configs struct) - All configuration data is reloaded from stats files
+ *   via load_stats_files() in load_game_chunks()
+ * - Custom sprites - Reloaded via init_custom_sprites()
+ * - Custom sounds - Cleared and rebuilt via sound_manager_clear_custom_sounds()
+ * - Light system state - Exported here but could be rebuilt from map geometry
+ * 
+ * FUTURE OPTIMIZATION OPPORTUNITIES:
+ * To improve save/load resilience across mod updates:
+ * - Config data (game.conf) could be excluded since it's always reloaded
+ * - Sound indices could be references instead of direct values
+ * - Sprite indices could use symbolic names that resolve on load
+ * This would make saves more resilient to mod updates that change configs/assets.
+ * 
+ * @param fhandle File handle to write to
+ * @param centry Catalogue entry with save metadata
+ * @return true if all chunks saved successfully
+ */
 TbBool save_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
 {
     struct FileChunkHeader hdr;
     long chunks_done = 0;
     // Currently there is some game data outside of structs - make sure it is updated
+    // NOTE: Light system state gets recomputed on load but saved here for compatibility
     light_export_system_state(&game.lightst);
-    { // Info chunk
+    { // Info chunk - CRUCIAL: Campaign/level metadata for identifying the save
         hdr.id = SGC_InfoBlock;
         hdr.ver = 0;
         hdr.len = sizeof(struct CatalogueEntry);
@@ -94,7 +131,10 @@ TbBool save_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
         if (LbFileWrite(fhandle, centry, sizeof(struct CatalogueEntry)) == sizeof(struct CatalogueEntry))
             chunks_done |= SGF_InfoBlock;
     }
-    { // Game data chunk
+    { // Game data chunk - CRUCIAL: Complete game state
+      // NOTE: Includes game.conf (Configs struct) which gets reloaded from files anyway
+      // This is a side-effect of saving the entire struct Game. Future optimization could
+      // exclude or version-tag config data to make saves resilient to stat file changes.
         hdr.id = SGC_GameOrig;
         hdr.ver = 0;
         hdr.len = sizeof(struct Game);
@@ -102,7 +142,8 @@ TbBool save_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
         if (LbFileWrite(fhandle, &game, sizeof(struct Game)) == sizeof(struct Game))
             chunks_done |= SGF_GameOrig;
     }
-    { // IntralevelData data chunk
+    { // IntralevelData data chunk - CRUCIAL: Campaign-persistent data between levels
+      // Contains: bonus level flags, transferred creatures, campaign flags
         hdr.id = SGC_IntralevelData;
         hdr.ver = 0;
         hdr.len = sizeof(struct IntralevelData);
@@ -111,7 +152,7 @@ TbBool save_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
             chunks_done |= SGF_IntralevelData;
     }
 
-    // Adding Lua serialized data chunk
+    // Lua serialized data chunk - CRUCIAL: Custom level script state
     {
         size_t lua_data_len;
         const char* lua_data = lua_get_serialised_data(&lua_data_len);
@@ -174,6 +215,46 @@ TbBool save_packet_chunks(TbFileHandle fhandle,struct CatalogueEntry *centry)
     return true;
 }
 
+/**
+ * Load game state from file in chunks.
+ * 
+ * LOAD PROCESS:
+ * Reads and processes all chunks from the save file. Key steps:
+ * 
+ * 1. InfoBlock - Loads campaign/level metadata
+ *    Then RELOADS from files (not using saved data):
+ *    - Campaign system (change_campaign)
+ *    - Map strings (load_map_string_data)
+ *    - Custom sprites (init_custom_sprites) - sprite mods get picked up
+ *    - Custom sounds (sound_manager_clear_custom_sounds) - sound mods get picked up
+ *    - Stats files (load_stats_files) - balance/config mods get picked up
+ *    - Creature scores (init_creature_scores)
+ * 
+ * 2. GameOrig - Loads entire game state struct
+ *    IMPORTANT: game.conf (Configs struct) is overwritten by data in this chunk,
+ *    but immediately after loading completes, configs are reloaded from files.
+ *    This means config/stat changes in mods WILL be picked up on load!
+ * 
+ * 3. IntralevelData - Loads campaign-persistent data
+ * 
+ * 4. LuaData - Loads serialized Lua script state
+ * 
+ * MOD UPDATE RESILIENCE:
+ * This design makes saves quite resilient to mod updates:
+ * ✓ Sound mods: Custom sounds are cleared and rebuilt from files
+ * ✓ Sprite mods: Custom sprites are reinitialized from files
+ * ✓ Balance mods: Stats files are reloaded, overriding saved config data
+ * ✓ Campaign changes: Maps and strings are reloaded
+ * 
+ * POTENTIAL ISSUES:
+ * ✗ Creature/thing indices: If creature types are added/removed, saved references may break
+ * ✗ Map size changes: Navigation maps are sized at compile time
+ * ✗ Lua script changes: Script state may be incompatible with modified scripts
+ * 
+ * @param fhandle File handle to read from
+ * @param centry Catalogue entry to populate with save metadata
+ * @return GLoad_SavedGame on success, GLoad_Failed on failure
+ */
 int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
 {
     long chunks_done = 0;
@@ -185,9 +266,12 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
         switch (hdr.id)
         {
         case SGC_InfoBlock:
+            // CRUCIAL: Load save metadata
             if (load_catalogue_entry(fhandle, &hdr, centry))
             {
                 chunks_done |= SGF_InfoBlock;
+                // RELOAD FROM FILES: Campaign, sprites, sounds, stats
+                // This is where mod updates get picked up!
                 if (!change_campaign(centry->campaign_fname)) {
                     ERRORLOG("Unable to load campaign");
                     return GLoad_Failed;
@@ -197,16 +281,18 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
                 load_map_string_data(campgn, centry->level_num, get_level_fgroup(centry->level_num));
                 // Load configs which may have per-campaign part, and even be modified within a level
                 recheck_all_mod_exist();
-                init_custom_sprites(centry->level_num);
+                init_custom_sprites(centry->level_num); // RELOAD: Sprite mods picked up here
                 // Clear custom sounds before reloading configs so they can be rebuilt with correct indices
-                sound_manager_clear_custom_sounds();
-                load_stats_files();
+                sound_manager_clear_custom_sounds(); // RELOAD: Sound mods picked up here
+                load_stats_files(); // RELOAD: Balance/config mods picked up here
                 check_and_auto_fix_stats();
                 init_creature_scores();
                 snprintf(high_score_entry, PLAYER_NAME_LENGTH, "%s", centry->player_name);
             }
             break;
         case SGC_GameOrig:
+            // CRUCIAL: Load complete game state
+            // NOTE: game.conf will be loaded here but is already overridden by load_stats_files() above
             if (hdr.len != sizeof(struct Game))
             {
                 if (LbFileSeek(fhandle, hdr.len, Lb_FILE_SEEK_CURRENT) < 0)
@@ -250,6 +336,7 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
                 return GLoad_PacketStart;
             return GLoad_Failed;
         case SGC_IntralevelData:
+            // CRUCIAL: Campaign-persistent data (bonus levels, transferred creatures, flags)
             if (hdr.len != sizeof(struct IntralevelData))
             {
                 if (LbFileSeek(fhandle, hdr.len, Lb_FILE_SEEK_CURRENT) < 0)
@@ -264,6 +351,7 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
             }
             break;
         case SGC_LuaData:
+            // CRUCIAL: Lua script state for custom level logic
             {
                 char* lua_data = (char*)malloc(hdr.len);
                 if (lua_data == NULL) {
