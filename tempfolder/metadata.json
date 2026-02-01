@@ -1,0 +1,87 @@
+{
+  "mod_id": "tempest_keeper",
+  "version": "1.0.0",
+  "format_version": 1,
+  "name": "Tempest Keeper Campaign",
+  "display_name": "Tempest Keeper",
+  "author": "CommunityMember",
+  "description": "An extremely feature-filled campaign with 15 single-player levels, custom Angel creature, unique voice acting, custom music, and land view graphics. Experience a full narrative campaign with balanced gameplay and custom configurations.",
+  "mod_type": "campaign",
+  "created_date": "2024-01-15T00:00:00Z",
+  "updated_date": "2024-03-20T00:00:00Z",
+  "homepage_url": "https://example.com/tempest-keeper",
+  "update_url": "https://cdn.example.com/mods/tempest_keeper/version.json",
+  "min_keeperfx_version": "1.0.0",
+  "max_keeperfx_version": null,
+  "tags": [
+    "campaign",
+    "single-player",
+    "custom-creatures",
+    "voice-acting",
+    "custom-music",
+    "narrative"
+  ],
+  "dependencies": [
+    {
+      "mod_id": "angel_creature_pack",
+      "version": ">=1.0.0",
+      "required": true,
+      "update_url": "https://cdn.example.com/mods/angel_creature_pack/version.json"
+    }
+  ],
+  "optional_dependencies": [],
+  "conflicts": [
+    {
+      "mod_id": "vanilla_creatures_only",
+      "reason": "Replaces creature definitions with custom Angel creature"
+    }
+  ],
+  "load_order": {
+    "priority": 100,
+    "load_phase": "after_campaign"
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2024-01-15",
+      "changes": [
+        "Initial release",
+        "15 single-player levels with custom scripts",
+        "Custom Angel creature with unique abilities",
+        "30 voice acting files (good/bad narrator)",
+        "7 custom music tracks",
+        "Custom land view graphics",
+        "Modified game rules and configurations"
+      ]
+    }
+  ],
+  "screenshots": [],
+  "readme": "README.md",
+  "license": "CC-BY-NC-SA-4.0",
+  "campaign_config": {
+    "levels_count": 15,
+    "has_multiplayer": false,
+    "difficulty": "medium",
+    "estimated_playtime": "8-10 hours"
+  },
+  "content_manifest": {
+    "has_creatures": true,
+    "has_configs": true,
+    "has_levels": true,
+    "has_audio": true,
+    "has_graphics": true,
+    "creatures_list": [
+      "ANGEL",
+      "DRUID",
+      "TIME_MAGE"
+    ],
+    "new_objects": [
+      "LAIR_DRK_NGL"
+    ],
+    "modified_rules": [
+      "ImpWorkExperience",
+      "GoldPerGoldBlock",
+      "DungeonHeartHealHealth"
+    ]
+  }
+}
