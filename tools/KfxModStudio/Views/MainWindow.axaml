@@ -1,0 +1,191 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:KfxModStudio.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="KfxModStudio.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/workshop_icon.png"
+        Title="KeeperFX Mod Studio"
+        Width="1200" Height="800">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Menu Bar -->
+        <Menu Grid.Row="0">
+            <MenuItem Header="_File">
+                <MenuItem Header="_New Mod..." Command="{Binding NewModCommand}" />
+                <MenuItem Header="_Open Mod..." Command="{Binding OpenModCommand}" />
+                <MenuItem Header="_Convert Folder to Mod..." Command="{Binding ConvertFolderCommand}" />
+                <Separator />
+                <MenuItem Header="_Save" Command="{Binding SaveCommand}" />
+                <MenuItem Header="Save _As..." Command="{Binding SaveAsCommand}" />
+                <Separator />
+                <MenuItem Header="E_xit" Command="{Binding ExitCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Tools">
+                <MenuItem Header="_Validate Mod" Command="{Binding ValidateCommand}" />
+                <MenuItem Header="View _Metadata" Command="{Binding ViewMetadataCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About" Command="{Binding AboutCommand}" />
+                <MenuItem Header="_Documentation" Command="{Binding DocumentationCommand}" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1" ColumnDefinitions="300,5,*">
+            <!-- Left Panel - File Tree -->
+            <Border Grid.Column="0" BorderBrush="#404040" BorderThickness="0,0,1,0" Padding="10">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Mod Contents" FontWeight="Bold" Margin="0,0,0,10" />
+                    
+                    <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,10">
+                        <Button Content="Convert Folder to .kfxmod" 
+                                Command="{Binding ConvertFolderCommand}"
+                                HorizontalAlignment="Stretch" />
+                        <Button Content="Open .kfxmod File" 
+                                Command="{Binding OpenModCommand}"
+                                HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    
+                    <ScrollViewer>
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="{Binding ModPack.FilePath, FallbackValue='No mod loaded'}" 
+                                       TextWrapping="Wrap" 
+                                       FontSize="12" 
+                                       Foreground="#808080" />
+                            
+                            <TextBlock Text="{Binding ModPack.Metadata.Name, FallbackValue='...'}" 
+                                       FontWeight="Bold" />
+                            
+                            <TextBlock Text="{Binding ModPack.Metadata.Version, StringFormat='Version: {0}', FallbackValue='...'}" 
+                                       FontSize="12" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Background="#404040" />
+
+            <!-- Right Panel - Details -->
+            <TabControl Grid.Column="2" Margin="10">
+                <!-- Metadata Tab -->
+                <TabItem Header="Metadata">
+                    <ScrollViewer Padding="10">
+                        <StackPanel Spacing="15">
+                            <!-- Basic Info -->
+                            <Border BorderBrush="#404040" BorderThickness="1" Padding="10" CornerRadius="5">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Basic Information" FontWeight="Bold" FontSize="16" />
+                                    
+                                    <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Mod ID:" VerticalAlignment="Center" />
+                                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ModPack.Metadata.ModId}" IsReadOnly="{Binding !IsEditMode}" />
+                                        
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Name:" VerticalAlignment="Center" />
+                                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ModPack.Metadata.Name}" IsReadOnly="{Binding !IsEditMode}" />
+                                        
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Version:" VerticalAlignment="Center" />
+                                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ModPack.Metadata.Version}" IsReadOnly="{Binding !IsEditMode}" />
+                                        
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Author:" VerticalAlignment="Center" />
+                                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding ModPack.Metadata.Author}" IsReadOnly="{Binding !IsEditMode}" />
+                                        
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Type:" VerticalAlignment="Center" />
+                                        <ComboBox Grid.Row="4" Grid.Column="1" 
+                                                  SelectedItem="{Binding ModPack.Metadata.ModType}" 
+                                                  IsEnabled="{Binding IsEditMode}" />
+                                        
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Description:" VerticalAlignment="Top" Margin="0,5,0,0" />
+                                        <TextBox Grid.Row="5" Grid.Column="1" 
+                                                 Text="{Binding ModPack.Metadata.Description}" 
+                                                 IsReadOnly="{Binding !IsEditMode}"
+                                                 AcceptsReturn="True"
+                                                 TextWrapping="Wrap"
+                                                 MinHeight="80" />
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Dependencies -->
+                            <Border BorderBrush="#404040" BorderThickness="1" Padding="10" CornerRadius="5">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Dependencies" FontWeight="Bold" FontSize="16" />
+                                    <TextBlock Text="No dependencies configured" 
+                                               Foreground="#808080"
+                                               IsVisible="{Binding !HasDependencies}" />
+                                    <!-- TODO: Dependencies list -->
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Content Manifest -->
+                            <Border BorderBrush="#404040" BorderThickness="1" Padding="10" CornerRadius="5">
+                                <StackPanel Spacing="10">
+                                    <TextBlock Text="Content Manifest" FontWeight="Bold" FontSize="16" />
+                                    
+                                    <StackPanel Orientation="Horizontal" Spacing="20">
+                                        <CheckBox Content="Creatures" IsChecked="{Binding ModPack.Metadata.ContentManifest.HasCreatures}" IsEnabled="{Binding IsEditMode}" />
+                                        <CheckBox Content="Configs" IsChecked="{Binding ModPack.Metadata.ContentManifest.HasConfigs}" IsEnabled="{Binding IsEditMode}" />
+                                        <CheckBox Content="Levels" IsChecked="{Binding ModPack.Metadata.ContentManifest.HasLevels}" IsEnabled="{Binding IsEditMode}" />
+                                        <CheckBox Content="Audio" IsChecked="{Binding ModPack.Metadata.ContentManifest.HasAudio}" IsEnabled="{Binding IsEditMode}" />
+                                        <CheckBox Content="Graphics" IsChecked="{Binding ModPack.Metadata.ContentManifest.HasGraphics}" IsEnabled="{Binding IsEditMode}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Files Tab -->
+                <TabItem Header="Files">
+                    <ScrollViewer Padding="10">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="File contents will be displayed here" Foreground="#808080" />
+                            <TextBlock Text="File count: 0" FontSize="12" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- Preview Tab -->
+                <TabItem Header="Preview">
+                    <ScrollViewer Padding="10">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="Map preview and asset preview will be shown here" Foreground="#808080" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!-- JSON Tab -->
+                <TabItem Header="Raw JSON">
+                    <ScrollViewer Padding="10">
+                        <TextBox Text="{Binding ModPack.MetadataJson}" 
+                                 IsReadOnly="True" 
+                                 FontFamily="Consolas,Courier New" 
+                                 AcceptsReturn="True" 
+                                 TextWrapping="Wrap" />
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" BorderBrush="#404040" BorderThickness="0,1,0,0" Background="#1e1e1e" Padding="10,5">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" 
+                           Text="{Binding StatusText, FallbackValue='Ready'}" 
+                           VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="20">
+                    <TextBlock Text="{Binding ModPack.Metadata.ModType, StringFormat='Type: {0}', FallbackValue='Type: Unknown'}" 
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="Compression: ZLib" 
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
