@@ -316,6 +316,22 @@ void SoundManager::printStats() const {
     printf("=====================================\n\n");
 }
 
+// Clear all custom sounds - called when loading a save game
+void SoundManager::clearCustomSounds() {
+    printf("[SoundManager] Clearing all custom sounds and overrides\n");
+    
+    // Clear the custom sound registry
+    custom_sounds_.clear();
+    creature_sound_overrides_.clear();
+    total_custom_sounds_ = 0;
+    
+    // Clear the actual sound bank (extern from bflib_sndlib.cpp)
+    extern void custom_sound_bank_clear();
+    custom_sound_bank_clear();
+    
+    printf("[SoundManager] Custom sounds cleared\n");
+}
+
 } // namespace KeeperFX
 
 // C API wrappers
@@ -360,6 +376,10 @@ TbBool sound_manager_minimal_set_creature_sound(const char* creature_model, cons
 
 TbBool sound_manager_minimal_is_custom_sound_loaded(const char* name) {
     return KeeperFX::SoundManager::getInstance().isCustomSoundLoaded(name);
+}
+
+void sound_manager_clear_custom_sounds(void) {
+    KeeperFX::SoundManager::getInstance().clearCustomSounds();
 }
 
 void sound_manager_minimal_print_stats(void) {

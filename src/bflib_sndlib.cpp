@@ -480,6 +480,11 @@ extern "C" void FreeAudio() {
 	g_openal_device = nullptr;
 }
 
+// Clear custom sound bank (for reloading after save game)
+extern "C" void custom_sound_bank_clear() {
+	g_custom_bank.clear();
+}
+
 extern "C" void SetSoundMasterVolume(SoundVolume volume) {
 	try {
 		// Set OpenAL listener gain to maximum so we can split up the mentor speech volume slider from the sound effects volume slider

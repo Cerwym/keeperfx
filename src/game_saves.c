@@ -48,6 +48,7 @@
 #include "lua_base.h"
 #include "lua_triggers.h"
 #include "moonphase.h"
+#include "sound_manager.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus
@@ -197,6 +198,8 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
                 // Load configs which may have per-campaign part, and even be modified within a level
                 recheck_all_mod_exist();
                 init_custom_sprites(centry->level_num);
+                // Clear custom sounds before reloading configs so they can be rebuilt with correct indices
+                sound_manager_clear_custom_sounds();
                 load_stats_files();
                 check_and_auto_fix_stats();
                 init_creature_scores();

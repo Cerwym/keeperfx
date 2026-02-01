@@ -135,6 +135,12 @@ public:
      * @brief Get statistics (for testing)
      */
     void printStats() const;
+    
+    /**
+     * @brief Clear all custom sounds and creature overrides
+     * Called when loading a saved game to reset sound state
+     */
+    void clearCustomSounds();
 
 private:
     SoundManager();
@@ -185,6 +191,7 @@ SoundSmplTblID sound_manager_get_custom_sound_id(const char* name);
 TbBool sound_manager_set_creature_sound(const char* creature_model, const char* sound_type, const char* custom_sound_name);
 TbBool sound_manager_is_custom_sound_loaded(const char* name);
 void sound_manager_print_stats(void);
+void sound_manager_clear_custom_sounds(void);
 
 // Config parser bridge for loading custom sounds from creature cfg files
 int load_creature_custom_sound(long crtr_model, const char* sound_type, const char* wav_path, const char* config_textname);
