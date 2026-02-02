@@ -1,0 +1,368 @@
+KeeperFX Achievement System - Guide for Campaign Creators
+==========================================================
+
+## Overview
+
+The KeeperFX achievement system allows campaign creators to define custom achievements
+that players can unlock by completing specific challenges. Achievements are automatically
+integrated with supported platforms (Steam, GOG, Xbox, PlayStation, etc.) or tracked
+locally if no platform is available.
+
+## Quick Start
+
+1. Create an `achievements.cfg` file in your campaign folder
+2. Define achievements using the format described below
+3. (Optional) Add achievement string localizations to your campaign strings file
+4. (Optional) Create achievement icons (PNG format, 64x64 or 128x128 pixels)
+
+## File Location
+
+Place your `achievements.cfg` file in one of these locations:
+- `campgns/<campaign_name>/achievements.cfg`
+- `<campaign_configs_location>/achievements.cfg`
+
+## Achievement Definition Format
+
+```ini
+ACHIEVEMENT <unique_id>
+    NAME_TEXT_ID = <string_id>      ; Localized name from strings file
+    DESC_TEXT_ID = <string_id>      ; Localized description
+    ICON = <path>                   ; Icon path (relative to campaign folder)
+    HIDDEN = <0|1>                  ; 0=visible before unlock, 1=hidden
+    POINTS = <value>                ; Point value (5-200 typical range)
+    
+    ; Conditions (all must be met to unlock)
+    <condition_type> = <value>
+    ...
+    
+END_ACHIEVEMENT
+```
+
+### Alternative Text Format
+
+Instead of using string IDs, you can directly specify text:
+
+```ini
+ACHIEVEMENT my_achievement
+    NAME = "My Achievement Name"
+    DESCRIPTION = "Complete the level in under 5 minutes"
+    ...
+END_ACHIEVEMENT
+```
+
+## Achievement Conditions
+
+All conditions in an achievement definition must be met for the achievement to unlock.
+
+### Level Conditions
+
+**LEVEL = \<number>**
+- Achievement only available on specific level
+- Example: `LEVEL = 5` (only on level 5)
+
+**LEVEL_RANGE = \<min> \<max>**
+- Achievement available on a range of levels
+- Example: `LEVEL_RANGE = 5 10` (levels 5 through 10)
+
+**COMPLETE_LEVEL = 1**
+- Must complete the level (win condition met)
+- Almost all achievements should include this
+
+**LEVEL_TIME_UNDER = \<seconds>**
+- Complete level within time limit
+- Example: `LEVEL_TIME_UNDER = 1800` (30 minutes)
+
+### Creature Conditions
+
+**ONLY_CREATURE = \<creature_type>**
+- Only use specific creature type (imps excluded)
+- Example: `ONLY_CREATURE = IMP` (imps only)
+- Valid types: IMP, BUG, FLY, BEETLE, SPIDER, TROLL, DRAGON, DEMON_SPAWN, etc.
+
+**MIN_CREATURES = \<creature_type> \<count>**
+- Minimum number of specific creature type
+- Example: `MIN_CREATURES = HORNY 5`
+
+**MAX_CREATURES = \<creature_type> \<count>**
+- Maximum number of specific creature type
+- Example: `MAX_CREATURES = IMP 10`
+
+**CREATURE_KILL = \<creature_type>**
+- Must kill at least one creature of this type
+- Example: `CREATURE_KILL = AVATAR`
+
+**CREATURE_USED = \<creature_type>**
+- Must have creature of this type in your dungeon
+- Example: `CREATURE_USED = HORNY`
+
+**NO_CREATURE_DEATHS = 1**
+- No friendly creatures can die
+- Challenging achievement type
+
+### Combat Conditions
+
+**MAX_SLAPS = \<count>**
+- Maximum slaps allowed (0 = no slaps)
+- Example: `MAX_SLAPS = 0`
+
+**MIN_KILLS = \<count>**
+- Minimum enemy creatures killed
+- Example: `MIN_KILLS = 50`
+
+**BATTLES_WON = \<count>**
+- Number of battles won
+- Example: `BATTLES_WON = 10`
+
+**HEARTS_DESTROYED = \<count>**
+- Number of enemy dungeon hearts destroyed
+- Example: `HEARTS_DESTROYED = 2`
+
+### Resource Conditions
+
+**MAX_GOLD_SPENT = \<amount>**
+- Budget limit (cannot spend more gold)
+- Example: `MAX_GOLD_SPENT = 50000`
+
+**MIN_GOLD = \<amount>**
+- Maintain minimum gold level
+- Example: `MIN_GOLD = 100000`
+
+**TERRITORY_SIZE = \<tiles>**
+- Control minimum territory size
+- Example: `TERRITORY_SIZE = 500`
+
+### Dungeon Conditions
+
+**ROOM_REQUIRED = \<room_type>**
+- Must have built this room type
+- Example: `ROOM_REQUIRED = LIBRARY`
+- Valid types: TREASURE, LIBRARY, PRISON, TORTURE, TRAINING, etc.
+
+**ROOM_FORBIDDEN = \<room_type>**
+- Cannot build this room type
+- Example: `ROOM_FORBIDDEN = PRISON`
+
+**SPELL_FORBIDDEN = \<spell_type>**
+- Cannot use this spell/power
+- Example: `SPELL_FORBIDDEN = CALL_TO_ARMS`
+
+**TRAP_USED = \<trap_type>**
+- Must use this trap type
+- Example: `TRAP_USED = BOULDER`
+
+### Advanced Conditions
+
+**SCRIPT_FLAG = \<flag_id>**
+- Custom flag set by level script
+- Use `SET_FLAG` command in level script
+- Example: `SCRIPT_FLAG = 100`
+
+**LUA_CONDITION = \<function_name>**
+- Custom Lua function for complex logic
+- Function should return true when condition is met
+- Example: `LUA_CONDITION = check_special_condition`
+
+## Achievement Design Guidelines
+
+### Point Values
+- **5-10 points**: Simple/expected achievements (complete level)
+- **15-25 points**: Moderate challenge (no slaps, time limit)
+- **30-50 points**: Difficult challenge (no deaths, strict conditions)
+- **100+ points**: Extremely difficult or hidden achievements
+
+### Hidden Achievements
+Use `HIDDEN = 1` for:
+- Story spoilers
+- Surprise discoveries
+- Easter eggs
+- Extremely difficult achievements
+
+### Achievement Names
+- Keep names short and memorable (2-5 words)
+- Make them fun and thematic to Dungeon Keeper
+- Examples: "Imp Army", "Gentle Keeper", "Avatar's Revenge"
+
+### Achievement Descriptions
+- Clearly explain the requirement
+- Mention the level number if applicable
+- Be specific about conditions
+- Examples:
+  - "Complete Level 5 using only Imps"
+  - "Win Level 10 without slapping any creatures"
+  - "Kill the Avatar with a converted Avatar on Level 20"
+
+## Example Achievements
+
+### Simple Achievement
+```ini
+ACHIEVEMENT first_victory
+    NAME = "First Victory"
+    DESCRIPTION = "Complete the first level"
+    POINTS = 5
+    LEVEL = 1
+    COMPLETE_LEVEL = 1
+END_ACHIEVEMENT
+```
+
+### Challenge Achievement
+```ini
+ACHIEVEMENT speed_runner
+    NAME = "Speed Runner"
+    DESCRIPTION = "Complete Level 8 in under 30 minutes"
+    POINTS = 25
+    LEVEL = 8
+    COMPLETE_LEVEL = 1
+    LEVEL_TIME_UNDER = 1800
+END_ACHIEVEMENT
+```
+
+### Complex Achievement
+```ini
+ACHIEVEMENT perfect_defense
+    NAME = "Perfect Defense"
+    DESCRIPTION = "Win Level 15 without losing any creatures or slapping"
+    POINTS = 50
+    LEVEL = 15
+    COMPLETE_LEVEL = 1
+    NO_CREATURE_DEATHS = 1
+    MAX_SLAPS = 0
+END_ACHIEVEMENT
+```
+
+### Hidden Achievement
+```ini
+ACHIEVEMENT secret_army
+    NAME = "Secret Army"
+    DESCRIPTION = "???"
+    HIDDEN = 1
+    POINTS = 100
+    LEVEL = 20
+    MIN_CREATURES = HORNY 10
+    COMPLETE_LEVEL = 1
+END_ACHIEVEMENT
+```
+
+## String Localization
+
+To support multiple languages, add achievement strings to your campaign's strings file:
+
+```
+; In campgns/<campaign>/strings.txt or strings_eng.txt
+2000|First Victory
+2001|Complete the first level
+2010|Imp Army
+2011|Complete Level 5 using only Imps
+```
+
+Then reference them in achievements.cfg:
+```ini
+ACHIEVEMENT imp_army
+    NAME_TEXT_ID = 2010
+    DESC_TEXT_ID = 2011
+    ...
+END_ACHIEVEMENT
+```
+
+## Achievement Icons
+
+Achievement icons are optional but recommended for better presentation.
+
+**Format**: PNG (with transparency)
+**Size**: 64x64 or 128x128 pixels
+**Location**: `campgns/<campaign>/achievements/`
+
+Example:
+```ini
+ACHIEVEMENT imp_army
+    ICON = achievements/imp_army.png
+    ...
+END_ACHIEVEMENT
+```
+
+## Platform Integration
+
+### Steam
+- Achievement IDs must match your Steamworks configuration
+- Use format: `<campaign_name>.<achievement_id>`
+- Configure in Steamworks Partner dashboard
+
+### GOG Galaxy
+- Achievements sync automatically with GOG Galaxy
+- Point values map to achievement levels
+
+### Xbox
+- Points map to Gamerscore
+- Follow Xbox achievement guidelines
+- Requires certification
+
+### PlayStation
+- Points determine trophy grade (Bronze/Silver/Gold/Platinum)
+- Requires Sony certification
+
+### Local Storage
+- If no platform detected, achievements save locally
+- Stored in user data folder as JSON
+
+## Testing Achievements
+
+1. Start your campaign with achievements defined
+2. Check logs for achievement loading messages
+3. Complete achievement conditions
+4. Verify unlock notifications
+5. Check achievement status in achievement viewer (if implemented)
+
+## Advanced: Script Integration
+
+Use level scripts to unlock achievements programmatically:
+
+```
+REM Example: Unlock achievement when flag is set
+IF(FLAG1 == 1)
+    UNLOCK_ACHIEVEMENT(special_achievement)
+ENDIF
+```
+
+(Note: Script commands to be implemented in future update)
+
+## Troubleshooting
+
+**Achievements not loading:**
+- Check file location (must be in campaign folder or configs location)
+- Verify file name is exactly `achievements.cfg`
+- Check syntax (ACHIEVEMENT...END_ACHIEVEMENT blocks)
+- Look for error messages in keeperfx.log
+
+**Achievement not unlocking:**
+- Verify all conditions are met
+- Check that COMPLETE_LEVEL = 1 is included
+- Ensure level number matches
+- Check creature/room/spell names are correct
+
+**String IDs not working:**
+- Verify string IDs exist in campaign strings file
+- Ensure strings file is loaded before achievements
+- Use direct NAME/DESCRIPTION as fallback
+
+## Best Practices
+
+1. **Start Simple**: Begin with basic completion achievements
+2. **Add Challenge**: Create harder variants with restrictions
+3. **Balance Difficulty**: Mix easy, medium, and hard achievements
+4. **Test Thoroughly**: Verify all achievements are achievable
+5. **Be Creative**: Use unique conditions that match your campaign theme
+6. **Provide Variety**: Mix different condition types
+7. **Consider Replayability**: Make some achievements require multiple playthroughs
+
+## References
+
+- Campaign creation guide: `docs/creating_campaigns.txt`
+- Script commands: Search for "Script Commands Reference"
+- Creature types: See `creature.cfg` files
+- Room types: See `rooms.cfg` files
+
+## Support
+
+For questions or issues with the achievement system:
+- Visit the KeeperFX Discord: https://discord.gg/hE4p7vy2Hb
+- Check the GitHub wiki: https://github.com/dkfans/keeperfx/wiki
+- Report bugs: https://github.com/dkfans/keeperfx/issues
