@@ -283,6 +283,8 @@ Wine performance can vary. For best results:
    make all -j$(sysctl -n hw.ncpu)
    ```
 
+4. **File system case sensitivity**: macOS is case-insensitive by default, but the build should work fine. If you're using a case-sensitive APFS volume, ensure all file paths match exactly.
+
 ## Additional Notes
 
 ### Architecture Support
