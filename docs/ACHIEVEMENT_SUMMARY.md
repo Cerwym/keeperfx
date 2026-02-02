@@ -33,6 +33,13 @@ This implementation provides a comprehensive, cross-platform achievement framewo
    - Dynamic library loading
    - Achievement unlock/query via Steam API
 
+5. **GOG Galaxy Backend** (`src/achievement_gog.cpp/hpp`)
+   - GOG Galaxy SDK integration
+   - IStats interface wrapper
+   - Dynamic library loading
+   - Achievement unlock/query via Galaxy API
+   - Progress tracking support
+
 ### Documentation
 
 1. **Design Document** (`docs/achievements_design.md`)
@@ -59,7 +66,20 @@ This implementation provides a comprehensive, cross-platform achievement framewo
    - Build system integration
    - Testing procedures
 
-4. **Example Configuration** (`campgns/keeporig/achievements.cfg`)
+4. **Steam Development Guide** (`docs/STEAM_DEVELOPMENT_GUIDE.md`)
+   - Complete Steam testing setup
+   - Spacewar (AppID 480) quick start
+   - Custom app configuration
+   - Debugging and troubleshooting
+
+5. **GOG Integration Guide** (`docs/GOG_INTEGRATION_GUIDE.md`)
+   - GOG Galaxy SDK overview
+   - **Cost analysis: $0 (completely free)**
+   - **Mod achievement support: YES**
+   - Development and testing workflow
+   - Platform comparison
+
+6. **Example Configuration** (`campgns/keeporig/achievements.cfg`)
    - 15 example achievements for original campaign
    - Demonstrates all major condition types
    - Mix of simple and complex achievements
@@ -69,10 +89,25 @@ This implementation provides a comprehensive, cross-platform achievement framewo
 
 ### Implemented
 - ✅ **Steam** - Full Steamworks SDK integration
+- ✅ **GOG Galaxy** - Full GOG Galaxy SDK integration
 - ✅ **Local Storage** - JSON fallback (foundation in place)
 
+### Platform Details
+
+**GOG Galaxy:**
+- **Cost**: $0 (completely free)
+- **Mod Support**: ✅ YES - Full achievement support for mods
+- **KeeperFX Status**: Already on GOG.com
+- **Certification**: Not required
+- **SDK**: Freely available
+- **Implementation**: Complete (`achievement_gog.cpp`)
+
+**Steam:**
+- **Cost**: $0 (testing free with Spacewar)
+- **Mod Support**: ✅ YES
+- **Implementation**: Complete (`achievement_steam.cpp`)
+
 ### Designed (Ready to Implement)
-- 📋 **GOG Galaxy** - Architecture supports, needs implementation
 - 📋 **Xbox (GDK)** - Architecture supports, needs implementation
 - 📋 **PlayStation** - Architecture supports, needs implementation
 - 📋 **Epic Games Store** - Architecture supports, needs implementation
