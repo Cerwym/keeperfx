@@ -16,6 +16,15 @@ This guide explains how to build KeeperFX on macOS (both Intel and Apple Silicon
 - [Homebrew](https://brew.sh/) package manager
 - Xcode Command Line Tools: `xcode-select --install`
 
+### Quick Dependency Check
+
+After cloning the repository, you can run the dependency checker to see what's installed:
+```bash
+./check_macos_deps.sh
+```
+
+This script will check for all required dependencies and provide installation instructions for any that are missing.
+
 ## Installing Dependencies
 
 ### 1. Install Homebrew (if not already installed)
