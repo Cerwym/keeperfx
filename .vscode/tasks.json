@@ -31,6 +31,12 @@
 					"'${workspaceFolder}/.vscode/linuxscript.sh' '${workspaceFolder}'"
 				]
 			},
+			"osx": {
+				"command": [
+					"chmod +x '${workspaceFolder}/.vscode/macscript.sh';",
+					"'${workspaceFolder}/.vscode/macscript.sh' '${workspaceFolder}'"
+				]
+			},
 			"problemMatcher": "$gcc",
 			"group": {"kind": "build","isDefault": true},
 			"presentation": {
@@ -96,6 +102,22 @@
 					"fi"
 				]
 			},
+			"osx": {
+				"command": [
+					"if [ ! -f \"${workspaceFolder}/.vscode/settings.json\" ]; then",
+					"    cp \"${workspaceFolder}/.vscode/defaultsettings\" \"${workspaceFolder}/.vscode/settings.json\";",
+					"    echo \"/.vscode/settings.json was created.\";",
+					"fi;",
+					"if [ ! -f \"${workspaceFolder}/.vscode/launch.json\" ]; then",
+					"    cp \"${workspaceFolder}/.vscode/defaultlaunch\" \"${workspaceFolder}/.vscode/launch.json\";",
+					"    echo \"/.vscode/launch.json was created, but it won't work on macOS. Use Cmd+Shift+B instead.\";",
+					"fi;",
+					"if [ ! -f \"${workspaceFolder}/.vscode/macscript.sh\" ]; then",
+					"    cp \"${workspaceFolder}/.vscode/defaultmacscript\" \"${workspaceFolder}/.vscode/macscript.sh\";",
+					"    echo \"/.vscode/macscript.sh was created, please edit it and fill in your game directories.\";",
+					"fi"
+				]
+			},
 			"problemMatcher": "$gcc",
 			"runOptions": {"runOn": "folderOpen"},
 			"group": "build",
@@ -131,6 +153,9 @@
 			"linux": {
 				"command": "make clean -j`nproc`"
 			},
+			"osx": {
+				"command": "make clean -j`sysctl -n hw.ncpu`"
+			},
 			"problemMatcher": "$gcc",
 			"group": "build"
 		},
@@ -144,6 +169,9 @@
 				]
 			},
 			"linux": {
+				"command": "make clean-build clean-tools && bear -- make -j2 standard"
+			},
+			"osx": {
 				"command": "make clean-build clean-tools && bear -- make -j2 standard"
 			},
 			"problemMatcher": "$gcc",

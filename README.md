@@ -49,6 +49,11 @@ or [Steam](https://store.steampowered.com/app/1996630/Dungeon_Keeper_Gold/).
 To get started with KeeperFX development, refer to the [Development Guide](https://github.com/dkfans/keeperfx/wiki/Building-KeeperFX) for 
 detailed instructions on setting up a development environment and building KeeperFX from source.
 
+### Platform-Specific Build Instructions
+- **Windows**: See `docs/build_instructions.txt`
+- **Linux**: See `docs/build_instructions.txt` (Cross-compilation section)
+- **macOS**: See `docs/macos_build_instructions.md` (Cross-compilation with Wine support)
+
 If you wish to discuss development, you can join the [Keeper Klan discord](https://discord.gg/hE4p7vy2Hb) and ask to 
 be added to the KeeperFX development channel.
 

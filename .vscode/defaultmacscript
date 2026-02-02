@@ -1,0 +1,63 @@
+#!/bin/bash
+# macOS cross-compilation and Wine execution script for KeeperFX
+# This script cross-compiles KeeperFX for Windows on macOS and runs it with Wine
+
+game_directory="$HOME/.wine/drive_c/dk/"
+game_arguments="-level 00001 -campaign keeporig -nointro -alex -altinput"
+workspaceFolder="$1"
+
+echo "Source Code directory: $workspaceFolder"
+
+# Check if required tools are installed
+if ! command -v i686-w64-mingw32-gcc &> /dev/null; then
+    echo "Error: MinGW cross-compiler not found!"
+    echo "Please install it with: brew install mingw-w64"
+    exit 1
+fi
+
+if ! command -v wine &> /dev/null; then
+    echo "Warning: Wine not found! Install it with: brew install --cask wine-stable"
+    echo "You can still build, but won't be able to run the game."
+fi
+
+if [ ! -d "$game_directory" ]; then
+    echo "Game directory does not exist. Creating it at: $game_directory"
+    mkdir -p "$game_directory"
+    echo ""
+    echo "Please copy your original Dungeon Keeper game files to:"
+    echo "  $game_directory"
+    echo ""
+fi
+
+echo "Game directory: $game_directory"
+
+# Build the game using cross-compilation
+echo "Building KeeperFX for Windows on macOS..."
+#make all -j$(sysctl -n hw.ncpu) DEBUG=1
+make all -j$(sysctl -n hw.ncpu)
+
+if [ $? -eq 0 ]; then
+    echo 'Compilation successful!'
+else
+    echo 'Compilation failed!'
+    exit 1
+fi
+
+# Copy binaries to game directory
+echo "Copying binaries to game directory..."
+cp $workspaceFolder/bin/* "$game_directory"
+
+cd "$game_directory"
+
+# Run the game with Wine if available
+if command -v wine &> /dev/null; then
+    echo "Launching KeeperFX with Wine..."
+    # Use wine to run the game
+    wine keeperfx.exe $game_arguments
+    # Alternative: Use winedbg for debugging (be sure to use DEBUG=1 when building)
+    # When launching with winedbg, press 'C' then 'Enter' when prompted.
+    #winedbg --gdb keeperfx.exe $game_arguments
+else
+    echo "Wine is not installed. Skipping game launch."
+    echo "Install Wine with: brew install --cask wine-stable"
+fi

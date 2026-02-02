@@ -4,9 +4,10 @@ TOC
 1. Downloading the code repository
 2. Compiling under Windows
 3. Cross-compiling on Linux host
-4. Building additional files
-5. Building a package
-6. Make command targets summary
+4. Cross-compiling on macOS host
+5. Building additional files
+6. Building a package
+7. Make command targets summary
 
 1. Downloading the code repository
 
@@ -85,7 +86,34 @@ If you'll make the script working, you can easily create your own "nightly build
 site, which will automatically build KeeperFX releases. Just use CRON to start the
 script every day, and it will automatically build and publish the package.
 
-4. Building additional files
+4. Cross-compiling on macOS host
+
+KeeperFX can be cross-compiled for Windows on macOS (both Intel and Apple Silicon)
+using MinGW and run with Wine. This allows macOS developers to build and test the
+game without needing a Windows machine.
+
+For detailed instructions on building KeeperFX on macOS, including:
+ - Installing Homebrew and MinGW cross-compiler
+ - Setting up Wine (latest version) 
+ - VSCode integration
+ - Troubleshooting common issues
+
+Please refer to the comprehensive guide:
+  docs/macos_build_instructions.md
+
+Quick start for macOS:
+ 1. Install dependencies:
+      brew install mingw-w64 make coreutils
+      brew install --cask wine-stable
+ 2. Build the game:
+      make all -j$(sysctl -n hw.ncpu)
+ 3. Run with Wine:
+      wine bin/keeperfx.exe
+
+The project includes VSCode configuration for macOS. Press Cmd+Shift+B to build
+and automatically run the game with Wine.
+
+5. Building additional files
 
 Besides the executable file, build system in KeeperFX can also generate other files
 used by the game. The following make commands can be used for this:
@@ -97,7 +125,7 @@ used to generate DAT/TAB/RAW/PAL files are not kept on SVN repo - you must downl
 them separately and place in "gfx" folder. Download link is on the site:
 http://keeper.lubie.org/html/dk_keeperfx_devel.php
 
-5. Building a package
+6. Building a package
 
 There is one more very handy function of the build system. It places all the files
 which were built into correct folders (as in the release) and them compresses them into
@@ -110,7 +138,7 @@ to be installed on the host system.
 Making package will trigger automatic build of language files, but it won't trigger building
 any executables or graphics files.
 
-6. Make command targets summary
+7. Make command targets summary
 
 The following targets can be used for make:
 standard - build binaries for 'standard release' of KeeperFX
