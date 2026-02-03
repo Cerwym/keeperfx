@@ -1,5 +1,9 @@
 # KeeperFX GOG Integration Status & Build/Distribution Overview
 
+## Overview
+
+This document has been updated to reflect the new **InnoSetup installer** that can be built in GitHub Actions pipelines.
+
 ## What We've Already Done for GOG
 
 ### 1. GOG Galaxy Achievement Integration ✅
@@ -42,13 +46,36 @@
 - ✅ **KeeperFX on GOG**: YES - Already available on GOG.com
 - ✅ **Priority**: HIGH - Already on platform, zero cost
 
-### 2. What's NOT Done Yet for GOG
+### 2. GOG Installer ✅ **NOW AVAILABLE**
 
-**Missing Items:**
-- ❌ **GOG Installer** - No GOG-specific installer created yet
-- ❌ **GOG Galaxy DLL** - Not bundled (users need GOG Galaxy client)
-- ❌ **GOG Store Listing** - While KeeperFX is on GOG, no official store integration
-- ❌ **GOG Build Pipeline** - No automated GOG package creation
+**Implementation Complete:**
+- ✅ **InnoSetup Script** - `keeperfx-installer.iss` (professional installer)
+- ✅ **Build System Integration** - `installer.mk` (Makefile targets)
+- ✅ **GitHub Actions Workflow** - `.github/workflows/build-gog-installer.yml`
+- ✅ **Documentation** - `docs/INSTALLER_BUILD_GUIDE.md`
+
+**Features:**
+- Professional installation wizard
+- Multi-language support (6 languages)
+- Desktop shortcuts (optional)
+- Clean uninstallation
+- Works on Windows 7/10/11
+- Can be built in CI/CD pipelines via Wine
+
+**Build Commands:**
+```bash
+make installer        # Build installer after 'make package'
+make gog-installer   # Alias for installer
+make clean-installer # Clean installer outputs
+```
+
+**Status**: ✅ Production-ready, can be built locally and in GitHub Actions
+
+### 3. What's Optional for GOG
+
+**Additional Items (not required):**
+- ⚠️ **GOG Galaxy DLL Bundling** - Optional (users can install Galaxy separately)
+- ⚠️ **GOG Store Listing** - While KeeperFX is on GOG, official store integration is optional
 
 ## Current Build & Distribution System
 

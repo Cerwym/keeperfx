@@ -1,0 +1,119 @@
+name: Build GOG Installer
+
+on:
+  workflow_call:
+    outputs:
+      artifact-id:
+        description: "The ID of the uploaded artifact"
+        value: ${{ jobs.build-gog-installer.outputs.artifact-id }}
+      installer-name:
+        description: "The name of the installer file without extension"
+        value: ${{ jobs.build-gog-installer.outputs.installer-name }}
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'config/**'
+      - 'campgns/**'
+      - 'keeperfx-installer.iss'
+      - 'installer.mk'
+      - '.github/workflows/build-gog-installer.yml'
+
+jobs:
+  build-gog-installer:
+    name: "Build GOG Installer"
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - uses: dkfans/setup-cpp@master
+
+    - name: Update system
+      run: |
+        set -eux
+        sudo apt update
+        sudo apt install -y build-essential g++-mingw-w64-i686 libpng16-16t64 7zip
+
+    - name: Setup Wine for InnoSetup
+      run: |
+        set -eux
+        # Install Wine
+        sudo dpkg --add-architecture i386
+        sudo mkdir -pm755 /etc/apt/keyrings
+        sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+        sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources
+        sudo apt update
+        sudo apt install -y --install-recommends winehq-stable
+        
+        # Initialize Wine
+        wine --version
+        
+    - name: Install InnoSetup
+      run: |
+        set -eux
+        # Download InnoSetup installer
+        wget -O /tmp/innosetup.exe "https://jrsoftware.org/download.php/is.exe"
+        
+        # Install InnoSetup silently via Wine
+        wine /tmp/innosetup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+        
+        # Wait for installation to complete
+        sleep 10
+        
+        # Verify installation
+        ls -la "$HOME/.wine/drive_c/Program Files (x86)/Inno Setup 6/" || true
+
+    - name: Build gfx
+      run: |
+        set -eux
+        BUILD_NUMBER=$(git rev-list --count HEAD)
+        PACKAGE_SUFFIX=
+        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX pkg-enginegfx
+
+    - name: Build executables
+      run: |
+        set -eux
+        BUILD_NUMBER=$(git rev-list --count HEAD)
+        PACKAGE_SUFFIX=
+        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX heavylog DEBUG=1 -k
+        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX standard
+        echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+
+    - name: Build package
+      run: |
+        set -eux
+        BUILD_NUMBER=${{ env.BUILD_NUMBER }}
+        PACKAGE_SUFFIX=
+        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX package
+
+    - name: Build installer
+      run: |
+        set -eux
+        BUILD_NUMBER=${{ env.BUILD_NUMBER }}
+        PACKAGE_SUFFIX=
+        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX installer
+        
+        # Get the actual installer filename
+        INSTALLER_FILE=$(ls installer/keeperfx-*.exe | head -1)
+        INSTALLER_NAME=$(basename "$INSTALLER_FILE" .exe)
+        echo "INSTALLER_NAME=$INSTALLER_NAME" >> $GITHUB_ENV
+        echo "Installer created: $INSTALLER_FILE"
+        ls -lh "$INSTALLER_FILE"
+
+    - name: Upload installer artifact
+      id: upload-artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.INSTALLER_NAME }}
+        path: installer/*.exe
+        retention-days: 90
+      
+    outputs:
+      artifact-id: ${{ steps.upload-artifact.outputs.artifact-id }}
+      installer-name: ${{ env.INSTALLER_NAME }}

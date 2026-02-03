@@ -826,6 +826,7 @@ include pkg_lang.mk
 include pkg_gfx.mk
 include pkg_sfx.mk
 include package.mk
+include installer.mk
 
 export RM CP MKDIR MV ECHO
 #******************************************************************************
