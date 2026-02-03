@@ -1,5 +1,16 @@
 # KeeperFX GOG & Build System - Documentation Index
 
+## 🎉 NEW: Installer Available!
+
+**KeeperFX now has a professional Windows installer!**
+- ✅ Built with InnoSetup (free)
+- ✅ Runs in GitHub Actions via Wine
+- ✅ Installation wizard with shortcuts
+- ✅ Clean uninstallation
+- ✅ Multi-language support
+
+**Quick Start:** See [INSTALLER_QUICK_START.md](INSTALLER_QUICK_START.md)
+
 ## Quick Navigation
 
 ### 🚀 Start Here
@@ -17,6 +28,11 @@
 **Need build instructions?**
 1. [build_instructions.txt](build_instructions.txt) - Build commands
 2. [BUILD_AND_DISTRIBUTION.md](BUILD_AND_DISTRIBUTION.md) - System overview
+
+**Want to build the installer?** ⭐ NEW!
+1. [INSTALLER_QUICK_START.md](INSTALLER_QUICK_START.md) - Quick start guide
+2. [INSTALLER_BUILD_GUIDE.md](INSTALLER_BUILD_GUIDE.md) - Complete guide
+3. [BUILD_PIPELINE_VISUAL.md](BUILD_PIPELINE_VISUAL.md) - Visual diagrams
 
 ## What We've Done for GOG
 
@@ -36,18 +52,24 @@
    - Platform comparison (11KB)
    - Status: **Complete**
 
-3. **Research & Analysis**
+3. **GOG Installer** ⭐ **NEW - COMPLETE**
+   - InnoSetup-based installer (4.3KB script)
+   - GitHub Actions workflow (auto-builds)
+   - Professional installation wizard
+   - Multi-language support (6 languages)
+   - Build command: `make installer`
+   - Status: **Production-ready**
+
+4. **Research & Analysis**
    - Cost: $0 (confirmed)
    - Mod support: YES (confirmed)
    - KeeperFX on GOG: YES (confirmed)
    - Status: **Complete**
 
-### ❌ Not Done Yet
+### ⚠️ Optional Items
 
-1. **GOG Installer** - No `.exe` installer created
-2. **Installation Wizard** - Not implemented
-3. **Galaxy DLL Bundling** - Not included in package
-4. **GOG Store Integration** - Optional (community mod exists)
+1. **Galaxy DLL Bundling** - Optional (users can install Galaxy separately)
+2. **GOG Store Integration** - Optional (community mod distribution works)
 
 ## Current Build & Distribution System
 
