@@ -99,6 +99,12 @@ const struct NamedCommand scrshot_type[] = {
   {NULL,  0},
   };
 
+const struct NamedCommand video_record_type[] = {
+  {"MKV", 1},
+  {"FLC", 2},
+  {NULL,  0},
+  };
+
 const struct NamedCommand atmos_volume[] = {
   {"LOW",     64},
   {"MEDIUM", 128},
@@ -155,6 +161,7 @@ const struct NamedCommand conf_commands[] = {
   {"FRAMES_PER_SECOND"             , 39},
   {"TAG_MODE_TOGGLING"             , 40},
   {"DEFAULT_TAG_MODE"              , 41},
+  {"VIDEO_RECORDING_FORMAT"        , 42},
   {NULL,                   0},
   };
 
@@ -903,6 +910,16 @@ static void load_file_configuration(const char *fname, const char *sname, const 
           {
             default_tag_mode = i;
           }
+          break;
+      case 42: // VIDEO_RECORDING_FORMAT
+          i = recognize_conf_parameter(buf,&pos,len,video_record_type);
+          if (i <= 0)
+          {
+            CONFWRNLOG("Couldn't recognize \"%s\" command parameter in %s file.",
+              COMMAND_TEXT(cmd_num),config_textname);
+            break;
+          }
+          video_recording_format = i;
           break;
       case ccr_comment:
           break;

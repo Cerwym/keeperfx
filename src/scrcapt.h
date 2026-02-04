@@ -28,6 +28,7 @@ extern "C" {
 
 /******************************************************************************/
 extern unsigned char screenshot_format;
+extern unsigned char video_recording_format;
 
 /******************************************************************************/
 TbBool perform_any_screen_capturing(void);

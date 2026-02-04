@@ -123,5 +123,9 @@ add_library(libswresample_static STATIC IMPORTED)
 set_target_properties(libswresample_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/libswresample/libswresample.a)
 set_target_properties(libswresample_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg)
 
-target_link_libraries(keeperfx PUBLIC bcrypt libavcodec_static libavformat_static libavutil_static libswresample_static)
-target_link_libraries(keeperfx_hvlog PUBLIC bcrypt libavcodec_static libavformat_static libavutil_static libswresample_static)
+add_library(libswscale_static STATIC IMPORTED)
+set_target_properties(libswscale_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/libswscale/libswscale.a)
+set_target_properties(libswscale_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg)
+
+target_link_libraries(keeperfx PUBLIC bcrypt libavcodec_static libavformat_static libavutil_static libswresample_static libswscale_static)
+target_link_libraries(keeperfx_hvlog PUBLIC bcrypt libavcodec_static libavformat_static libavutil_static libswresample_static libswscale_static)

@@ -41,6 +41,7 @@
 /******************************************************************************/
 
 unsigned char screenshot_format = 1;
+unsigned char video_recording_format = 1; // 1=MKV, 2=FLC
 unsigned char cap_palette[768];
 
 /******************************************************************************/
