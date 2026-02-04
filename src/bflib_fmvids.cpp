@@ -13,6 +13,7 @@ extern "C" {
 	#include <libavcodec/avcodec.h>
 	#include <libavutil/imgutils.h>
 	#include <libswresample/swresample.h>
+	#include <libswscale/swscale.h>
     #pragma GCC diagnostic warning "-Wdeprecated-declarations"
 }
 
@@ -720,6 +721,357 @@ struct Animation {
 };
 
 Animation animation;
+
+// MKV recording structure using ffmpeg
+struct MKVRecorder {
+	AVFormatContext *format_ctx = nullptr;
+	const AVCodec *codec = nullptr;
+	AVCodecContext *codec_ctx = nullptr;
+	AVStream *stream = nullptr;
+	AVFrame *frame = nullptr;
+	AVFrame *rgb_frame = nullptr;
+	AVPacket *packet = nullptr;
+	SwsContext *sws_ctx = nullptr;
+	int frame_counter = 0;
+	bool is_recording = false;
+	int width = 0;
+	int height = 0;
+	unsigned char palette[768];
+};
+
+MKVRecorder mkv_recorder;
+
+// MKV recording functions
+bool mkv_init_encoder(const char *filename, int width, int height) {
+	SYNCLOG("Starting MKV recording to \"%s\" at %dx%d", filename, width, height);
+	
+	mkv_recorder.width = width;
+	mkv_recorder.height = height;
+	
+	// Allocate output format context
+	avformat_alloc_output_context2(&mkv_recorder.format_ctx, nullptr, "matroska", filename);
+	if (!mkv_recorder.format_ctx) {
+		ERRORLOG("Could not create output context for MKV recording");
+		return false;
+	}
+	
+	// Find H.264 encoder
+	mkv_recorder.codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+	if (!mkv_recorder.codec) {
+		ERRORLOG("H.264 codec not found");
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	
+	// Create stream
+	mkv_recorder.stream = avformat_new_stream(mkv_recorder.format_ctx, nullptr);
+	if (!mkv_recorder.stream) {
+		ERRORLOG("Failed to create stream");
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	mkv_recorder.stream->id = mkv_recorder.format_ctx->nb_streams - 1;
+	
+	// Allocate codec context
+	mkv_recorder.codec_ctx = avcodec_alloc_context3(mkv_recorder.codec);
+	if (!mkv_recorder.codec_ctx) {
+		ERRORLOG("Could not allocate video codec context");
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	
+	// Set codec parameters
+	mkv_recorder.codec_ctx->codec_id = AV_CODEC_ID_H264;
+	mkv_recorder.codec_ctx->codec_type = AVMEDIA_TYPE_VIDEO;
+	mkv_recorder.codec_ctx->width = width;
+	mkv_recorder.codec_ctx->height = height;
+	mkv_recorder.codec_ctx->time_base = AVRational{1, 57}; // 57 FPS to match FLC
+	mkv_recorder.codec_ctx->framerate = AVRational{57, 1};
+	mkv_recorder.codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
+	mkv_recorder.codec_ctx->bit_rate = 2000000; // 2 Mbps
+	mkv_recorder.codec_ctx->gop_size = 10;
+	mkv_recorder.codec_ctx->max_b_frames = 1;
+	
+	// Set H.264 specific options for better compression
+	av_opt_set(mkv_recorder.codec_ctx->priv_data, "preset", "medium", 0);
+	av_opt_set(mkv_recorder.codec_ctx->priv_data, "crf", "23", 0);
+	
+	// Open codec
+	if (avcodec_open2(mkv_recorder.codec_ctx, mkv_recorder.codec, nullptr) < 0) {
+		ERRORLOG("Could not open codec");
+		avcodec_free_context(&mkv_recorder.codec_ctx);
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.codec_ctx = nullptr;
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	
+	// Copy codec parameters to stream
+	avcodec_parameters_from_context(mkv_recorder.stream->codecpar, mkv_recorder.codec_ctx);
+	mkv_recorder.stream->time_base = mkv_recorder.codec_ctx->time_base;
+	
+	// Allocate frame for YUV420P
+	mkv_recorder.frame = av_frame_alloc();
+	if (!mkv_recorder.frame) {
+		ERRORLOG("Could not allocate video frame");
+		avcodec_free_context(&mkv_recorder.codec_ctx);
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.codec_ctx = nullptr;
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	mkv_recorder.frame->format = mkv_recorder.codec_ctx->pix_fmt;
+	mkv_recorder.frame->width = width;
+	mkv_recorder.frame->height = height;
+	
+	if (av_frame_get_buffer(mkv_recorder.frame, 0) < 0) {
+		ERRORLOG("Could not allocate frame buffer");
+		av_frame_free(&mkv_recorder.frame);
+		avcodec_free_context(&mkv_recorder.codec_ctx);
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.frame = nullptr;
+		mkv_recorder.codec_ctx = nullptr;
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	
+	// Allocate frame for RGB conversion (8-bit indexed -> RGB24)
+	mkv_recorder.rgb_frame = av_frame_alloc();
+	if (!mkv_recorder.rgb_frame) {
+		ERRORLOG("Could not allocate RGB frame");
+		av_frame_free(&mkv_recorder.frame);
+		avcodec_free_context(&mkv_recorder.codec_ctx);
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.frame = nullptr;
+		mkv_recorder.codec_ctx = nullptr;
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	mkv_recorder.rgb_frame->format = AV_PIX_FMT_RGB24;
+	mkv_recorder.rgb_frame->width = width;
+	mkv_recorder.rgb_frame->height = height;
+	
+	if (av_frame_get_buffer(mkv_recorder.rgb_frame, 0) < 0) {
+		ERRORLOG("Could not allocate RGB frame buffer");
+		av_frame_free(&mkv_recorder.rgb_frame);
+		av_frame_free(&mkv_recorder.frame);
+		avcodec_free_context(&mkv_recorder.codec_ctx);
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.rgb_frame = nullptr;
+		mkv_recorder.frame = nullptr;
+		mkv_recorder.codec_ctx = nullptr;
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	
+	// Initialize SWS context for palette->RGB24->YUV420P conversion
+	mkv_recorder.sws_ctx = sws_getContext(
+		width, height, AV_PIX_FMT_RGB24,
+		width, height, AV_PIX_FMT_YUV420P,
+		SWS_BILINEAR, nullptr, nullptr, nullptr
+	);
+	if (!mkv_recorder.sws_ctx) {
+		ERRORLOG("Could not initialize sws context");
+		av_frame_free(&mkv_recorder.rgb_frame);
+		av_frame_free(&mkv_recorder.frame);
+		avcodec_free_context(&mkv_recorder.codec_ctx);
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.rgb_frame = nullptr;
+		mkv_recorder.frame = nullptr;
+		mkv_recorder.codec_ctx = nullptr;
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	
+	// Allocate packet
+	mkv_recorder.packet = av_packet_alloc();
+	if (!mkv_recorder.packet) {
+		ERRORLOG("Could not allocate packet");
+		sws_freeContext(mkv_recorder.sws_ctx);
+		av_frame_free(&mkv_recorder.rgb_frame);
+		av_frame_free(&mkv_recorder.frame);
+		avcodec_free_context(&mkv_recorder.codec_ctx);
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.sws_ctx = nullptr;
+		mkv_recorder.rgb_frame = nullptr;
+		mkv_recorder.frame = nullptr;
+		mkv_recorder.codec_ctx = nullptr;
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	
+	// Open output file
+	if (!(mkv_recorder.format_ctx->oformat->flags & AVFMT_NOFILE)) {
+		if (avio_open(&mkv_recorder.format_ctx->pb, filename, AVIO_FLAG_WRITE) < 0) {
+			ERRORLOG("Could not open output file '%s'", filename);
+			av_packet_free(&mkv_recorder.packet);
+			sws_freeContext(mkv_recorder.sws_ctx);
+			av_frame_free(&mkv_recorder.rgb_frame);
+			av_frame_free(&mkv_recorder.frame);
+			avcodec_free_context(&mkv_recorder.codec_ctx);
+			avformat_free_context(mkv_recorder.format_ctx);
+			mkv_recorder.packet = nullptr;
+			mkv_recorder.sws_ctx = nullptr;
+			mkv_recorder.rgb_frame = nullptr;
+			mkv_recorder.frame = nullptr;
+			mkv_recorder.codec_ctx = nullptr;
+			mkv_recorder.format_ctx = nullptr;
+			return false;
+		}
+	}
+	
+	// Write header
+	if (avformat_write_header(mkv_recorder.format_ctx, nullptr) < 0) {
+		ERRORLOG("Error writing header");
+		if (!(mkv_recorder.format_ctx->oformat->flags & AVFMT_NOFILE)) {
+			avio_closep(&mkv_recorder.format_ctx->pb);
+		}
+		av_packet_free(&mkv_recorder.packet);
+		sws_freeContext(mkv_recorder.sws_ctx);
+		av_frame_free(&mkv_recorder.rgb_frame);
+		av_frame_free(&mkv_recorder.frame);
+		avcodec_free_context(&mkv_recorder.codec_ctx);
+		avformat_free_context(mkv_recorder.format_ctx);
+		mkv_recorder.packet = nullptr;
+		mkv_recorder.sws_ctx = nullptr;
+		mkv_recorder.rgb_frame = nullptr;
+		mkv_recorder.frame = nullptr;
+		mkv_recorder.codec_ctx = nullptr;
+		mkv_recorder.format_ctx = nullptr;
+		return false;
+	}
+	
+	mkv_recorder.frame_counter = 0;
+	mkv_recorder.is_recording = true;
+	memset(mkv_recorder.palette, 0, sizeof(mkv_recorder.palette));
+	
+	SYNCLOG("MKV recording initialized successfully");
+	return true;
+}
+
+bool mkv_encode_frame(unsigned char *screenbuf, unsigned char *palette) {
+	if (!mkv_recorder.is_recording) {
+		return false;
+	}
+	
+	// Update palette if changed
+	memcpy(mkv_recorder.palette, palette, sizeof(mkv_recorder.palette));
+	
+	// Convert 8-bit indexed color to RGB24
+	for (int y = 0; y < mkv_recorder.height; y++) {
+		for (int x = 0; x < mkv_recorder.width; x++) {
+			int idx = y * mkv_recorder.width + x;
+			unsigned char pixel = screenbuf[idx];
+			int rgb_idx = y * mkv_recorder.rgb_frame->linesize[0] + x * 3;
+			
+			// Palette is in RGB format, each color is 3 bytes
+			mkv_recorder.rgb_frame->data[0][rgb_idx + 0] = palette[pixel * 3 + 0];
+			mkv_recorder.rgb_frame->data[0][rgb_idx + 1] = palette[pixel * 3 + 1];
+			mkv_recorder.rgb_frame->data[0][rgb_idx + 2] = palette[pixel * 3 + 2];
+		}
+	}
+	
+	// Convert RGB24 to YUV420P
+	sws_scale(
+		mkv_recorder.sws_ctx,
+		mkv_recorder.rgb_frame->data,
+		mkv_recorder.rgb_frame->linesize,
+		0,
+		mkv_recorder.height,
+		mkv_recorder.frame->data,
+		mkv_recorder.frame->linesize
+	);
+	
+	// Set frame pts
+	mkv_recorder.frame->pts = mkv_recorder.frame_counter++;
+	
+	// Send frame to encoder
+	int ret = avcodec_send_frame(mkv_recorder.codec_ctx, mkv_recorder.frame);
+	if (ret < 0) {
+		ERRORLOG("Error sending frame to encoder");
+		return false;
+	}
+	
+	// Receive packets from encoder
+	while (ret >= 0) {
+		ret = avcodec_receive_packet(mkv_recorder.codec_ctx, mkv_recorder.packet);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+			break;
+		} else if (ret < 0) {
+			ERRORLOG("Error receiving packet from encoder");
+			return false;
+		}
+		
+		// Rescale packet timestamps
+		av_packet_rescale_ts(mkv_recorder.packet, mkv_recorder.codec_ctx->time_base, mkv_recorder.stream->time_base);
+		mkv_recorder.packet->stream_index = mkv_recorder.stream->index;
+		
+		// Write packet
+		ret = av_interleaved_write_frame(mkv_recorder.format_ctx, mkv_recorder.packet);
+		av_packet_unref(mkv_recorder.packet);
+		
+		if (ret < 0) {
+			ERRORLOG("Error writing packet");
+			return false;
+		}
+	}
+	
+	return true;
+}
+
+void mkv_finish_recording() {
+	if (!mkv_recorder.is_recording) {
+		return;
+	}
+	
+	SYNCLOG("Finishing MKV recording");
+	
+	// Flush encoder
+	avcodec_send_frame(mkv_recorder.codec_ctx, nullptr);
+	
+	int ret = 0;
+	while (ret >= 0) {
+		ret = avcodec_receive_packet(mkv_recorder.codec_ctx, mkv_recorder.packet);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+			break;
+		} else if (ret < 0) {
+			break;
+		}
+		
+		av_packet_rescale_ts(mkv_recorder.packet, mkv_recorder.codec_ctx->time_base, mkv_recorder.stream->time_base);
+		mkv_recorder.packet->stream_index = mkv_recorder.stream->index;
+		av_interleaved_write_frame(mkv_recorder.format_ctx, mkv_recorder.packet);
+		av_packet_unref(mkv_recorder.packet);
+	}
+	
+	// Write trailer
+	av_write_trailer(mkv_recorder.format_ctx);
+	
+	// Clean up
+	if (!(mkv_recorder.format_ctx->oformat->flags & AVFMT_NOFILE)) {
+		avio_closep(&mkv_recorder.format_ctx->pb);
+	}
+	
+	av_packet_free(&mkv_recorder.packet);
+	sws_freeContext(mkv_recorder.sws_ctx);
+	av_frame_free(&mkv_recorder.rgb_frame);
+	av_frame_free(&mkv_recorder.frame);
+	avcodec_free_context(&mkv_recorder.codec_ctx);
+	avformat_free_context(mkv_recorder.format_ctx);
+	
+	mkv_recorder.packet = nullptr;
+	mkv_recorder.sws_ctx = nullptr;
+	mkv_recorder.rgb_frame = nullptr;
+	mkv_recorder.frame = nullptr;
+	mkv_recorder.codec_ctx = nullptr;
+	mkv_recorder.format_ctx = nullptr;
+	mkv_recorder.is_recording = false;
+	
+	SYNCLOG("MKV recording finished");
+}
 
 /**
  * Writes the data into FLI animation.
@@ -1443,4 +1795,42 @@ extern "C" short anim_record()
 	}
 	ERRORLOG("No free file name for recorded movie");
 	return 0;
+}
+
+extern "C" short anim_record_mkv()
+{
+	SYNCDBG(7,"Starting MKV recording");
+	char finalname[255] = "";
+	if (LbGraphicsScreenBPP() != 8) {
+		ERRORLOG("Cannot record movie in non-8bit screen mode");
+		return 0;
+	}
+	int idx;
+	for (idx=0; idx < 10000; idx++) {
+		snprintf(finalname, sizeof(finalname), "%s/game%04d.mkv","scrshots",idx);
+		if (LbFileExists(finalname)) {
+			continue;
+		}
+		if (mkv_init_encoder(finalname, MyScreenWidth/pixel_size, MyScreenHeight/pixel_size)) {
+			return 1;
+		} else {
+			ERRORLOG("Failed to initialize MKV encoder");
+			return 0;
+		}
+	}
+	ERRORLOG("No free file name for recorded movie");
+	return 0;
+}
+
+extern "C" TbBool anim_record_frame_mkv(unsigned char *screenbuf, unsigned char *palette)
+{
+	if (!mkv_recorder.is_recording) {
+		return false;
+	}
+	return mkv_encode_frame(screenbuf, palette);
+}
+
+extern "C" void anim_stop_mkv()
+{
+	mkv_finish_recording();
 }

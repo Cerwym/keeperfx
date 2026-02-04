@@ -41,7 +41,10 @@ enum SmackerPlayFlags {
 TbBool play_smk(const char * filename, int flags);
 short anim_stop(void);
 short anim_record(void);
+short anim_record_mkv(void);
 TbBool anim_record_frame(unsigned char * screenbuf, unsigned char * palette);
+TbBool anim_record_frame_mkv(unsigned char * screenbuf, unsigned char * palette);
+void anim_stop_mkv(void);
 
 #ifdef __cplusplus
 }
