@@ -791,8 +791,8 @@ bool mkv_init_encoder(const char *filename, int width, int height) {
 	mkv_recorder.codec_ctx->time_base = AVRational{1, 57}; // 57 FPS to match FLC
 	mkv_recorder.codec_ctx->framerate = AVRational{57, 1};
 	mkv_recorder.codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
-	mkv_recorder.codec_ctx->bit_rate = 2000000; // 2 Mbps
-	mkv_recorder.codec_ctx->gop_size = 10;
+	// bit_rate is not used when CRF mode is enabled (see below)
+	mkv_recorder.codec_ctx->gop_size = 114; // ~2 seconds at 57 FPS for good compression/seek balance
 	mkv_recorder.codec_ctx->max_b_frames = 1;
 	
 	// Set H.264 specific options for better compression

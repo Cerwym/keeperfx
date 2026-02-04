@@ -41,7 +41,7 @@
 /******************************************************************************/
 
 unsigned char screenshot_format = 1;
-unsigned char video_recording_format = 1; // 1=MKV, 2=FLC
+unsigned char video_recording_format = VIDEO_FORMAT_MKV; // Default to MKV format
 unsigned char cap_palette[768];
 
 /******************************************************************************/
@@ -128,7 +128,7 @@ TbBool cumulative_screen_shot(void)
 TbBool movie_record_start(void)
 {
   short result;
-  if (video_recording_format == 1) {
+  if (video_recording_format == VIDEO_FORMAT_MKV) {
       // MKV format
       result = anim_record_mkv();
   } else {
@@ -148,7 +148,7 @@ TbBool movie_record_stop(void)
 {
     clear_flag(game.system_flags, GSF_CaptureMovie);
     
-    if (video_recording_format == 1) {
+    if (video_recording_format == VIDEO_FORMAT_MKV) {
         // MKV format
         anim_stop_mkv();
     } else {
@@ -169,7 +169,7 @@ TbBool movie_record_frame(void)
   LbPaletteGet(cap_palette);
   
   short result;
-  if (video_recording_format == 1) {
+  if (video_recording_format == VIDEO_FORMAT_MKV) {
       // MKV format
       result = anim_record_frame_mkv(lbDisplay.WScreen, cap_palette);
   } else {
