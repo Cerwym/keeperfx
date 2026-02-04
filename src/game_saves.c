@@ -24,6 +24,8 @@
 #include "bflib_fileio.h"
 #include "bflib_dernc.h"
 
+#include "achievement_api.h"
+#include "achievement_tracker.h"
 #include "config.h"
 #include "config_campaigns.h"
 #include "config_creature.h"
@@ -122,6 +124,16 @@ TbBool save_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
         if (LbFileWrite(fhandle, lua_data, lua_data_len) == lua_data_len)
             chunks_done |= SGF_LuaData;
         cleanup_serialized_data();
+    }
+
+    // Adding achievement tracker state chunk
+    {
+        hdr.id = SGC_AchievementData;
+        hdr.ver = 0;
+        hdr.len = sizeof(struct AchievementTracker);
+        if (LbFileWrite(fhandle, &hdr, sizeof(struct FileChunkHeader)) == sizeof(struct FileChunkHeader))
+        if (LbFileWrite(fhandle, &achievement_tracker, sizeof(struct AchievementTracker)) == sizeof(struct AchievementTracker))
+            chunks_done |= SGF_AchievementData;
     }
 
     if (chunks_done != SGF_SavedGame)
@@ -279,6 +291,21 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
                 }
             }
             break;
+        case SGC_AchievementData:
+            if (hdr.len != sizeof(struct AchievementTracker))
+            {
+                if (LbFileSeek(fhandle, hdr.len, Lb_FILE_SEEK_CURRENT) < 0)
+                    LbFileSeek(fhandle, 0, Lb_FILE_SEEK_END);
+                WARNLOG("Incompatible AchievementData chunk");
+                break;
+            }
+            if (LbFileRead(fhandle, &achievement_tracker, sizeof(struct AchievementTracker)) == sizeof(struct AchievementTracker)) {
+                chunks_done |= SGF_AchievementData;
+                SYNCDBG(8,"Achievement tracker state loaded");
+            } else {
+                WARNLOG("Could not read AchievementData chunk");
+            }
+            break;
         default:
             WARNLOG("Unrecognized chunk, ID = %08lx", hdr.id);
             if (LbFileSeek(fhandle, hdr.len, Lb_FILE_SEEK_CURRENT) < 0)
@@ -286,11 +313,18 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
             break;
         }
     }
-    if ((chunks_done & SGF_SavedGame) == SGF_SavedGame)
+    // Achievement data is optional for backward compatibility
+    long required_chunks = SGF_InfoBlock | SGF_GameOrig | SGF_IntralevelData | SGF_LuaData;
+    if ((chunks_done & required_chunks) == required_chunks)
     {
         // Update interface items
         update_trap_tab_to_config();
         update_room_tab_to_config();
+        // If achievement data wasn't loaded, initialize tracker
+        if (!(chunks_done & SGF_AchievementData)) {
+            SYNCDBG(8,"No achievement data in save, initializing fresh tracker");
+            achievement_tracker_init(get_loaded_level_number());
+        }
         return GLoad_SavedGame;
     }
     return GLoad_Failed;

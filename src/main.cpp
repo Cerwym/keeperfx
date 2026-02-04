@@ -127,6 +127,9 @@
 #include "game_legacy.h"
 #include "room_list.h"
 #include "steam_api.hpp"
+#include "achievement_api.h"
+#include "achievement_definitions.h"
+#include "achievement_tracker.h"
 #include "game_loop.h"
 #include "net_input_lag.h"
 #include "moonphase.h"
@@ -2769,6 +2772,8 @@ void first_gameturn_actions() {
     if (game.play_gameturn == 1) {
         apply_default_flee_and_imprison_setting();
         send_sprite_zip_count_to_other_players();
+        // Initialize achievement tracker for this level
+        achievement_tracker_init(get_loaded_level_number());
     }
     //intentional_desync();
 }
@@ -4398,6 +4403,7 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     if (retval == 1)
     {
         steam_api_init();
+        achievements_init();
     }
     if (retval == 1)
     {
@@ -4450,6 +4456,7 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     }
 
     LbErrorLogClose();
+    achievements_shutdown();
     steam_api_shutdown();
     return 0;
 }

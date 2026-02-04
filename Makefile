@@ -84,6 +84,11 @@ endif
 
 OBJS = \
 $(DEPS) \
+obj/achievement_api.o \
+obj/achievement_definitions.o \
+obj/achievement_tracker.o \
+obj/achievement_steam.o \
+obj/achievement_gog.o \
 obj/actionpt.o \
 obj/api.o \
 obj/ariadne.o \
