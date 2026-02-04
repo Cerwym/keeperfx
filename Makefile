@@ -205,6 +205,7 @@ obj/front_credits.o \
 obj/front_easter.o \
 obj/front_fmvids.o \
 obj/front_highscore.o \
+obj/front_achievements.o \
 obj/front_input.o \
 obj/front_landview.o \
 obj/front_lvlstats.o \

@@ -58,6 +58,7 @@
 #include "front_credits.h"
 #include "front_torture.h"
 #include "front_highscore.h"
+#include "front_achievements.h"
 #include "front_lvlstats.h"
 #include "front_easter.h"
 #include "front_network.h"
@@ -114,7 +115,7 @@ struct GuiButtonInit frontend_main_menu_buttons[] = {
   { LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, frontend_change_state,NULL, frontend_over_button,    2, 999, 230,   999, 230, 371, 46, frontend_draw_large_menu_button,  0, GUIStr_Empty,  0,       {3},            0, frontend_main_menu_load_game_maintain },
   { LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, frontend_netservice_change_state,NULL, frontend_over_button,4,999,276,999,276,371, 46, frontend_draw_large_menu_button,  0, GUIStr_Empty,  0,       {4},            0, frontend_main_menu_netservice_maintain },
   { LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, frontend_change_state,NULL, frontend_over_button,   27, 999, 322,   999, 322, 371, 46, frontend_draw_large_menu_button,  0, GUIStr_Empty,  0,      {97},            0, NULL },
-  { LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, frontend_ldcampaign_change_state,NULL, frontend_over_button,18,999,368,999,368,371,46, frontend_draw_large_menu_button,  0, GUIStr_Empty,  0,     {104},            0, frontend_main_menu_highscores_maintain },
+  { LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, frontend_change_state,NULL, frontend_over_button,FeSt_ACHIEVEMENTS,999,368,999,368,371,46, frontend_draw_large_menu_button,  0, GUIStr_MnuAchievements,  0,     {0},            0, frontend_main_menu_achievements_maintain },
   { LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, frontend_change_state,NULL, frontend_over_button,      9, 999, 414, 999, 414, 371, 46, frontend_draw_large_menu_button,  0, GUIStr_Empty,  0,       {5},            0, NULL },
   { LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,                 0, 0,   455, 0,   455, 371, 46, frontend_draw_product_version,    0, GUIStr_Empty,  0,       {0},            0, NULL },
   {-1,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,                 0,   0,   0,   0,   0,   0,  0, NULL,                             0, GUIStr_Empty,  0,       {0},            0, NULL },
@@ -140,6 +141,16 @@ struct GuiButtonInit frontend_high_score_score_buttons[] = {
   {-1,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,                 0,   0,   0,   0,   0,  0,  0, NULL,                              0, GUIStr_Empty,  0,       {0},            0, NULL },
 };
 
+struct GuiButtonInit frontend_achievements_menu_buttons[] = {
+  { LbBtnT_NormalBtn,  BID_MENU_TITLE, 0, 0, NULL,               NULL,        NULL,                 0, 999,  30, 999,  30,495, 46, frontend_draw_vlarge_menu_button,  0, GUIStr_MnuAchievements,  0,      {0},            0, NULL },
+  { LbBtnT_NormalBtn,  BID_DEFAULT,    0, 0, NULL,               NULL,        NULL,                 0, 80,  97, 80,  97,450,286, frontend_draw_achievements_list,    0, GUIStr_Empty,  0,       {0},            0, NULL },
+  { LbBtnT_HoldableBtn,BID_DEFAULT,    0, 0, achievements_scroll_up,NULL,frontend_over_button,  0, 530, 96, 530, 96, 26, 14, frontend_draw_slider_button,       0, GUIStr_Empty,  0,      {17},            0, frontend_achievements_scroll_up_maintain},
+  { LbBtnT_HoldableBtn,BID_DEFAULT,    0, 0, achievements_scroll_down,NULL,frontend_over_button,0, 530, 374, 530, 374, 26, 14, frontend_draw_slider_button,       0, GUIStr_Empty,  0,      {18},            0, frontend_achievements_scroll_down_maintain},
+  { LbBtnT_HoldableBtn,BID_DEFAULT,    0, 0, achievements_scroll,NULL,NULL,              0, 533, 112, 533, 112, 20,260, frontend_draw_achievements_scroll_tab,   0, GUIStr_Empty,  0,      {40},            0, frontend_achievements_scroll_tab_maintain},
+  { LbBtnT_NormalBtn,  BID_DEFAULT,    0, 0, frontend_quit_achievements_screen,NULL,frontend_over_button,3,999,404, 999, 404,371, 46, frontend_draw_large_menu_button,   0, GUIStr_Empty,  0,      {83},            0, frontend_maintain_achievements_ok_button },
+  {-1,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,                 0,   0,   0,   0,   0,  0,  0, NULL,                              0, GUIStr_Empty,  0,       {0},            0, NULL },
+};
+
 struct GuiButtonInit frontend_error_box_buttons[] = {
   { LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,                 0, 999,   0, 999,   0,450, 92, frontend_draw_error_text_box,      0, GUIStr_Empty,  0,{.str = gui_message_text},0, frontend_maintain_error_text_box},
   {-1,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,                 0,   0,   0,   0,   0,  0,  0, NULL,                              0, GUIStr_Empty,  0,       {0},            0, NULL },
@@ -152,6 +163,8 @@ struct GuiMenu frontend_statistics_menu =
  { GMnu_FESTATISTICS,       0, 1, frontend_statistics_buttons,POS_SCRCTR,POS_SCRCTR, 640, 480, NULL, 0, NULL,    NULL,                    0, 0, 0,};
 struct GuiMenu frontend_high_score_table_menu =
  { GMnu_FEHIGH_SCORE_TABLE, 0, 1, frontend_high_score_score_buttons,POS_SCRCTR,POS_SCRCTR, 640, 480, NULL, 0, NULL,NULL,                  0, 0, 0,};
+struct GuiMenu frontend_achievements_menu =
+ { GMnu_FEACHIEVEMENTS,     0, 1, frontend_achievements_menu_buttons,POS_SCRCTR,POS_SCRCTR, 640, 480, NULL, 0, NULL,NULL,                  0, 0, 0,};
 struct GuiMenu frontend_error_box = // Error box has no background defined - the buttons drawing adds it
  { GMnu_FEERROR_BOX,        0, 1, frontend_error_box_buttons,POS_GAMECTR,POS_GAMECTR, 450,  92, NULL,                        0, NULL,    NULL,                    0, 1, 0,};
 
@@ -184,6 +197,7 @@ struct GuiMenu *menu_list[] = {
     NULL, // Serial
     &frontend_statistics_menu,
     &frontend_high_score_table_menu,
+    &frontend_achievements_menu,
     &dungeon_special_menu,
     &resurrect_creature_menu,
     &transfer_creature_menu,
@@ -914,6 +928,13 @@ void frontend_main_menu_netservice_maintain(struct GuiButton *gbtn)
     gbtn->flags |= LbBtnF_Enabled;
 }
 
+void frontend_main_menu_achievements_maintain(struct GuiButton *gbtn)
+{
+    // Always enabled - achievements are available for all campaigns
+    gbtn->flags |= LbBtnF_Enabled;
+}
+
+// Keep high score maintain function for when high scores are re-enabled
 void frontend_main_menu_highscores_maintain(struct GuiButton *gbtn)
 {
     gbtn->flags |= LbBtnF_Enabled;
@@ -2713,6 +2734,9 @@ void frontend_shutdown_state(FrontendMenuState pstate)
     case FeSt_HIGH_SCORES:
         turn_off_menu(GMnu_FEHIGH_SCORE_TABLE);
         break;
+    case FeSt_ACHIEVEMENTS:
+        turn_off_menu(GMnu_FEACHIEVEMENTS);
+        break;
     case FeSt_TORTURE:
         set_pointer_graphic_none();
         fronttorture_clear_state();
@@ -2858,6 +2882,12 @@ FrontendMenuState frontend_setup_state(FrontendMenuState nstate)
           frontstats_save_high_score();
           set_pointer_graphic_menu();
           break;
+      case FeSt_ACHIEVEMENTS:
+          turn_on_menu(GMnu_FEACHIEVEMENTS);
+          count_displayable_achievements();
+          achievements_scroll_offset = 0;
+          set_pointer_graphic_menu();
+          break;
       case FeSt_TORTURE:
           set_pointer_graphic_none();
           fronttorture_load();
@@ -2928,6 +2958,7 @@ static const char * menu_state_str(FrontendMenuState state)
         case FeSt_UNUSED2: return "FeSt_UNUSED2";
         case FeSt_LEVEL_STATS: return "FeSt_LEVEL_STATS";
         case FeSt_HIGH_SCORES: return "FeSt_HIGH_SCORES";
+        case FeSt_ACHIEVEMENTS: return "FeSt_ACHIEVEMENTS";
         case FeSt_TORTURE: return "FeSt_TORTURE";
         case FeSt_UNUSED_STATE1: return "FeSt_UNUSED_STATE1";
         case FeSt_OUTRO: return "FeSt_OUTRO";
@@ -3117,6 +3148,10 @@ void frontend_input(void)
             break;
         }
         input_consumed = frontend_high_score_table_input();
+        break;
+    case FeSt_ACHIEVEMENTS:
+        get_gui_inputs(0);
+        input_consumed = frontscreen_end_input(false);
         break;
     case FeSt_TORTURE:
         fronttorture_input();
@@ -3437,6 +3472,7 @@ short frontend_draw(void)
     case FeSt_NET_START:
     case FeSt_LEVEL_STATS:
     case FeSt_HIGH_SCORES:
+    case FeSt_ACHIEVEMENTS:
     case FeSt_UNUSED_STATE1:
     case FeSt_FEOPTIONS:
     case FeSt_LEVEL_SELECT:
@@ -3667,6 +3703,9 @@ void frontend_update(short *finish_menu)
     case FeSt_HIGH_SCORES:
         frontend_high_scores_update();
         break;
+    case FeSt_ACHIEVEMENTS:
+        frontend_achievements_update();
+        break;
     default:
         break;
     }
@@ -3736,6 +3775,8 @@ FrontendMenuState get_menu_state_when_back_from_substate(FrontendMenuState subst
             return FeSt_MAIN_MENU;
         lvnum = get_loaded_level_number();
         return get_menu_state_based_on_last_level(lvnum);
+    case FeSt_ACHIEVEMENTS:
+        return FeSt_MAIN_MENU;
     case FeSt_FEDEFINE_KEYS:
         return FeSt_FEOPTIONS;
     case FeSt_CREDITS:

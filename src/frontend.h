@@ -69,6 +69,7 @@ enum FrontendMenuStates {
   FeSt_UNUSED2,
   FeSt_LEVEL_STATS,
   FeSt_HIGH_SCORES,
+  FeSt_ACHIEVEMENTS,
   FeSt_TORTURE,
   FeSt_UNUSED_STATE1, // 20 - Unused state, draws GUI but not used
   FeSt_OUTRO,
