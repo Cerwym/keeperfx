@@ -275,6 +275,7 @@ const struct NamedCommand mevents_desc[] = {
     {"MEVENT_FRIENDLYFIGHT",   EvKind_FriendlyFight},
     {"MEVENT_WORKROMUNREACHBL",EvKind_WorkRoomUnreachable},
     {"MEVENT_STRGROMUNREACHBL",EvKind_StorageRoomUnreachable},
+    {"MEVENT_ACHIEVEMENTUNLKD",EvKind_AchievementUnlocked},
     {NULL,                    0},
 };
 

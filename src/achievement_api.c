@@ -21,9 +21,11 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 #include "bflib_basics.h"
 #include "bflib_fileio.h"
 #include "keeperfx.hpp"
+#include "map_events.h"
 #include "post_inc.h"
 
 /******************************************************************************/
@@ -235,7 +237,13 @@ TbBool achievement_unlock(const char* achievement_id)
         }
     }
     
-    // TODO: Show notification to player
+    // Create in-game event notification for achievement unlock
+    extern struct Event *event_create_event(MapCoord map_x, MapCoord map_y, EventKind evkind, unsigned char dngn_id, int32_t target);
+    
+    // Find achievement index to pass as target
+    int ach_idx = ach - achievements;
+    event_create_event(0, 0, EvKind_AchievementUnlocked, 0, ach_idx);
+    
     // TODO: Save to local storage
     
     return true;
