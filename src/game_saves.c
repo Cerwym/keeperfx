@@ -543,7 +543,12 @@ short save_continue_game(LevelNumber lvnum)
     if (is_singleplayer_like_level(lvnum))
       set_continue_level_number(lvnum);
     SYNCDBG(6,"Continue set to level %d (loaded is %d)",(int)get_continue_level_number(),(int)get_loaded_level_number());
-    char* fname = prepare_file_path(FGrp_Save, continue_game_filename);
+    
+    // Create campaign-specific filename to isolate save progress
+    char continue_filename[64];
+    snprintf(continue_filename, sizeof(continue_filename), "fx1_%s_contn.sav", campaign.fname);
+    
+    char* fname = prepare_file_path(FGrp_Save, continue_filename);
     long fsize = LbFileSaveAt(fname, &game, sizeof(struct Game) + sizeof(struct IntralevelData));
     // Appending IntralevelData
     TbFileHandle fh = LbFileOpen(fname,Lb_FILE_MODE_OLD);
@@ -555,7 +560,11 @@ short save_continue_game(LevelNumber lvnum)
 
 short read_continue_game_part(unsigned char *buf,long pos,long buf_len)
 {
-    char* fname = prepare_file_path(FGrp_Save, continue_game_filename);
+    // Use campaign-specific filename to isolate save progress
+    char continue_filename[64];
+    snprintf(continue_filename, sizeof(continue_filename), "fx1_%s_contn.sav", campaign.fname);
+    
+    char* fname = prepare_file_path(FGrp_Save, continue_filename);
     if (LbFileLength(fname) != sizeof(struct Game) + sizeof(struct IntralevelData))
     {
         SYNCDBG(7, "No correct .SAV file; there's no continue");
