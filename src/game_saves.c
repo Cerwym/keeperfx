@@ -537,13 +537,47 @@ TbBool initialise_load_game_slots(void)
     return (count_valid_saved_games() > 0);
 }
 
+/**
+ * Sanitize campaign name for use in filenames.
+ * Prevents path traversal by allowing only alphanumeric, underscore, and hyphen.
+ * Returns a static buffer - not thread-safe.
+ */
+static const char* get_safe_campaign_name(void)
+{
+    static char safe_campaign_name[32];
+    int j = 0;
+    
+    for (int i = 0; i < sizeof(safe_campaign_name) - 1 && campaign.fname[i] != '\0'; i++) {
+        char c = campaign.fname[i];
+        // Only allow alphanumeric, underscore, and hyphen
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+            (c >= '0' && c <= '9') || c == '_' || c == '-') {
+            safe_campaign_name[j++] = c;
+        }
+    }
+    safe_campaign_name[j] = '\0';
+    
+    // Default to "default" if campaign name is empty after sanitization
+    if (j == 0) {
+        strncpy(safe_campaign_name, "default", sizeof(safe_campaign_name) - 1);
+        safe_campaign_name[sizeof(safe_campaign_name) - 1] = '\0';
+    }
+    
+    return safe_campaign_name;
+}
+
 short save_continue_game(LevelNumber lvnum)
 {
     // Update continue level number
     if (is_singleplayer_like_level(lvnum))
       set_continue_level_number(lvnum);
     SYNCDBG(6,"Continue set to level %d (loaded is %d)",(int)get_continue_level_number(),(int)get_loaded_level_number());
-    char* fname = prepare_file_path(FGrp_Save, continue_game_filename);
+    
+    // Create campaign-specific filename to isolate save progress
+    char continue_filename[64];
+    snprintf(continue_filename, sizeof(continue_filename), "fx1_%s_contn.sav", get_safe_campaign_name());
+    
+    char* fname = prepare_file_path(FGrp_Save, continue_filename);
     long fsize = LbFileSaveAt(fname, &game, sizeof(struct Game) + sizeof(struct IntralevelData));
     // Appending IntralevelData
     TbFileHandle fh = LbFileOpen(fname,Lb_FILE_MODE_OLD);
@@ -555,7 +589,11 @@ short save_continue_game(LevelNumber lvnum)
 
 short read_continue_game_part(unsigned char *buf,long pos,long buf_len)
 {
-    char* fname = prepare_file_path(FGrp_Save, continue_game_filename);
+    // Use campaign-specific filename to isolate save progress
+    char continue_filename[64];
+    snprintf(continue_filename, sizeof(continue_filename), "fx1_%s_contn.sav", get_safe_campaign_name());
+    
+    char* fname = prepare_file_path(FGrp_Save, continue_filename);
     if (LbFileLength(fname) != sizeof(struct Game) + sizeof(struct IntralevelData))
     {
         SYNCDBG(7, "No correct .SAV file; there's no continue");
