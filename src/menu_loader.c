@@ -145,21 +145,28 @@ static TbBool parse_button(VALUE *button_obj, struct GuiButtonInit *btn)
         }
     }
     
-    // Parse state
+    // Parse state and callbacks
     VALUE *state_obj = value_dict_get(button_obj, "state");
+    TbBool is_clickable = true;
     if (state_obj && value_is_dict(state_obj)) {
         VALUE *clickable_val = value_dict_get(state_obj, "clickable");
         if (clickable_val && value_is_bool(clickable_val)) {
-            if (!value_bool(clickable_val)) {
-                // Button is not clickable
-                btn->click_event = NULL;
-            }
+            is_clickable = value_bool(clickable_val);
         }
     }
     
-    // Set hover callback if button is interactive
-    if (btn->click_event != NULL) {
-        btn->ptover_event = frontend_over_button;
+    // Parse callbacks
+    VALUE *callbacks_obj = value_dict_get(button_obj, "callbacks");
+    if (callbacks_obj && value_is_dict(callbacks_obj)) {
+        // TODO: Map callback names to function pointers
+        // For now, we just check if on_click exists
+        VALUE *click_val = value_dict_get(callbacks_obj, "on_click");
+        if (click_val && !value_is_null(click_val) && is_clickable) {
+            // Set a default click handler - actual mapping would need a callback registry
+            // btn->click_event = some_mapped_function;
+            // For now, just mark it as clickable by setting ptover_event
+            btn->ptover_event = frontend_over_button;
+        }
     }
     
     return true;

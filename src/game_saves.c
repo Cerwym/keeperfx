@@ -545,8 +545,27 @@ short save_continue_game(LevelNumber lvnum)
     SYNCDBG(6,"Continue set to level %d (loaded is %d)",(int)get_continue_level_number(),(int)get_loaded_level_number());
     
     // Create campaign-specific filename to isolate save progress
+    // Sanitize campaign name to prevent path traversal
     char continue_filename[64];
-    snprintf(continue_filename, sizeof(continue_filename), "fx1_%s_contn.sav", campaign.fname);
+    char safe_campaign_name[32];
+    int j = 0;
+    for (int i = 0; i < sizeof(safe_campaign_name) - 1 && campaign.fname[i] != '\0'; i++) {
+        char c = campaign.fname[i];
+        // Only allow alphanumeric, underscore, and hyphen
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+            (c >= '0' && c <= '9') || c == '_' || c == '-') {
+            safe_campaign_name[j++] = c;
+        }
+    }
+    safe_campaign_name[j] = '\0';
+    
+    // Default to "default" if campaign name is empty after sanitization
+    if (j == 0) {
+        strncpy(safe_campaign_name, "default", sizeof(safe_campaign_name) - 1);
+        safe_campaign_name[sizeof(safe_campaign_name) - 1] = '\0';
+    }
+    
+    snprintf(continue_filename, sizeof(continue_filename), "fx1_%s_contn.sav", safe_campaign_name);
     
     char* fname = prepare_file_path(FGrp_Save, continue_filename);
     long fsize = LbFileSaveAt(fname, &game, sizeof(struct Game) + sizeof(struct IntralevelData));
@@ -561,8 +580,27 @@ short save_continue_game(LevelNumber lvnum)
 short read_continue_game_part(unsigned char *buf,long pos,long buf_len)
 {
     // Use campaign-specific filename to isolate save progress
+    // Sanitize campaign name to prevent path traversal
     char continue_filename[64];
-    snprintf(continue_filename, sizeof(continue_filename), "fx1_%s_contn.sav", campaign.fname);
+    char safe_campaign_name[32];
+    int j = 0;
+    for (int i = 0; i < sizeof(safe_campaign_name) - 1 && campaign.fname[i] != '\0'; i++) {
+        char c = campaign.fname[i];
+        // Only allow alphanumeric, underscore, and hyphen
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+            (c >= '0' && c <= '9') || c == '_' || c == '-') {
+            safe_campaign_name[j++] = c;
+        }
+    }
+    safe_campaign_name[j] = '\0';
+    
+    // Default to "default" if campaign name is empty after sanitization
+    if (j == 0) {
+        strncpy(safe_campaign_name, "default", sizeof(safe_campaign_name) - 1);
+        safe_campaign_name[sizeof(safe_campaign_name) - 1] = '\0';
+    }
+    
+    snprintf(continue_filename, sizeof(continue_filename), "fx1_%s_contn.sav", safe_campaign_name);
     
     char* fname = prepare_file_path(FGrp_Save, continue_filename);
     if (LbFileLength(fname) != sizeof(struct Game) + sizeof(struct IntralevelData))
