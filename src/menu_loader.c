@@ -28,6 +28,7 @@
 #include "config_strings.h"
 #include "frontend.h"
 #include "gui_frontbtns.h"
+#include "gui_draw.h"
 #include "post_inc.h"
 
 /******************************************************************************/
@@ -190,9 +191,9 @@ TbBool load_menu_from_json(const char *filepath, struct JsonMenu *menu)
     }
     
     TbFileHandle fhandle = LbFileOpen(filepath, Lb_FILE_MODE_READ_ONLY);
-    if (fhandle == INVALID_FILE) {
+    if (fhandle == NULL) {
         ERRORLOG("Cannot open file: %s", filepath);
-        LbMemoryFree(file_buffer);
+        free(file_buffer);
         return false;
     }
     
