@@ -1,0 +1,136 @@
+{
+  "schema_version": "1.0",
+  "menu_id": "GMnu_CAMPAIGNS",
+  "description": "Campaign selection menu - example for UI editor",
+  "position": {
+    "x": "center",
+    "y": "center"
+  },
+  "size": {
+    "width": 640,
+    "height": 480
+  },
+  "background": null,
+  "buttons": [
+    {
+      "id": "btn_title",
+      "type": "NormalBtn",
+      "position": {
+        "x": "center",
+        "y": 30
+      },
+      "size": {
+        "width": 495,
+        "height": 46
+      },
+      "visual": {
+        "sprite_index": 85,
+        "draw_callback": "frontend_draw_vlarge_menu_button"
+      },
+      "text": {
+        "string_id": "GUIStr_Campaigns"
+      },
+      "state": {
+        "enabled": true,
+        "visible": true,
+        "clickable": false
+      }
+    },
+    {
+      "id": "btn_campaign_1",
+      "type": "NormalBtn",
+      "position": {
+        "x": 120,
+        "y": 90
+      },
+      "size": {
+        "width": 400,
+        "height": 32
+      },
+      "visual": {
+        "draw_callback": "draw_campaign_button"
+      },
+      "text": {
+        "dynamic": true,
+        "lua_getter": "get_campaign_name(0)"
+      },
+      "state": {
+        "enabled": true,
+        "visible": true
+      },
+      "callbacks": {
+        "on_click": {
+          "type": "lua",
+          "script": "on_campaign_click(0)"
+        }
+      },
+      "data": {
+        "campaign_index": 0
+      }
+    },
+    {
+      "id": "btn_campaign_2",
+      "type": "NormalBtn",
+      "position": {
+        "x": 120,
+        "y": 130
+      },
+      "size": {
+        "width": 400,
+        "height": 32
+      },
+      "visual": {
+        "draw_callback": "draw_campaign_button"
+      },
+      "text": {
+        "dynamic": true,
+        "lua_getter": "get_campaign_name(1)"
+      },
+      "state": {
+        "enabled": true,
+        "visible": true
+      },
+      "callbacks": {
+        "on_click": {
+          "type": "lua",
+          "script": "on_campaign_click(1)"
+        }
+      },
+      "data": {
+        "campaign_index": 1
+      }
+    },
+    {
+      "id": "btn_back",
+      "type": "NormalBtn",
+      "position": {
+        "x": "center",
+        "y": 404
+      },
+      "size": {
+        "width": 371,
+        "height": 46
+      },
+      "visual": {
+        "sprite_index": 83,
+        "draw_callback": "frontend_draw_large_menu_button"
+      },
+      "text": {
+        "string_id": "GUIStr_MnuReturnToMain"
+      },
+      "state": {
+        "enabled": true,
+        "visible": true
+      },
+      "callbacks": {
+        "on_click": {
+          "type": "state_change",
+          "state": "FeSt_MAIN_MENU"
+        }
+      }
+    }
+  ],
+  "lua_scripts": [
+    "menus/campaigns/main.lua"
+  ]
+}
