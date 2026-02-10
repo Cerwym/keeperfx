@@ -232,6 +232,21 @@ Ensure VitaSDK is properly installed and the bin directory is in your PATH.
 ### Game crashes on Vita
 Check the Vita console output via USB debugging or review crash logs in `ux0:/data/`.
 
+### CI Build: vdpm installation fails
+If the GitHub Actions workflow fails with vdpm errors:
+
+1. The workflow has a fallback mechanism to use precompiled SDL2 tarballs
+2. Download SDL2 libraries for Vita from: https://github.com/vitasdk/packages/releases
+3. Place the following files in `deps/vita/`:
+   - `sdl2.tar.gz`
+   - `sdl2_image.tar.gz`
+   - `sdl2_mixer.tar.gz`
+   - `sdl2_net.tar.gz`
+4. Commit these files to the repository
+5. The CI workflow will automatically extract and use them
+
+This is a temporary workaround until vdpm is properly configured in the CI environment.
+
 ## Additional Resources
 
 - [VitaSDK Documentation](https://vitasdk.github.io/)
