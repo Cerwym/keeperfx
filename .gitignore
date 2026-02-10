@@ -42,3 +42,9 @@ res/keeperfx_icon.ico
 keeperfx.log
 crash_log.txt
 .local/
+
+# DK2 campaign symlinks (local testing only)
+/campgns/dk2_cfg
+/campgns/dk2_crtr
+/campgns/dk2_lnd
+/campgns/dk2_media

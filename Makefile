@@ -245,10 +245,16 @@ obj/highscores.o \
 obj/kjm_input.o \
 obj/lens_api.o \
 obj/config_effects.o \
-obj/lens_flyeye.o \
-obj/lens_mist.o \
+obj/LensEffect.o \
+obj/LensManager.o \
+obj/MistEffect.o \
+obj/DisplacementEffect.o \
+obj/OverlayEffect.o \
+obj/PaletteEffect.o \
+obj/LuaLensEffect.o \
 obj/light_data.o \
 obj/lua_api.o \
+obj/lua_api_lens.o \
 obj/lua_api_player.o \
 obj/lua_api_room.o \
 obj/lua_api_things.o \
@@ -597,6 +603,14 @@ obj/std/%.o: src/%.c libexterns $(GENSRC)
 
 obj/hvlog/%.o: src/%.c libexterns $(GENSRC)
 	$(BUILD_CC_FILES_CMD)
+
+
+# Pattern rules for src/kfx/lense C++ files
+obj/std/%.o: src/kfx/lense/%.cpp libexterns $(GENSRC)
+	$(BUILD_CPP_FILES_CMD)
+
+obj/hvlog/%.o: src/kfx/lense/%.cpp libexterns $(GENSRC)
+	$(BUILD_CPP_FILE_HVLOG_CMD)
 
 
 # Windows resources compilation
