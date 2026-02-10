@@ -129,6 +129,11 @@ enum ObjectModels
     ObjMdl_SpecboxGetGold = 171,
     ObjMdl_SpecboxMakeAngry = 172,
     ObjMdl_SpecboxMakeUnsafe = 173,
+    // Casino gambling devices
+    ObjMdl_SlotMachine = 174,
+    ObjMdl_RouletteWheel = 175,
+    ObjMdl_DiceTable = 176,
+    ObjMdl_OddsController = 177,
 };
 
 /**

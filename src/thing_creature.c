@@ -4751,6 +4751,10 @@ void change_creature_owner(struct Thing *creatng, PlayerNumber nowner)
         cctrl = creature_control_get_from_thing(creatng);
         cctrl->paydays_owed = 0;
         cctrl->paydays_advanced = 0;
+        // Casino feature: Initialize wealth tracking
+        cctrl->lifetime_gold_earned = 0;
+        cctrl->current_gold_held = 0;
+        cctrl->last_casino_visit_turn = 0;
         cctrl->idle.start_gameturn = game.play_gameturn;
     }
 }

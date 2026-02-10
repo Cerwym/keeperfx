@@ -163,6 +163,10 @@ struct CreatureControl {
     TbBool force_health_flower_hidden;
     unsigned char paydays_owed;
     char paydays_advanced;
+    // Casino feature: Creature wealth tracking
+    GoldAmount lifetime_gold_earned;  // Total gold earned in creature's lifetime
+    GoldAmount current_gold_held;     // Current gold possessed by creature
+    GameTurn last_casino_visit_turn;  // Last visit to casino (for cooldown)
     int32_t annoy_untrained_turn;
     uint32_t last_roar_turn;
    /** The game enumerates the elements of annoyance array periodically and looks for the highest value.
@@ -309,6 +313,11 @@ struct CreatureControl {
         short animation_counter;
         short animation_duration;
       }sacrifice;
+      struct {
+        unsigned char state;           // CasinoState sub-state
+        unsigned short device_use_time;        // Timer for gambling animation
+        unsigned short device_use_duration;    // How long to gamble
+      }casino;
   };
 
     unsigned char fight_til_death;

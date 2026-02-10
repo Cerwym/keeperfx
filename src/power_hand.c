@@ -876,6 +876,10 @@ long gold_being_dropped_on_creature(long plyr_idx, struct Thing *goldtng, struct
     if (!dungeon_invalid(dungeon)) {
         dungeon->lvstats.salary_cost += tribute;
     }
+    // Casino feature: Track hand-paid gold
+    cctrl = creature_control_get_from_thing(creatng);
+    cctrl->current_gold_held += tribute;
+    cctrl->lifetime_gold_earned += tribute;
     if (tribute >= salary)
     {
         thing_play_sample(creatng, 34, NORMAL_PITCH, 0, 3, 0, 2, FULL_LOUDNESS);

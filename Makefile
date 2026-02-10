@@ -171,6 +171,7 @@ obj/creature_jobs.o \
 obj/creature_senses.o \
 obj/creature_states.o \
 obj/creature_states_barck.o \
+obj/creature_states_casino.o \
 obj/creature_states_combt.o \
 obj/creature_states_gardn.o \
 obj/creature_states_guard.o \
@@ -304,6 +305,7 @@ obj/player_utils.o \
 obj/power_hand.o \
 obj/power_process.o \
 obj/power_specials.o \
+obj/room_casino.o \
 obj/room_data.o \
 obj/room_entrance.o \
 obj/room_garden.o \

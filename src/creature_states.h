@@ -188,6 +188,7 @@ enum CreatureStates {
     CrSt_GoodWanderToObjectCombat,
     CrSt_CreatureDropBodyInLair,
     CrSt_CreatureSaveUnconsciousCreature,
+    CrSt_CreatureGambling, // Casino gambling behavior
     CrSt_ListEnd,
 };
 

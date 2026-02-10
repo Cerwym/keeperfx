@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "pre_inc.h"
 #include "creature_states_casino.h"
 
 #include "creature_states.h"
@@ -26,6 +27,8 @@
 #include "config_creature.h"
 #include "slab_data.h"
 #include "game_legacy.h"
+#include "room_list.h"
+#include "game_merge.h"
 
 /******************************************************************************/
 
@@ -47,21 +50,24 @@ short creature_gambling(struct Thing* creatng)
     
     // Validate still in casino
     if (!room || room->kind != RoK_CASINO) {
-        cctrl->field_82 = 0;
+        cctrl->casino.state = 0;
         return CrStRet_ResetFail;
     }
     
-    switch (cctrl->field_82) {
+    switch (cctrl->casino.state) {
         case 0:  // Navigate to device
             if (!setup_gambling_device_search(creatng, room)) {
                 return CrStRet_ResetFail;
             }
-            cctrl->field_82 = 1;
+            cctrl->casino.state = 1;
+            cctrl->casino.device_use_time = 0;
             return CrStRet_Modified;
             
         case 1:  // Approach device
-            if (creature_arrived_at_pos(creatng)) {
-                cctrl->field_82 = 2;
+            // Wait a few turns for creature to reach device
+            cctrl->casino.device_use_time++;
+            if (cctrl->casino.device_use_time >= 16) {
+                cctrl->casino.state = 2;
                 // Start gambling animation (will be implemented with sprite system)
                 // For now, just use generic activity
             }
@@ -79,10 +85,10 @@ short creature_gambling(struct Thing* creatng)
                 // React based on outcome
                 if (won) {
                     // Victory - creature is happy
-                    cctrl->field_82 = 3;
+                    cctrl->casino.state = 3;
                 } else {
                     // Loss - creature is disappointed
-                    cctrl->field_82 = 4;
+                    cctrl->casino.state = 4;
                 }
             }
             return CrStRet_Modified;
@@ -111,8 +117,8 @@ TbBool creature_should_visit_casino(struct Thing* creatng)
     struct CreatureControl* cctrl = creature_control_get_from_thing(creatng);
     
     // Don't gamble if going to lair for comfort
-    // field_AI_val represents "need for lair" - 10 is threshold for seeking lair
-    if (cctrl->field_AI_val >= 10) {
+    // annoyance_level[AngR_NoLair] represents "need for lair" - 10 is threshold for seeking lair
+    if (cctrl->annoyance_level[AngR_NoLair] >= 10) {
         return false;
     }
     
@@ -124,10 +130,10 @@ TbBool creature_should_visit_casino(struct Thing* creatng)
     // Random chance based on boredom level
     // More bored creatures are more likely to gamble
     int base_chance = 5;
-    int boredom_bonus = (10 - cctrl->field_AI_val); // Higher when less need for lair
+    int boredom_bonus = (10 - cctrl->annoyance_level[AngR_NoLair]); // Higher when less need for lair
     int total_chance = base_chance + boredom_bonus;
     
-    return CREATURE_RANDOM(creatng, 100) < total_chance;
+    return GAME_RANDOM(100) < total_chance;
 }
 
 /**
@@ -136,35 +142,30 @@ TbBool creature_should_visit_casino(struct Thing* creatng)
  */
 struct Room* find_casino_for_creature(struct Thing* creatng)
 {
-    struct Dungeon* dungeon = get_dungeon(creatng->owner);
+    // Find nearest casino room using proper API
+    struct Room *room = get_player_room_of_kind_nearest_to(
+        creatng->owner,
+        RoK_CASINO,
+        creatng->mappos.x.stl.num,
+        creatng->mappos.y.stl.num,
+        NULL
+    );
     
-    // Iterate through player's casino rooms
-    long i = dungeon->room_kind[RoK_CASINO];
-    unsigned long k = 0;
-    
-    while (i != 0) {
-        struct Room* room = room_get(i);
-        if (room_is_invalid(room)) {
-            break;
-        }
-        
-        i = room->next_of_owner;
-        
-        // Check if casino is active and has capacity
-        if (room->casino.is_active) {
-            long capacity = get_casino_capacity(room);
-            if (room->used_capacity < capacity) {
-                return room;
-            }
-        }
-        
-        k++;
-        if (k >= ROOMS_COUNT) {
-            break;
-        }
+    if (room_is_invalid(room)) {
+        return INVALID_ROOM;
     }
     
-    return INVALID_ROOM;
+    // Check if casino is active and has capacity
+    if (!room->casino.is_active) {
+        return INVALID_ROOM;
+    }
+    
+    long capacity = get_casino_capacity(room);
+    if (room->used_capacity >= capacity) {
+        return INVALID_ROOM;
+    }
+    
+    return room;
 }
 
 /**
@@ -198,23 +199,27 @@ TbBool setup_gambling_device_search(struct Thing* creatng, struct Room* room)
     }
     
     // Start at random slab in room (prevents all creatures going to same device)
-    long n = CREATURE_RANDOM(creatng, room->slabs_count);
+    long n = GAME_RANDOM(room->slabs_count);
     SlabCodedCoords slbnum = room->slabs_list;
     
     // Skip to random starting point
     for (long k = n; k > 0; k--) {
         if (slbnum == 0) break;
-        slbnum = get_next_slab_number_in_room(slbnum);
+        MapSlabCoord slb_x = slb_num_decode_x(slbnum);
+        MapSlabCoord slb_y = slb_num_decode_y(slbnum);
+        struct SlabMap* slb = get_slabmap_for_subtile(slab_subtile_center(slb_x), slab_subtile_center(slb_y));
+        slbnum = slb->next_in_room;
     }
     
     // Search for gambling device slab
     for (int i = 0; i < room->slabs_count; i++) {
-        struct SlabMap* slb = get_slabmap_for_subtile(slbnum);
+        MapSlabCoord slb_x = slb_num_decode_x(slbnum);
+        MapSlabCoord slb_y = slb_num_decode_y(slbnum);
+        struct SlabMap* slb = get_slabmap_for_subtile(slab_subtile_center(slb_x), slab_subtile_center(slb_y));
         
         if (slb->kind == SlbT_CASINO) {
             // Found device slab, navigate to its center
-            MapSlabCoord slb_x = slb_num_decode_x(slbnum);
-            MapSlabCoord slb_y = slb_num_decode_y(slbnum);
+            // (slb_x and slb_y already set from loop iteration)
             
             // Center of slab is subtile 4 (middle of 0-8 grid)
             MapSubtlCoord stl_x = slab_subtile(slb_x, 4);
@@ -225,7 +230,7 @@ TbBool setup_gambling_device_search(struct Thing* creatng, struct Room* room)
             return true;
         }
         
-        slbnum = get_next_slab_number_in_room(slbnum);
+        slbnum = slb->next_in_room;
         if (slbnum == 0) break;
     }
     
@@ -233,3 +238,4 @@ TbBool setup_gambling_device_search(struct Thing* creatng, struct Room* room)
 }
 
 /******************************************************************************/
+#include "post_inc.h"

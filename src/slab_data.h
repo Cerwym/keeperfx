@@ -93,6 +93,8 @@ enum SlabTypes {
     SlbT_DOORMIDAS1         =  58,
     SlbT_DOORMIDAS2         =  59,
     SlbT_DENSEGOLD          =  60,
+    SlbT_CASINO             =  61, // Casino gambling device slab
+    SlbT_CASINO_WALL        =  62, // Casino reinforced wall with odds controller
 };
 
 enum WlbType {

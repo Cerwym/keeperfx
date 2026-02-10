@@ -55,7 +55,8 @@ enum RoomKinds {
     RoK_LAIR                =  14,
     RoK_BRIDGE              =  15,
     RoK_GUARDPOST           =  16,
-    RoK_TYPES_COUNT         =  17,
+    RoK_CASINO              =  17, // Casino room for creature gambling
+    RoK_TYPES_COUNT         =  18,
     RoK_SELL                = 255,
 };
 
@@ -113,6 +114,12 @@ struct Room {
     struct {
       long hatch_gameturn;
     };
+    /* For casino; gambling mechanics */
+    struct {
+      unsigned char house_odds_tier;  // 0=Off,1=Fair,2=Moderate,3=Rigged
+      TbBool is_active;               // Has reinforced walls
+      GoldAmount accumulated_profit;  // Total profit from gambling
+    } casino;
     };
     SlabCodedCoords slabs_list;
     SlabCodedCoords slabs_list_tail;

@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "pre_inc.h"
 #include "room_casino.h"
 
 #include "room_data.h"
@@ -25,6 +26,9 @@
 #include "config_terrain.h"
 #include "game_legacy.h"
 #include "dungeon_data.h"
+#include "player_utils.h"
+#include "game_merge.h"
+#include "thing_creature.h"
 
 /******************************************************************************/
 
@@ -45,11 +49,13 @@ long get_casino_capacity(const struct Room* room)
     for (int i = 0; i < room->slabs_count; i++) {
         if (slbnum == 0) break;
         
-        struct SlabMap* slb = get_slabmap_for_subtile(slbnum);
+        MapSlabCoord slb_x = slb_num_decode_x(slbnum);
+        MapSlabCoord slb_y = slb_num_decode_y(slbnum);
+        struct SlabMap* slb = get_slabmap_for_subtile(slab_subtile_center(slb_x), slab_subtile_center(slb_y));
         if (slb->kind == SlbT_CASINO) {
             capacity++;
         }
-        slbnum = get_next_slab_number_in_room(slbnum);
+        slbnum = slb->next_in_room;
     }
     
     return capacity;
@@ -189,7 +195,7 @@ GoldAmount calculate_gambling_bet(const struct Thing* creatng)
     }
     
     // Random amount between min and max
-    return min_bet + CREATURE_RANDOM(creatng, max_bet - min_bet);
+    return min_bet + GAME_RANDOM(max_bet - min_bet);
 }
 
 /**
@@ -218,7 +224,7 @@ TbBool resolve_gambling_outcome(struct Thing* creatng, struct Room* room, GoldAm
     }
     
     // Roll dice
-    int roll = CREATURE_RANDOM(creatng, 100);
+    int roll = GAME_RANDOM(100);
     TbBool won = (roll < win_chance);
     
     struct CreatureControl* cctrl = creature_control_get_from_thing(creatng);
@@ -302,3 +308,4 @@ void record_casino_profit(struct Room* room, GoldAmount profit)
 }
 
 /******************************************************************************/
+#include "post_inc.h"

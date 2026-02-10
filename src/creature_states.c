@@ -82,6 +82,7 @@
 #include "creature_states_pray.h"
 #include "creature_states_tresr.h"
 #include "creature_states_barck.h"
+#include "creature_states_casino.h"
 
 #include "keeperfx.hpp"
 #include "post_inc.h"
@@ -444,6 +445,7 @@ const CreatureStateFunc1 process_func_list[] = {
     good_arrived_at_attack_dungeon_heart,
     creature_drop_unconscious_in_lair,
     creature_save_unconscious_creature,
+    creature_gambling,
 };
 
 const struct NamedCommand cleanup_func_commands[] = {
@@ -1929,6 +1931,14 @@ short creature_doing_nothing(struct Thing *creatng)
         }
         n = (n + 1) % 3;
     }
+    // Check for casino visit (when idle/bored)
+    if (creature_should_visit_casino(creatng))
+    {
+        if (setup_creature_gambling(creatng)) {
+            SYNCDBG(8,"The %s index %d will visit casino",thing_model_name(creatng),creatng->index);
+            return 1;
+        }
+    }
     if (game.play_gameturn - cctrl->wander_around_check_turn > 128)
     {
         cctrl->wander_around_check_turn = game.play_gameturn;
@@ -3147,6 +3157,9 @@ short creature_take_salary(struct Thing *creatng)
     } else
     {
         struct CreatureControl* cctrl = creature_control_get_from_thing(creatng);
+        // Casino feature: Track received gold
+        cctrl->current_gold_held += received;
+        cctrl->lifetime_gold_earned += received;
         if (cctrl->paydays_owed > 0)
         {
             cctrl->paydays_owed--;
