@@ -544,6 +544,10 @@ TbBool DisplacementEffect::Draw(LensRenderContext* ctx)
         int disp_pixel_size = lbDisplay.GraphicsScreenHeight / 200;
         if (disp_pixel_size < 1) disp_pixel_size = 1;
         
+        // Source buffer needs viewport offset applied (2D addressing)
+        // Calculate once outside loop for efficiency
+        unsigned char* viewport_src = ctx->srcbuf + (ctx->viewport_y * ctx->srcpitch) + ctx->viewport_x;
+        
         // Render each scanline using the pre-computed scan buffer
         // Each scanline in the buffer needs to be scaled up by pixel_scale
         for (long scan_y = 0; scan_y < m_setup_height; scan_y++)
@@ -555,10 +559,9 @@ TbBool DisplacementEffect::Draw(LensRenderContext* ctx)
                 if (dst_y >= ctx->height) break;
                 
                 // BlitScan renders scanline to destination line dst_y
-                // Source buffer needs viewport offset applied (2D addressing)
-                unsigned char* viewport_src = ctx->srcbuf + (ctx->viewport_y * ctx->srcpitch) + ctx->viewport_x;
+                // Pass viewport width as srcpitch (not full screen pitch)
                 CHex::BlitScan(&scanBuffer[scan_y], dst_y, ctx->dstbuf, viewport_src, 
-                              ctx->dstpitch, ctx->srcpitch, m_setup_width, disp_pixel_size);
+                              ctx->dstpitch, ctx->width, ctx->width, disp_pixel_size);
             }
         }
     }
