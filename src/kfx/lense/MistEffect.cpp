@@ -259,8 +259,8 @@ TbBool MistEffect::Draw(LensRenderContext* ctx)
     // Get the mist renderer
     CMistFade* renderer = static_cast<CMistFade*>(m_user_data);
     
-    // Mist reads from viewport-aligned source
-    unsigned char* viewport_src = ctx->srcbuf + ctx->viewport_x;
+    // Mist reads from viewport-aligned source (2D addressing)
+    unsigned char* viewport_src = ctx->srcbuf + (ctx->viewport_y * ctx->srcpitch) + ctx->viewport_x;
     
     // Render mist effect
     renderer->Render(ctx->dstbuf, ctx->dstpitch, viewport_src, ctx->srcpitch,

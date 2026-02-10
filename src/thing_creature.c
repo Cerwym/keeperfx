@@ -4293,8 +4293,18 @@ void draw_creature_view(struct Thing *thing)
   // Pass full srcbuf so displacement map lookups work correctly
   // Calculate 2D viewport offset for destination buffer
   long dst_offset = view_y * lbDisplay.GraphicsScreenWidth + view_x;
-  draw_lens_effect(lbDisplay.WScreen + dst_offset, lbDisplay.GraphicsScreenWidth, 
-      scrmem, render_width, view_width, view_height, view_x, game.applied_lens_type);
+  struct LensDrawParams lens_params = {
+      .dstbuf = lbDisplay.WScreen + dst_offset,
+      .dstpitch = lbDisplay.GraphicsScreenWidth,
+      .srcbuf = scrmem,
+      .srcpitch = render_width,
+      .width = view_width,
+      .height = view_height,
+      .viewport_x = view_x,
+      .viewport_y = view_y,
+      .effect = game.applied_lens_type
+  };
+  draw_lens_effect(&lens_params);
 }
 
 struct Thing *get_creature_near_for_controlling(PlayerNumber plyr_idx, MapCoord x, MapCoord y)

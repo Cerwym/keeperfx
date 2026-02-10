@@ -32,6 +32,7 @@ struct LensRenderContext {
     long width;                  // Viewport width
     long height;                 // Viewport height
     long viewport_x;             // X offset of viewport in source buffer
+    long viewport_y;             // Y offset of viewport in source buffer
     TbBool buffer_copied;        // Whether srcbuf has been copied to dstbuf yet
 };
 

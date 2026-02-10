@@ -44,6 +44,9 @@ private:
     DisplacementAlgorithm m_algorithm;
     int m_magnitude;
     int m_period;
+    TbBool m_uses_compound_eye;  // Flag to indicate if compound eye scanline rendering is used
+    int m_setup_width;  // Width used during setup (for scanline buffer dimensions)
+    int m_setup_height; // Height used during setup
 };
 
 /******************************************************************************/

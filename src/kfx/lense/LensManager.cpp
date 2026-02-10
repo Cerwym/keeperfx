@@ -20,6 +20,8 @@
 #include "../../pre_inc.h"
 #include "LensManager.h"
 
+#include <exception>
+
 #include "MistEffect.h"
 #include "DisplacementEffect.h"
 #include "OverlayEffect.h"
@@ -209,56 +211,75 @@ TbBool LensManager::SetLens(long lens_idx)
     return success;
 }
 
-void LensManager::Draw(unsigned char* srcbuf, unsigned char* dstbuf, 
-                      long srcpitch, long dstpitch, 
-                      long width, long height, long viewport_x)
+void LensManager::Draw(LensRenderContext* ctx)
 {
-    SYNCDBG(0, "LensManager::Draw() called: m_initialized=%d, m_applied_lens=%d, m_active_custom_lens='%s'",
-           m_initialized, m_applied_lens, m_active_custom_lens.c_str());
-    
-    // Setup render context
-    LensRenderContext ctx;
-    ctx.srcbuf = srcbuf;
-    ctx.dstbuf = dstbuf;
-    ctx.srcpitch = srcpitch;
-    ctx.dstpitch = dstpitch;
-    ctx.width = width;
-    ctx.height = height;
-    ctx.viewport_x = viewport_x;
-    ctx.buffer_copied = false;
-    
-    // If not initialized or no lens active, just copy the buffer
-    if (!m_initialized || (m_applied_lens == 0 && m_active_custom_lens.empty())) {
-        unsigned char* viewport_src = srcbuf + viewport_x;
-        CopyBuffer(dstbuf, dstpitch, viewport_src, srcpitch, width, height);
+    if (ctx == nullptr) {
+        ERRORLOG("Invalid render context (NULL)");
         return;
     }
     
-    // Check if a custom lens is active
-    if (!m_active_custom_lens.empty()) {
-        LensEffect* custom_effect = GetCustomLens(m_active_custom_lens.c_str());
-        if (custom_effect != nullptr && custom_effect->IsEnabled()) {
-            if (custom_effect->Draw(&ctx)) {
-                return;  // Custom lens rendered successfully
-            }
-        }
-        // Custom lens failed, fall through to standard effects or fallback
+    SYNCDBG(0, "LensManager::Draw() called: m_initialized=%d, m_applied_lens=%d, m_active_custom_lens='%s'",
+           m_initialized, m_applied_lens, m_active_custom_lens.c_str());
+    
+    ctx->buffer_copied = false;
+    
+    // If not initialized or no lens active, just copy the buffer
+    if (!m_initialized || (m_applied_lens == 0 && m_active_custom_lens.empty())) {
+        // Apply viewport offset to source buffer for copy (2D addressing)
+        unsigned char* viewport_src = ctx->srcbuf + (ctx->viewport_y * ctx->srcpitch) + ctx->viewport_x;
+        LensRenderContext copy_ctx = *ctx;
+        copy_ctx.srcbuf = viewport_src;
+        CopyBuffer(&copy_ctx);
+        return;
     }
     
-    // Apply standard effects in order
-    TbBool rendered = false;
-    for (LensEffect* effect : m_effects) {
-        if (effect->IsEnabled()) {
-            if (effect->Draw(&ctx)) {
-                rendered = true;
+    // Wrap lens rendering in try/catch to prevent crashes from bad configurations
+    try {
+        // Check if a custom lens is active
+        if (!m_active_custom_lens.empty()) {
+            LensEffect* custom_effect = GetCustomLens(m_active_custom_lens.c_str());
+            if (custom_effect != nullptr && custom_effect->IsEnabled()) {
+                if (custom_effect->Draw(ctx)) {
+                    return;  // Custom lens rendered successfully
+                }
+            }
+            // Custom lens failed, fall through to standard effects or fallback
+        }
+        
+        // Apply standard effects in order
+        TbBool rendered = false;
+        for (LensEffect* effect : m_effects) {
+            if (effect->IsEnabled()) {
+                if (effect->Draw(ctx)) {
+                    rendered = true;
+                }
             }
         }
+        
+        // If no effects rendered (all failed or none applicable), copy as fallback
+        if (!rendered) {
+            // Apply viewport offset to source buffer for copy (2D addressing)
+            unsigned char* viewport_src = ctx->srcbuf + (ctx->viewport_y * ctx->srcpitch) + ctx->viewport_x;
+            LensRenderContext copy_ctx = *ctx;
+            copy_ctx.srcbuf = viewport_src;
+            CopyBuffer(&copy_ctx);
+        }
     }
-    
-    // If no effects rendered (all failed or none applicable), copy as fallback
-    if (!rendered) {
-        unsigned char* viewport_src = srcbuf + viewport_x;
-        CopyBuffer(dstbuf, dstpitch, viewport_src, srcpitch, width, height);
+    catch (const std::exception& e) {
+        ERRORLOG("Exception in lens rendering: %s. Falling back to buffer copy.", e.what());
+        // Fallback to safe buffer copy (2D addressing)
+        unsigned char* viewport_src = ctx->srcbuf + (ctx->viewport_y * ctx->srcpitch) + ctx->viewport_x;
+        LensRenderContext copy_ctx = *ctx;
+        copy_ctx.srcbuf = viewport_src;
+        CopyBuffer(&copy_ctx);
+    }
+    catch (...) {
+        ERRORLOG("Unknown exception in lens rendering. Falling back to buffer copy.");
+        // Fallback to safe buffer copy (2D addressing)
+        unsigned char* viewport_src = ctx->srcbuf + (ctx->viewport_y * ctx->srcpitch) + ctx->viewport_x;
+        LensRenderContext copy_ctx = *ctx;
+        copy_ctx.srcbuf = viewport_src;
+        CopyBuffer(&copy_ctx);
     }
 }
 
@@ -515,11 +536,20 @@ TbBool LensManager_IsReady(void* mgr)
 }
 
 void LensManager_Draw(void* mgr, unsigned char* srcbuf, unsigned char* dstbuf,
-                      long srcpitch, long dstpitch, long width, long height, long viewport_x)
+                      long srcpitch, long dstpitch, long width, long height, long viewport_x, long viewport_y)
 {
     if (mgr != nullptr) {
-        static_cast<LensManager*>(mgr)->Draw(srcbuf, dstbuf, srcpitch, dstpitch,
-                                             width, height, viewport_x);
+        LensRenderContext ctx;
+        ctx.srcbuf = srcbuf;
+        ctx.dstbuf = dstbuf;
+        ctx.srcpitch = srcpitch;
+        ctx.dstpitch = dstpitch;
+        ctx.width = width;
+        ctx.height = height;
+        ctx.viewport_x = viewport_x;
+        ctx.viewport_y = viewport_y;
+        ctx.buffer_copied = false;
+        static_cast<LensManager*>(mgr)->Draw(&ctx);
     }
 }
 
@@ -527,7 +557,17 @@ void LensManager_CopyBuffer(unsigned char* dstbuf, long dstpitch,
                            unsigned char* srcbuf, long srcpitch,
                            long width, long height)
 {
-    LensManager::CopyBuffer(dstbuf, dstpitch, srcbuf, srcpitch, width, height);
+    LensRenderContext ctx;
+    ctx.srcbuf = srcbuf;
+    ctx.dstbuf = dstbuf;
+    ctx.srcpitch = srcpitch;
+    ctx.dstpitch = dstpitch;
+    ctx.width = width;
+    ctx.height = height;
+    ctx.viewport_x = 0;
+    ctx.viewport_y = 0;
+    ctx.buffer_copied = false;
+    LensManager::CopyBuffer(&ctx);
 }
 
 TbBool LensManager_RegisterCustomLens(void* mgr, const char* name, void* effect)
@@ -569,18 +609,22 @@ void LuaLensEffect_SetDrawCallback(void* effect, int callback_ref)
 // HELPER FUNCTIONS
 /******************************************************************************/
 
-void LensManager::CopyBuffer(unsigned char* dstbuf, long dstpitch,
-                            unsigned char* srcbuf, long srcpitch,
-                            long width, long height)
+void LensManager::CopyBuffer(LensRenderContext* ctx)
 {
-    unsigned char* dst = dstbuf;
-    unsigned char* src = srcbuf;
-    for (long i = 0; i < height; i++)
-    {
-        memcpy(dst, src, width * sizeof(TbPixel));
-        dst += dstpitch;
-        src += srcpitch;
+    if (ctx == nullptr) {
+        ERRORLOG("Invalid render context (NULL)");
+        return;
     }
+    
+    unsigned char* dst = ctx->dstbuf;
+    unsigned char* src = ctx->srcbuf;
+    for (long i = 0; i < ctx->height; i++)
+    {
+        memcpy(dst, src, ctx->width * sizeof(TbPixel));
+        dst += ctx->dstpitch;
+        src += ctx->srcpitch;
+    }
+    ctx->buffer_copied = true;
 }
 
 /******************************************************************************/

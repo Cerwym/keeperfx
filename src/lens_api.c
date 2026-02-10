@@ -158,18 +158,15 @@ void reset_eye_lenses(void)
 /**
  * Draw the active lens effect.
  * 
- * @param dstbuf Destination buffer (viewport area on screen)
- * @param dstpitch Destination pitch
- * @param srcbuf Source buffer (full screen width, unclipped)
- * @param srcpitch Source pitch (full screen width)
- * @param width Viewport width
- * @param height Viewport height
- * @param viewport_x X offset of viewport in source buffer
- * @param effect Lens effect index (0 = no effect)
+ * @param params Draw parameters containing all buffer and viewport information
  */
-void draw_lens_effect(unsigned char *dstbuf, long dstpitch, unsigned char *srcbuf, long srcpitch, 
-                     long width, long height, long viewport_x, long effect)
+void draw_lens_effect(const struct LensDrawParams *params)
 {
+    if (params == NULL) {
+        ERRORLOG("Invalid draw parameters (NULL)");
+        return;
+    }
+    
     void* mgr = LensManager_GetInstance();
     if (mgr == NULL) {
         ERRORLOG("LensManager not available");
@@ -181,25 +178,26 @@ void draw_lens_effect(unsigned char *dstbuf, long dstpitch, unsigned char *srcbu
     
     // Special handling for custom lenses (effect=255): don't override them with standard lenses
     // Custom lenses return active_lens=-1, but effect will be 255 if custom lens is active
-    if (effect == 255) {
+    if (params->effect == 255) {
         // Custom lens should be active - don't change it
         SYNCDBG(9, "Custom lens active (effect=255), skipping SetLens");
     } else if (active_lens == -1) {
         // Custom lens is active but caller wants standard lens - switch to it
-        SYNCDBG(8, "Switching from custom lens to standard lens %ld", effect);
-        if (!LensManager_SetLens(mgr, effect)) {
-            WARNLOG("Failed to set lens %ld during draw", effect);
+        SYNCDBG(8, "Switching from custom lens to standard lens %ld", params->effect);
+        if (!LensManager_SetLens(mgr, params->effect)) {
+            WARNLOG("Failed to set lens %ld during draw", params->effect);
         }
-    } else if (active_lens != effect) {
+    } else if (active_lens != params->effect) {
         // Standard lens mismatch - update to requested lens
-        SYNCDBG(8, "Switching lens from %ld to %ld", active_lens, effect);
-        if (!LensManager_SetLens(mgr, effect)) {
-            WARNLOG("Failed to set lens %ld during draw", effect);
+        SYNCDBG(8, "Switching lens from %ld to %ld", active_lens, params->effect);
+        if (!LensManager_SetLens(mgr, params->effect)) {
+            WARNLOG("Failed to set lens %ld during draw", params->effect);
         }
     }
     
     // Draw via LensManager (handles all fallbacks internally)
-    LensManager_Draw(mgr, srcbuf, dstbuf, srcpitch, dstpitch, width, height, viewport_x);
+    LensManager_Draw(mgr, params->srcbuf, params->dstbuf, params->srcpitch, params->dstpitch, 
+                     params->width, params->height, params->viewport_x, params->viewport_y);
 }
 
 /**

@@ -71,9 +71,7 @@ public:
     long GetAppliedLens() const { return m_applied_lens; }
     
     // Rendering (always succeeds - handles fallback internally)
-    void Draw(unsigned char* srcbuf, unsigned char* dstbuf, 
-             long srcpitch, long dstpitch, 
-             long width, long height, long viewport_x);
+    void Draw(LensRenderContext* ctx);
     
     // Configuration
     void LoadAccessibilityConfig();
@@ -89,10 +87,8 @@ public:
     // State query
     TbBool IsReady() const { return m_initialized; }
     
-    // Helper: Copy buffer with pitch
-    static void CopyBuffer(unsigned char *dst, long dstpitch,
-                          unsigned char *src, long srcpitch,
-                          long width, long height);
+    // Helper: Copy buffer with pitch (viewport offset should already be applied to ctx->srcbuf)
+    static void CopyBuffer(LensRenderContext* ctx);
     
 private:
     LensManager();

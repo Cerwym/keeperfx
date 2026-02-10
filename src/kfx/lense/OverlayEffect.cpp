@@ -26,6 +26,7 @@
 #include "../../globals.h"
 #include "../../config_lenses.h"
 #include "../../custom_sprites.h"
+#include "../../vidmode.h"
 
 #include "../../keeperfx.hpp"
 #include "../../post_inc.h"
@@ -168,17 +169,14 @@ void COverlayRenderer::Render(unsigned char *dstbuf, long dstpitch, unsigned cha
     const unsigned char* overlay_src = m_overlay_data;
     const short alpha = m_alpha;
     
-    // Calculate centering offsets
+    // Overlay dimensions
     const int overlay_w = m_width;
     const int overlay_h = m_height;
-    const int offset_x = (width - overlay_w) / 2;
-    const int offset_y = (height - overlay_h) / 2;
     
-    // Clamp alpha to valid range (0-256, where 256 = opaque)
-    int alpha_clamped = (alpha < 0) ? 0 : ((alpha > 256) ? 256 : alpha);
-    int inv_alpha = 256 - alpha_clamped;
+    // Get ghost table for proper color blending in palette space
+    const unsigned char* ghost_table = pixmap.ghost;
     
-    // Composite overlay onto destination buffer
+    // Composite overlay onto destination buffer with stretching to fill viewport
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
@@ -186,28 +184,49 @@ void COverlayRenderer::Render(unsigned char *dstbuf, long dstpitch, unsigned cha
             // Get source pixel (the 3D view)
             unsigned char src_pixel = srcbuf[y * srcpitch + x];
             
-            // Calculate overlay coordinates (centered)
-            int overlay_x = x - offset_x;
-            int overlay_y = y - offset_y;
+            // Calculate overlay coordinates with scaling to match viewport
+            // Map viewport coordinates (0..width-1, 0..height-1) to overlay (0..overlay_w-1, 0..overlay_h-1)
+            int overlay_x = (x * overlay_w) / width;
+            int overlay_y = (y * overlay_h) / height;
             
+            // Clamp to ensure we don't read out of bounds
+            if (overlay_x >= overlay_w) overlay_x = overlay_w - 1;
+            if (overlay_y >= overlay_h) overlay_y = overlay_h - 1;
+            
+            // Get overlay pixel
+            unsigned char overlay_pixel = overlay_src[overlay_y * overlay_w + overlay_x];
+            
+            // Check for transparency (palette index 255 from PNG alpha < 128)
+            if (overlay_pixel == 255)
+            {
+                // Transparent pixel - pass through source unchanged
+                dstbuf[y * dstpitch + x] = src_pixel;
+                continue;
+            }
+            
+            // Alpha blending strategy:
+            // High alpha (>= 200): Show overlay directly (opaque, for knight helmet frame)
+            // Medium alpha (100-199): Blend using ghost table
+            // Low alpha (< 100): Light blend, favor source
             unsigned char result;
             
-            // Check if we're inside the overlay area
-            if (overlay_x >= 0 && overlay_x < overlay_w && 
-                overlay_y >= 0 && overlay_y < overlay_h)
+            if (alpha >= 200)
             {
-                // Get overlay pixel
-                unsigned char overlay_pixel = overlay_src[overlay_y * overlay_w + overlay_x];
-                
-                // Alpha blend: result = (overlay * alpha + src * (1 - alpha)) / 256
-                result = (unsigned char)(
-                    (overlay_pixel * alpha_clamped + src_pixel * inv_alpha) >> 8
-                );
+                // Very high alpha: overlay is opaque, use directly
+                // This ensures white helmet frame shows solid, not transparent
+                result = overlay_pixel;
+            }
+            else if (alpha >= 100)
+            {
+                // Medium alpha: balanced ghost table blend (1:2 ratio)
+                result = ghost_table[src_pixel * 256 + overlay_pixel];
             }
             else
             {
-                // Outside overlay area - just copy source
-                result = src_pixel;
+                // Low alpha: mostly source, light overlay effect
+                // Double ghost lookup for lighter blend
+                result = ghost_table[src_pixel * 256 + overlay_pixel];
+                result = ghost_table[src_pixel * 256 + result];
             }
             
             // Write to destination
@@ -292,7 +311,10 @@ TbBool OverlayEffect::Draw(LensRenderContext* ctx)
     COverlayRenderer* renderer = static_cast<COverlayRenderer*>(m_user_data);
     
     // Overlay reads from source (3D view) and composites with overlay sprite to destination
-    unsigned char* viewport_src = ctx->srcbuf + ctx->viewport_x;
+    // srcbuf: NOT pre-offset, calculate viewport position
+    unsigned char* viewport_src = ctx->srcbuf + (ctx->viewport_y * ctx->srcpitch) + ctx->viewport_x;
+    // dstbuf: ALREADY pre-offset per buffer contract, use directly
+    
     renderer->Render(ctx->dstbuf, ctx->dstpitch, viewport_src, ctx->srcpitch,
                     ctx->width, ctx->height);
     
