@@ -1,0 +1,64 @@
+name: Build PlayStation Vita Package
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-vita:
+    name: "Build for PlayStation Vita"
+    runs-on: ubuntu-latest
+    container:
+      image: vitasdk/vitasdk:latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install dependencies
+      run: |
+        apk add cmake ninja git pkgconfig make
+
+    - name: Install SDL2 libraries
+      run: |
+        vdpm install sdl2
+        vdpm install sdl2_image
+        vdpm install sdl2_mixer
+        vdpm install sdl2_net
+
+    - name: Configure CMake
+      run: |
+        cmake -DCMAKE_TOOLCHAIN_FILE=vita.cmake \
+              -DCMAKE_BUILD_TYPE=Release \
+              -B build-vita \
+              -G Ninja
+
+    - name: Build
+      run: |
+        cmake --build build-vita --parallel
+
+    - name: Create VPK package
+      run: |
+        cd build-vita
+        mkdir -p sce_sys
+        vita-mksfoex -s TITLE_ID=KPFX00001 "KeeperFX" sce_sys/param.sfo
+        vita-make-fself -c keeperfx.elf eboot.bin
+        vita-pack-vpk -s sce_sys/param.sfo -b eboot.bin ../keeperfx-vita.vpk
+        cd ..
+
+    - name: Upload VPK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: keeperfx-vita-vpk
+        path: keeperfx-vita.vpk
+
+    - name: Upload ELF artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: keeperfx-vita-elf
+        path: build-vita/keeperfx.elf

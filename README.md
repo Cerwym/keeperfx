@@ -24,6 +24,7 @@ Currently the whole codebase of Dungeon Keeper is remade and all code has been r
 
 ## Features
 - Windows 7/10/11 support
+- **PlayStation Vita support (experimental)** - see [Vita Setup Guide](docs/VITA_SETUP.md)
 - Higher screen resolutions
 - Increased FPS, decoupled gfx and game logic
 - Improved and modernized controls
@@ -82,7 +83,7 @@ KeeperFX could be further improved in these key areas:
 - Expand and improve AI / Computer player behavior
 - Improve pathfinding performance
 - Expand creative freedom for modders even further
-- Native cross-platform support
+- Native cross-platform support (Linux, macOS, PlayStation Vita)
 - Improve code readability and maintainability
 - Lua support
 - ...

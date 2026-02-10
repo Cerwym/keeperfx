@@ -38,6 +38,21 @@ add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
 file(GLOB_RECURSE KEEPERFX_SOURCES_C "src/*.c")
 file(GLOB_RECURSE KEEPERFX_SOURCES_CXX "src/*.cpp")
 
+# Platform-specific source filtering
+if(VITA)
+    # Exclude Windows-specific files
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*windows\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*linux\\.cpp$")
+elseif(WIN32)
+    # Exclude non-Windows files
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*linux\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*vita\\.cpp$")
+else()
+    # Linux - exclude Windows and Vita files
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*windows\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*vita\\.cpp$")
+endif()
+
 # Global definitions for all targets.
 add_compile_definitions("DEBUG=$<IF:$<CONFIG:Debug>,1,0>")
 add_compile_definitions("SPNG_STATIC=1")
@@ -46,33 +61,53 @@ add_compile_definitions("SPNG_STATIC=1")
 add_executable(keeperfx ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
 
 target_compile_definitions(keeperfx PUBLIC BFDEBUG_LEVEL=0)
-target_sources(keeperfx PRIVATE "res/keeperfx_stdres.rc")
+
+# Platform-specific resources
+if(WIN32 AND NOT VITA)
+    target_sources(keeperfx PRIVATE "res/keeperfx_stdres.rc")
+endif()
 
 add_executable(keeperfx_hvlog ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
 
 target_compile_definitions(keeperfx_hvlog PUBLIC BFDEBUG_LEVEL=10)
-target_sources(keeperfx_hvlog PRIVATE "res/keeperfx_stdres.rc")
+
+# Platform-specific resources
+if(WIN32 AND NOT VITA)
+    target_sources(keeperfx_hvlog PRIVATE "res/keeperfx_stdres.rc")
+endif()
 
 message(STATUS "We are using ${CMAKE_CXX_COMPILER_ID}")
 
-# The default bfd linker in MinGW is extremely slow. LLVM linker (LLD) is much much faster.
-set_property(TARGET keeperfx PROPERTY LINKER_TYPE LLD)
-set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
-
-set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas -Werror)
-set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
-set(GNU_LINK_FLAG -mwindows -Wl,--enable-auto-import)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
-target_compile_options(keeperfx PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
-target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
-target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
-target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
-target_link_libraries (keeperfx PUBLIC -static stdc++ winpthread -dynamic)
-target_link_libraries (keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
-
-# System libraries.
-target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
-target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
+# Platform-specific compiler and linker flags
+if(VITA)
+    # Vita-specific flags
+    set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
+    target_compile_options(keeperfx PRIVATE ${WARNFLAGS})
+    target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS})
+    
+    # Vita system libraries will be linked via toolchain
+else()
+    # Windows/MinGW flags
+    # The default bfd linker in MinGW is extremely slow. LLVM linker (LLD) is much much faster.
+    set_property(TARGET keeperfx PROPERTY LINKER_TYPE LLD)
+    set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
+    
+    set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas -Werror)
+    set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
+    set(GNU_LINK_FLAG -mwindows -Wl,--enable-auto-import)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
+    target_compile_options(keeperfx PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
+    target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
+    target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
+    target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
+    target_link_libraries (keeperfx PUBLIC -static stdc++ winpthread -dynamic)
+    target_link_libraries (keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
+    
+    # System libraries.
+    target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
+    target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
+endif()
 
 # Go into submodules.
 add_subdirectory(deps)
@@ -98,3 +133,34 @@ target_link_libraries(keeperfx_hvlog
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
 target_link_libraries(keeperfx_hvlog
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+
+# Vita-specific libraries
+if(VITA)
+    target_link_libraries(keeperfx PRIVATE
+        SceLibKernel_stub
+        SceDisplay_stub
+        SceGxm_stub
+        SceSysmodule_stub
+        SceCtrl_stub
+        ScePgf_stub
+        SceCommonDialog_stub
+        SceAudio_stub
+        SceTouch_stub
+        m
+        stdc++
+    )
+    
+    target_link_libraries(keeperfx_hvlog PRIVATE
+        SceLibKernel_stub
+        SceDisplay_stub
+        SceGxm_stub
+        SceSysmodule_stub
+        SceCtrl_stub
+        ScePgf_stub
+        SceCommonDialog_stub
+        SceAudio_stub
+        SceTouch_stub
+        m
+        stdc++
+    )
+endif()
