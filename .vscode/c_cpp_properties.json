@@ -94,6 +94,32 @@
             "cStandard": "gnu11",
             "cppStandard": "gnu++14",
             "intelliSenseMode": "windows-gcc-x86"
+        },
+        {
+            "name": "PlayStation Vita",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/deps/zlib/include",
+                "${workspaceFolder}/deps/spng/include",
+                "${workspaceFolder}/deps/enet/include",
+                "${workspaceFolder}/deps/centijson/include",
+                "${workspaceFolder}/deps/centitoml",
+                "${workspaceFolder}/deps/astronomy/include",
+                "${workspaceFolder}/deps/luajit/include",
+                "${env:VITASDK}/arm-vita-eabi/include",
+                "${env:VITASDK}/arm-vita-eabi/include/SDL2"
+            ],
+            "defines": [
+                "VITA",
+                "__VITA__",
+                "SPNG_STATIC=1",
+                "BFDEBUG_LEVEL=0"
+            ],
+            "compilerPath": "${env:VITASDK}/bin/arm-vita-eabi-gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "gcc-arm"
         }
     ],
     "version": 4

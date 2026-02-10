@@ -48,3 +48,9 @@ crash_log.txt
 /campgns/dk2_crtr
 /campgns/dk2_lnd
 /campgns/dk2_media
+
+# PlayStation Vita build artifacts
+*.vpk
+*.velf
+*.self
+sce_sys/

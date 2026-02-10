@@ -150,5 +150,83 @@
 			"group": "build",
 			"dependsOn": "Compile",
 		},
+		{
+			"label": "CMake Configure (Vita)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/vita.cmake",
+				"-B",
+				"${workspaceFolder}/build-vita",
+				"-S",
+				"${workspaceFolder}"
+			],
+			"group": "build",
+			"problemMatcher": [],
+			"presentation": {
+				"clear": true,
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "CMake Build (Vita)",
+			"type": "shell",
+			"command": "cmake",
+			"args": [
+				"--build",
+				"${workspaceFolder}/build-vita",
+				"--parallel"
+			],
+			"group": "build",
+			"problemMatcher": ["$gcc"],
+			"dependsOn": ["CMake Configure (Vita)"],
+			"presentation": {
+				"clear": true,
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "Create VPK Package (Vita)",
+			"type": "shell",
+			"command": "cd build-vita && mkdir -p sce_sys && vita-mksfoex -s TITLE_ID=KPFX00001 'KeeperFX' sce_sys/param.sfo && vita-make-fself -c keeperfx.elf eboot.bin && vita-pack-vpk -s sce_sys/param.sfo -b eboot.bin ../keeperfx-vita.vpk",
+			"group": "build",
+			"problemMatcher": [],
+			"dependsOn": ["CMake Build (Vita)"],
+			"presentation": {
+				"clear": true,
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": false
+			}
+		},
+		{
+			"label": "Clean (Vita)",
+			"type": "shell",
+			"command": "rm",
+			"args": [
+				"-rf",
+				"${workspaceFolder}/build-vita"
+			],
+			"problemMatcher": [],
+			"group": "build",
+			"presentation": {
+				"clear": true,
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": false
+			}
+		},
 	],
 }
