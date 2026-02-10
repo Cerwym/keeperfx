@@ -871,6 +871,11 @@ long gold_being_dropped_on_creature(long plyr_idx, struct Thing *goldtng, struct
     long tribute;
     tribute = goldtng->valuable.gold_stored;
     drop_gold_coins(&pos, 0, plyr_idx);
+    // Track salary cost for hand-paid gold
+    struct Dungeon* dungeon = get_dungeon(plyr_idx);
+    if (!dungeon_invalid(dungeon)) {
+        dungeon->lvstats.salary_cost += tribute;
+    }
     if (tribute >= salary)
     {
         thing_play_sample(creatng, 34, NORMAL_PITCH, 0, 3, 0, 2, FULL_LOUDNESS);

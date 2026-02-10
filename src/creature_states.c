@@ -3165,7 +3165,7 @@ short creature_take_salary(struct Thing *creatng)
         anger_apply_anger_to_creature_all_types(creatng, crconf->annoy_got_wage);
     }
     thing_play_sample(efftng, 32, NORMAL_PITCH, 0, 3, 0, 2, FULL_LOUDNESS);
-    dungeon->lvstats.salary_cost += salary;
+    dungeon->lvstats.salary_cost += received;
     return 1;
 }
 
