@@ -11,6 +11,8 @@ jobs:
   build-vita:
     name: "Build for PlayStation Vita"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     container:
       image: vitasdk/vitasdk:latest
 
