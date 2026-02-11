@@ -116,7 +116,7 @@ New-Item -ItemType Directory -Path $metadataPath -Force | Out-Null
 # Layer 0: Create junctions for large read-only directories
 Write-ColorOutput "`nLayer 0: Creating junctions (base directories)..." 'Green'
 
-$junctionDirs = @('ldata', 'levels', 'fxdata', 'lang', 'campgns')
+$junctionDirs = @('ldata', 'levels', 'fxdata', 'lang', 'campgns', 'sound', 'music')
 foreach ($dir in $junctionDirs) {
     $sourcePath = Join-Path $CleanMasterPath $dir
     $targetPath = Join-Path $deployPath $dir
@@ -132,15 +132,15 @@ foreach ($dir in $junctionDirs) {
     }
 }
 
-# Layer 1: Create hard links for data/*.dat files (frequently modified)
+# Layer 1: Create hard links for all data/ files (frequently modified)
 Write-ColorOutput "`nLayer 1: Creating hard links (modifiable files)..." 'Green'
 
 $dataSourcePath = Join-Path $CleanMasterPath "data"
 $dataTargetPath = Join-Path $deployPath "data"
 New-Item -ItemType Directory -Path $dataTargetPath -Force | Out-Null
 
-$datFiles = Get-ChildItem -Path $dataSourcePath -Filter "*.dat" -File
-foreach ($file in $datFiles) {
+$dataFiles = Get-ChildItem -Path $dataSourcePath -File
+foreach ($file in $dataFiles) {
     $sourcePath = $file.FullName
     $targetPath = Join-Path $dataTargetPath $file.Name
     
@@ -168,15 +168,38 @@ foreach ($dll in $dllFiles) {
     Write-ColorOutput "  $($dll.Name) copied" 'Green'
 }
 
-# Copy config files (user may want to modify)
+# Copy config files to root (keeperfx expects them there)
 Write-ColorOutput "`nCopying configuration files..." 'Green'
-$configPath = Join-Path $deployPath "config"
-New-Item -ItemType Directory -Path $configPath -Force | Out-Null
 
-$configSource = Join-Path $CleanMasterPath "config\keeperfx.cfg"
+# Copy keeperfx.cfg to root
+$configSource = Join-Path $CleanMasterPath "keeperfx.cfg"
 if (Test-Path $configSource) {
-    Copy-Item $configSource (Join-Path $configPath "keeperfx.cfg") -Force
-    Write-ColorOutput "  keeperfx.cfg copied" 'Green'
+    Copy-Item $configSource (Join-Path $deployPath "keeperfx.cfg") -Force
+    Write-ColorOutput "  keeperfx.cfg copied to root" 'Green'
+}
+
+# Copy mods/ directory to root
+$modsSource = Join-Path $CleanMasterPath "mods"
+if (Test-Path $modsSource) {
+    Copy-Item $modsSource (Join-Path $deployPath "mods") -Recurse -Force
+    
+    # Create load_order.cfg if only _load_order.cfg exists (disabled by default)
+    $modsTarget = Join-Path $deployPath "mods"
+    $loadOrderFile = Join-Path $modsTarget "load_order.cfg"
+    $disabledLoadOrder = Join-Path $modsTarget "_load_order.cfg"
+    if (-not (Test-Path $loadOrderFile) -and (Test-Path $disabledLoadOrder)) {
+        Copy-Item -Path $disabledLoadOrder -Destination $loadOrderFile -Force
+        Write-ColorOutput "  load_order.cfg created from template" 'DarkGray'
+    }
+    
+    Write-ColorOutput "  mods/ copied to root" 'Green'
+}
+
+# Copy creatrs/ directory to root
+$creatrsSource = Join-Path $CleanMasterPath "creatrs"
+if (Test-Path $creatrsSource) {
+    Copy-Item $creatrsSource (Join-Path $deployPath "creatrs") -Recurse -Force
+    Write-ColorOutput "  creatrs/ copied to root" 'Green'
 }
 
 # Create manifest
@@ -186,7 +209,7 @@ $manifest = @{
     workspace = $WorkspaceFolder
     branch = (git branch --show-current 2>$null)
     junctions = $junctionDirs
-    hardlinks = $datFiles.Name
+    hardlinks = $dataFiles.Name
 }
 
 $manifestPath = Join-Path $metadataPath "manifest.json"

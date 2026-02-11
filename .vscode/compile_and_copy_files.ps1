@@ -58,15 +58,26 @@ else
 
 $debugFlag      = 'DEBUG=0';
 $debugFlagFTest = 'FTEST_DEBUG=0';
+$packageSuffix  = '';
 
 $compileSetting = (Get-Content "$compileSettingsFile" -Raw).Trim();
 if ($compileSetting -like '*DEBUG=1*')
 {
     $debugFlag = 'DEBUG=1';
 }
-if ($compileSetting -like 'FTEST_DEBUG=*')
+if ($compileSetting -like '*FTEST_DEBUG=1*')
 {
     $debugFlagFTest = 'FTEST_DEBUG=1';
+}
+if ($compileSetting -match 'PACKAGE_SUFFIX\s*=\s*(.+)')
+{
+    $customSuffix = $Matches[1].Trim();
+    $branchName = (wsl git rev-parse --abbrev-ref HEAD 2>$null).Trim();
+    if ($branchName) {
+        $packageSuffix = "PACKAGE_SUFFIX=$customSuffix-$branchName";
+    } else {
+        $packageSuffix = "PACKAGE_SUFFIX=$customSuffix";
+    }
 }
 
 if ($debugFlag -eq 'DEBUG=1')
@@ -82,7 +93,11 @@ if ($debugFlagFTest -eq 'FTEST_DEBUG=1')
 {
     Write-Host 'Compiling with FTEST_DEBUG=1' -ForegroundColor Magenta;
 }
-wsl make all -j`nproc` $debugFlag $debugFlagFTest;
+if ($packageSuffix)
+{
+    Write-Host "Compiling with $packageSuffix" -ForegroundColor Cyan;
+}
+wsl make all -j`nproc` $debugFlag $debugFlagFTest $packageSuffix;
 if ($?) {
     Write-Host 'Compilation successful!' -ForegroundColor Green;
 }
@@ -115,4 +130,40 @@ if (-not (Test-Path $deployPath)) {
 Write-Host 'Deploying assets to .deploy/...' -ForegroundColor Cyan;
 Copy-Item -Path "${workspaceFolder}\\bin\\keeperfx.exe" -Destination $deployPath -Force;
 Copy-Item -Path "${workspaceFolder}\\bin\\*.dll" -Destination $deployPath -Force -ErrorAction SilentlyContinue;
+
+# Deploy config files to root (keeperfx expects them there, not in config/)
+Write-Host 'Deploying config files to root...' -ForegroundColor Cyan;
+
+# Copy keeperfx.cfg to root
+$sourceConfigFile = Join-Path $workspaceFolder "config\\keeperfx.cfg"
+if (Test-Path $sourceConfigFile) {
+    Copy-Item -Path $sourceConfigFile -Destination (Join-Path $deployPath "keeperfx.cfg") -Force
+    Write-Host '  keeperfx.cfg deployed to root' -ForegroundColor DarkGray
+}
+
+# Copy mods/ directory to root
+$sourceModsPath = Join-Path $workspaceFolder "config\\mods"
+$targetModsPath = Join-Path $deployPath "mods"
+if (Test-Path $sourceModsPath) {
+    Copy-Item -Path $sourceModsPath -Destination $targetModsPath -Recurse -Force
+    
+    # Create load_order.cfg if only _load_order.cfg exists (disabled by default)
+    $loadOrderFile = Join-Path $targetModsPath "load_order.cfg"
+    $disabledLoadOrder = Join-Path $targetModsPath "_load_order.cfg"
+    if (-not (Test-Path $loadOrderFile) -and (Test-Path $disabledLoadOrder)) {
+        Copy-Item -Path $disabledLoadOrder -Destination $loadOrderFile -Force
+        Write-Host '  Created load_order.cfg from template' -ForegroundColor DarkGray
+    }
+    
+    Write-Host '  mods/ deployed to root' -ForegroundColor DarkGray
+}
+
+# Copy creatrs/ directory to root
+$sourceCreatrsPath = Join-Path $workspaceFolder "config\\creatrs"
+$targetCreatrsPath = Join-Path $deployPath "creatrs"
+if (Test-Path $sourceCreatrsPath) {
+    Copy-Item -Path $sourceCreatrsPath -Destination $targetCreatrsPath -Recurse -Force
+    Write-Host '  creatrs/ deployed to root' -ForegroundColor DarkGray
+}
+
 Write-Host 'Deployment complete!' -ForegroundColor Green;
