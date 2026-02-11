@@ -4,8 +4,8 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "program": "D:/DungeonKeeper/keeperfx.exe",
-            "cwd": "D:/DungeonKeeper/",
+            "program": "${workspaceFolder}/.deploy/keeperfx.exe",
+            "cwd": "${workspaceFolder}/.deploy",
             "args": [
                 "-level", "00001",
                 "-campaign", "keeporig",
