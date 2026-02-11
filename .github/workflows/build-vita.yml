@@ -28,23 +28,19 @@ jobs:
 
     - name: Setup VitaSDK and vdpm
       run: |
-        # Setup environment variables
+        # Setup environment variables (VitaSDK already installed in Docker image)
         export VITASDK=/usr/local/vitasdk
         export PATH=$VITASDK/bin:$PATH
         
         echo "VITASDK=$VITASDK" >> $GITHUB_ENV
         echo "$VITASDK/bin" >> $GITHUB_PATH
         
-        # Clone and setup vdpm
+        # Clone vdpm for package installation
         echo "Setting up vdpm..."
         cd /tmp
         git clone --depth=1 https://github.com/vitasdk/vdpm.git
-        cd vdpm
         
-        # Bootstrap VitaSDK (this sets up the toolchain if not present)
-        bash bootstrap-vitasdk.sh
-        
-        # Verify VitaSDK installation
+        # Verify VitaSDK installation (already present in Docker image)
         echo "Verifying VitaSDK installation..."
         which arm-vita-eabi-gcc
         arm-vita-eabi-gcc --version
