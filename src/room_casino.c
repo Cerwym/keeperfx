@@ -154,31 +154,6 @@ void set_casino_odds_tier(struct Room* room, unsigned char tier)
 }
 
 /**
- * Checks if a creature meets all requirements to use the casino.
- */
-TbBool can_creature_use_casino(const struct Thing* creatng)
-{
-    struct CreatureControl* cctrl = creature_control_get_from_thing(creatng);
-    
-    // Check cooldown - prevent spam gambling
-    // Will use game.conf.casino_visit_cooldown when config is added
-    const GameTurn cooldown = 500; // ~20 seconds default
-    GameTurn elapsed = game.play_gameturn - cctrl->last_casino_visit_turn;
-    if (elapsed < cooldown) {
-        return false;
-    }
-    
-    // Check minimum wealth - prevent broke creatures from gambling
-    // Will use game.conf.casino_min_gold_to_play when config is added
-    const GoldAmount min_gold = 100;
-    if (cctrl->current_gold_held < min_gold) {
-        return false;
-    }
-    
-    return true;
-}
-
-/**
  * Calculates the bet amount for a creature's gambling session.
  * Creatures bet 10-25% of their current wealth.
  */
