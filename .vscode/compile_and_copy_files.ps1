@@ -87,4 +87,27 @@ else
     Write-Host 'Compilation failed!' -ForegroundColor Red;
     exit 1;
 }
-Copy-Item -Path "${workspaceFolder}\\bin\\*" -Destination $gameDir -Force;
+
+# Deploy to .deploy/ directory instead of copying to game directory
+$deployPath = Join-Path $workspaceFolder ".deploy"
+
+# Initialize .deploy/ if it doesn't exist
+if (-not (Test-Path $deployPath)) {
+    Write-Host 'Initializing layered deployment (.deploy/)...' -ForegroundColor Cyan;
+    $initScript = Join-Path $workspaceFolder ".vscode\init_layered_deploy.ps1"
+    if (Test-Path $initScript) {
+        & $initScript
+        if (-not $?) {
+            Write-Host 'Failed to initialize deployment!' -ForegroundColor Red;
+            exit 1;
+        }
+    } else {
+        Write-Host 'ERROR: init_layered_deploy.ps1 not found!' -ForegroundColor Red;
+        exit 1;
+    }
+}
+
+# Deploy compiled assets
+Write-Host 'Deploying assets to .deploy/...' -ForegroundColor Cyan;
+Copy-Item -Path "${workspaceFolder}\\bin\\keeperfx.exe" -Destination $deployPath -Force;
+Write-Host 'Deployment complete!' -ForegroundColor Green;
