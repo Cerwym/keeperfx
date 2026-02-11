@@ -58,101 +58,154 @@ if( Test-Path $launchJsonFile )
 }
 else
 {
-    # determine KeeperFx executable path from user dialog
-    $keeperFxExecutable = ""
-    $doneSelectingFilepath = $false
-    :fileLoop while( -not $doneSelectingFilepath )
-    {
-        # prompt user with file browser dialog to locate keeperfx.exe
-        Write-Host "Prompting user for KeeperFX executable filepath..." -ForegroundColor DarkGray
-        $FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
-            InitialDirectory = [Environment]::GetFolderPath('Desktop')
-            Filter = 'Installed KeeperFX executable|keeperfx.exe'
-            Title = "Please select the installed Game executable (keeperfx.exe)"
-        }
+    Write-Host "Generating launch.json from template..." -ForegroundColor White
+    
+    # With layered deployment, use template as-is (already points to .deploy)
+    $newLaunchFileContents = Get-Content ${templateLaunchFile}
+    
+    # Update sourceFileMap for the current drive
+    $sourceFileMapRegexReplace = '(\/\/)(\"sourceFileMap\"\s*:\s*{\s*\"\/mnt\/)(.*?)(\/\"\s*:\s*\")(.*?)(:\/\")'
+    $newLaunchFileContents = ($newLaunchFileContents) -replace $sourceFileMapRegexReplace, ('$2{0}$4{1}$6' -f "${driveLetterLower}", "${driveLetter}")
+    
+    [System.IO.File]::WriteAllLines( ${launchJsonFile}, $newLaunchFileContents)
+    Write-Host ("launchJsonFile '$launchJsonFile' was created.") -ForegroundColor White
+}
 
-        $FileBrowserResult = $FileBrowser.ShowDialog((New-Object System.Windows.Forms.Form -Property @{TopMost = $true }))
-        Write-Host "User selected '$FileBrowserResult'" -ForegroundColor DarkGray
-        if( $FileBrowserResult -ne "OK" )
-        {
-            # DO NOT use this -> [System.Windows.Forms.MessageBox]::Show, because it breaks the current window focus, and consecutive windows will be in the background, confusing users
-            # Instead, use custom windows form below, for a simple yes/no popup.
+# ============================================================================
+# Layered Deployment Setup (for new worktrees)
+# ============================================================================
 
-            $form = New-Object System.Windows.Forms.Form
-            $form.Text = 'KeeperFX.exe not found'
-            $form.Size = New-Object System.Drawing.Size(312,128)
-            $form.AutoSize = $false
-            $form.StartPosition = 'CenterScreen'
-            $form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedSingle;
-            $form.MinimizeBox = $false
-            $form.MaximizeBox = $false
+Write-Host "`n=== Checking Layered Deployment Setup ===" -ForegroundColor Cyan
 
-            # form icon using base64 string of 32x32 keeperfx icon
-            $iconBase64 = 'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgBAMAAACBVGfHAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JQAAgIMAAPn/AACA6QAAdTAAAOpgAAA6mAAAF2+SX8VGAAAAG1BMVEX///8AAAD//wCAgACAgICAAAD/AADAwMD///8oIYO3AAAAAXRSTlMAQObYZgAAAAFiS0dEAIgFHUgAAAAJcEhZcwAACxMAAAsTAQCanBgAAAAHdElNRQflBRgWJxAIya1SAAAA40lEQVQoz1WRQY7DIAxF8Q1CUg5QWT1AmlnMtqp6gCj5ZLazcC6AInU/rdRjl2ZCMKysxwPMt7GmWGTqqgDWNMdCOBo6a6VuTaEQx12tfISPkojltaJzux1IRcNrM9TwplJ3i4TctU13HQBrHcb9dgf4GcAOCDPES58bciIQUS3T5P2kBEM/C+4FkHHErwZ+mrw23PAY/1Bp8EQJwverWzTg0IVTBgTmwKdegcDMiwZDBMgg/jbwkn9LN8gQILhsoPlyXmICh65K4cdAZunTQCiOwcXEKmP/Z0ZrwrDrqPPLqX4Dt+cuw4zSIHYAAAAldEVYdGRhdGU6Y3JlYXRlADIwMjEtMDUtMjRUMjI6Mzk6MDQrMDA6MDA1uUv2AAAAJXRFWHRkYXRlOm1vZGlmeQAyMDIwLTA4LTI5VDIzOjA2OjM3KzAwOjAwZ7W8mwAAAA5lWElmTU0AKgAAAAgAAAAAAAAA0lOTAAAAAElFTkSuQmCC'
-            $iconBytes  = [Convert]::FromBase64String($iconBase64)
-            $stream     = [System.IO.MemoryStream]::new($iconBytes, 0, $iconBytes.Length)
-            $form.Icon  = [System.Drawing.Icon]::FromHandle(([System.Drawing.Bitmap]::new($stream).GetHIcon()))
+# Check if settings.json has clean master path configured
+$settingsContent = @{}
+if (Test-Path $settingsJsonFile) {
+    try {
+        $settingsContent = Get-Content $settingsJsonFile -Raw | ConvertFrom-Json -AsHashtable
+    } catch {
+        Write-Host "Warning: Could not parse settings.json" -ForegroundColor Yellow
+    }
+}
 
-            $okButton = New-Object System.Windows.Forms.Button
-            $okButton.Location = New-Object System.Drawing.Point(85,55)
-            $okButton.Size = New-Object System.Drawing.Size(50,25)
-            $okButton.Text = 'Yes'
-            $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
-            $form.AcceptButton = $okButton
-            $form.Controls.Add($okButton)
+$cleanMasterPath = $settingsContent.'keeperfx.cleanMasterPath'
+$deployPath = Join-Path $workspaceFolder ".deploy"
 
-            $cancelButton = New-Object System.Windows.Forms.Button
-            $cancelButton.Location = New-Object System.Drawing.Point(160,55)
-            $cancelButton.Size = New-Object System.Drawing.Size(50,25)
-            $cancelButton.Text = 'No'
-            $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
-            $form.CancelButton = $cancelButton
-            $form.Controls.Add($cancelButton)
-
-            $label = New-Object System.Windows.Forms.Label
-            $label.Location = New-Object System.Drawing.Point(10,20)
-            $label.Size = New-Object System.Drawing.Size(280,60)
-            $label.AutoSize = $false
-            $label.TextAlign = [System.Drawing.ContentAlignment]::TopCenter
-            $label.Text = 'Would you like to retry selecting the installed KeeperFX Game executable?'
-            $form.Controls.Add($label)
-            
-            $form.Topmost = $true
-            $form.ActiveControl = $okButton
-            $form.Add_Load({$form.Activate()})
-
-            $result = $form.ShowDialog()
-
-            if ($result -ne [System.Windows.Forms.DialogResult]::OK)
-            {
-                Write-Host "User aborted KeeperFX executable selection." -ForegroundColor Red
-                Write-Host "Restart VSCode to re-open file browser, OR enter them manually inside launch.json" -ForegroundColor Red
-                exit
-            }
-            else
-            {
-                Write-Host "Retrying..." -ForegroundColor DarkGray
-                continue fileLoop
+# Step 1: Ensure clean master is configured
+if (-not $cleanMasterPath -or -not (Test-Path $cleanMasterPath)) {
+    Write-Host "`nClean master installation not configured." -ForegroundColor Yellow
+    Write-Host "The layered file system requires a clean KeeperFX installation as a base." -ForegroundColor White
+    Write-Host "`nPlease provide the path to your clean KeeperFX installation:" -ForegroundColor White
+    Write-Host "(e.g., from GOG, Steam, or EA)" -ForegroundColor DarkGray
+    
+    # Prompt for clean master path
+    $FolderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog -Property @{
+        Description = 'Select your clean KeeperFX installation folder (containing keeperfx.exe)'
+        ShowNewFolderButton = $false
+    }
+    
+    $folderResult = $FolderBrowser.ShowDialog((New-Object System.Windows.Forms.Form -Property @{TopMost = $true }))
+    
+    if ($folderResult -eq "OK") {
+        $cleanMasterPath = $FolderBrowser.SelectedPath.Replace('\', '/')
+        
+        # Validate it has required files
+        $requiredFiles = @('keeperfx.exe', 'data', 'ldata', 'levels')
+        $isValid = $true
+        foreach ($file in $requiredFiles) {
+            if (-not (Test-Path (Join-Path $cleanMasterPath $file))) {
+                $isValid = $false
+                Write-Host "ERROR: Missing required file/folder: $file" -ForegroundColor Red
+                break
             }
         }
         
-        # keeperfx exe filepath is validated by OpenFileDialog by default
-        $keeperFxExecutable = $FileBrowser.FileName.Replace('\', '/')
-        $doneSelectingFilepath = $true
+        if ($isValid) {
+            # Save to settings.json
+            if (-not $settingsContent) {
+                $settingsContent = @{}
+            }
+            $settingsContent.'keeperfx.cleanMasterPath' = $cleanMasterPath
+            $settingsContent | ConvertTo-Json -Depth 10 | Set-Content $settingsJsonFile -Encoding UTF8
+            Write-Host "Clean master configured: $cleanMasterPath" -ForegroundColor Green
+        } else {
+            Write-Host "Invalid clean master installation. Skipping deployment setup." -ForegroundColor Red
+            Write-Host "You can run '.\.vscode\setup_clean_master.ps1' manually later." -ForegroundColor Yellow
+            exit
+        }
+    } else {
+        Write-Host "Clean master selection cancelled. Skipping deployment setup." -ForegroundColor Yellow
+        Write-Host "You can run '.\.vscode\setup_clean_master.ps1' manually later." -ForegroundColor Yellow
+        exit
     }
-
-    Write-Host ('KeeperFX executable path: ' + "${keeperFxExecutable}") -ForegroundColor White
-
-    # generate launch.json from template, replacing "program", "cwd" and "sourceFileMap"
-    $programRegexReplace = '(\"program\"\s*:\s*\")(.*?)(\")'
-    $cwdRegexReplace = '(\"cwd\"\s*:\s*\")(.*?)(\")'
-    $sourceFileMapRegexReplace = '(\/\/)(\"sourceFileMap\"\s*:\s*{\s*\"\/mnt\/)(.*?)(\/\"\s*:\s*\")(.*?)(:\/\")'
-    Write-Host "Generating ${launchJsonFile}" -ForegroundColor DarkGray
-    $newLaunchFileContents = Get-Content ${templateLaunchFile} # read in template launch file
-    $newLaunchFileContents = ($newLaunchFileContents) -replace $programRegexReplace, ('$1{0}$3' -f "${keeperFxExecutable}") # replace "program" of new launch file
-    $newLaunchFileContents = ($newLaunchFileContents) -replace $cwdRegexReplace, ('$1{0}$3' -f (Split-Path -Path "${keeperFxExecutable}").Replace('\', '/')) # replace "cwd" of new launch file
-    $newLaunchFileContents = ($newLaunchFileContents) -replace $sourceFileMapRegexReplace, ('$2{0}$4{1}$6' -f "${driveLetterLower}", "${driveLetter}") # replace "sourceFileMap" of new launch file
-
-    [System.IO.File]::WriteAllLines( ${launchJsonFile}, $newLaunchFileContents) # write out new launch file
-    Write-Host ("launchJsonFile '$launchJsonFile' was created.") -ForegroundColor White
 }
+
+# Step 2: Initialize .deploy directory if needed
+if (-not (Test-Path $deployPath)) {
+    Write-Host "`nInitializing layered deployment (.deploy/)..." -ForegroundColor Cyan
+    Write-Host "This creates junctions and hard links to save ~480MB of disk space." -ForegroundColor White
+    
+    $initScript = Join-Path (Split-Path $settingsJsonFile -Parent) "init_layered_deploy.ps1"
+    if (Test-Path $initScript) {
+        & $initScript -CleanMasterPath $cleanMasterPath -WorkspaceFolder $workspaceFolder
+        
+        if ($LASTEXITCODE -eq 0 -and (Test-Path $deployPath)) {
+            Write-Host "`nLayered deployment ready!" -ForegroundColor Green
+        } else {
+            Write-Host "Failed to initialize deployment. You may need to run init_layered_deploy.ps1 manually." -ForegroundColor Red
+        }
+    } else {
+        Write-Host "ERROR: init_layered_deploy.ps1 not found!" -ForegroundColor Red
+    }
+} else {
+    Write-Host ".deploy directory already exists - skipping initialization" -ForegroundColor DarkGray
+}
+
+# Step 3: Check if GDB is installed for debugging
+Write-Host "`nChecking debugging setup..." -ForegroundColor Cyan
+try {
+    $gdbCheck = wsl which i686-w64-mingw32-gdb 2>&1
+    if ($LASTEXITCODE -eq 0 -and $gdbCheck) {
+        Write-Host "GDB debugger found in WSL - breakpoint debugging enabled!" -ForegroundColor Green
+    } else {
+        Write-Host "GDB not found - Install for breakpoint debugging:" -ForegroundColor Yellow
+        Write-Host "  Run: wsl sudo apt install gdb-mingw-w64" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "Could not check for GDB (install with: wsl sudo apt install gdb-mingw-w64)" -ForegroundColor DarkGray
+}
+
+# Check debug symbols setting
+$compileSettings = Join-Path (Split-Path $settingsJsonFile -Parent) "compile_settings.cfg"
+if (Test-Path $compileSettings) {
+    $content = Get-Content $compileSettings -Raw
+    if ($content -match "DEBUG\s*=\s*1") {
+        Write-Host "DEBUG=1 enabled - debug symbols will be included" -ForegroundColor Green
+    } else {
+        Write-Host "DEBUG=0 - No debug symbols (set DEBUG=1 in compile_settings.cfg for breakpoints)" -ForegroundColor DarkGray
+    }
+}
+
+# Step 4: Configure SSH for git submodules (1Password integration)
+Write-Host "`nConfiguring SSH for git operations..." -ForegroundColor Cyan
+try {
+    # Check if core.sshCommand is set for git
+    $gitSshCommand = wsl git config --global --get core.sshCommand 2>&1
+    if ($gitSshCommand -eq "ssh.exe") {
+        Write-Host "Git already configured to use Windows SSH (1Password integration)" -ForegroundColor Green
+    } else {
+        # Test if Windows SSH agent is accessible from WSL
+        $sshTest = wsl ssh-add.exe -l 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            # Configure git to use ssh.exe
+            wsl git config --global core.sshCommand ssh.exe
+            Write-Host "Configured Git to use ssh.exe for 1Password SSH agent" -ForegroundColor Green
+        } else {
+            Write-Host "1Password SSH agent not accessible from WSL" -ForegroundColor Yellow
+            Write-Host "  See .vscode/SSH_SETUP.md for setup instructions" -ForegroundColor Yellow
+        }
+    }
+} catch {
+    Write-Host "Could not check SSH configuration" -ForegroundColor DarkGray
+}
+
+Write-Host "`n=== Workspace Setup Complete ===" -ForegroundColor Cyan
