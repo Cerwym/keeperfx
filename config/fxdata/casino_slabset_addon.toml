@@ -1,0 +1,75 @@
+# Casino Slabset Configuration
+# This should be appended to the end of slabset.toml
+
+# SlbT_CASINO (61) - Gambling Device Slab
+[slab61]
+[slab61.S]
+Columns = [199, 200, 202, 199, 200, 202, 198, 203, 199]
+Objects = []
+
+[slab61.W]
+Columns = [198, 198, 198, 198, 198, 198, 198, 198, 198]
+Objects = []
+
+[slab61.N]
+Columns = [199, 200, 202, 199, 200, 202, 198, 203, 199]
+Objects = []
+
+[slab61.E]
+Columns = [199, 200, 202, 199, 200, 202, 198, 203, 199]
+Objects = []
+
+[slab61.SW]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab61.NW]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab61.NE]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab61.SE]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+
+# SlbT_CASINO_WALL (62) - Reinforced Wall with Controller
+[slab62]
+[slab62.S]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab62.W]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab62.N]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab62.E]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab62.SW]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab62.NW]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab62.NE]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+[slab62.SE]
+Columns = [365, 365, 365, 365, 365, 365, 365, 365, 365]
+Objects = []
+
+# Note: Column IDs (365 = fortified wall placeholder, 198-203 = claimed land variants)
+# These will need proper texture column IDs when art assets are created.
+# Objects (gambling devices) will be added in Phase 4 when object models are defined.
