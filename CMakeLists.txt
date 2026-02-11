@@ -77,18 +77,22 @@ if(WIN32 AND NOT VITA)
 endif()
 
 message(STATUS "We are using ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "System: ${CMAKE_SYSTEM_NAME}, Processor: ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "Platform detection - VITA: ${VITA}, WIN32: ${WIN32}, UNIX: ${UNIX}")
 
 # Platform-specific compiler and linker flags
 if(VITA)
-    # Vita-specific flags
+    # Vita-specific flags (ARM architecture)
+    message(STATUS "Configuring for PlayStation Vita (ARM)")
     set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
     target_compile_options(keeperfx PRIVATE ${WARNFLAGS})
     target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS})
     
     # Vita system libraries will be linked via toolchain
-else()
-    # Windows/MinGW flags
+elseif(WIN32)
+    # Windows/MinGW flags (x86-64 architecture)
+    message(STATUS "Configuring for Windows (x86-64)")
     # The default bfd linker in MinGW is extremely slow. LLVM linker (LLD) is much much faster.
     set_property(TARGET keeperfx PROPERTY LINKER_TYPE LLD)
     set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
@@ -107,6 +111,14 @@ else()
     # System libraries.
     target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
     target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
+else()
+    # Linux/other platforms (x86-64 architecture)
+    message(STATUS "Configuring for Linux/Unix (x86-64)")
+    set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas -Werror)
+    set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
+    target_compile_options(keeperfx PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
+    target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
 endif()
 
 # Go into submodules.

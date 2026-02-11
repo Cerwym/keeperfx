@@ -16,6 +16,9 @@ set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_VERSION 1)
 set(CMAKE_SYSTEM_PROCESSOR armv7)
 
+# Set VITA CMake variable for platform detection in CMakeLists.txt
+set(VITA TRUE)
+
 # VitaSDK paths
 set(VITASDK $ENV{VITASDK})
 set(CMAKE_C_COMPILER "${VITASDK}/bin/arm-vita-eabi-gcc")
