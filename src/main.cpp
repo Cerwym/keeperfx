@@ -4350,7 +4350,7 @@ const char* determine_log_filename(unsigned short argument_count, char *argument
         if (argument_values[argument_index] && (argument_values[argument_index][0] == '-' || argument_values[argument_index][0] == '/')) {
             char* argument_name = argument_values[argument_index] + 1;
             if (strcasecmp(argument_name, "log") == 0 && argument_index + 1 < argument_count) {
-                remove("keeperfx.log");
+                remove(log_file_name);
                 return argument_values[argument_index + 1];
             }
         }

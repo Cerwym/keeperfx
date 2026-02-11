@@ -112,9 +112,11 @@
 			"windows": {
 				"command": [
 					"$gameDir = (Get-Content -Raw '${workspaceFolder}\\.vscode\\launch.json' | Select-String -Pattern '\\\"cwd\\\"\\s*:\\s*\\\"(.*?)\\\"').Matches[0].Groups[1].Value.Replace('\\', '/');",
+					"$branch = git rev-parse --abbrev-ref HEAD;",
+					"$logFile = \"keeperfx-$branch.log\";",
 					"cd $gameDir;",
-					"Clear-Content keeperfx.log;",
-					"Get-Content keeperfx.log -Wait"
+					"Clear-Content $logFile;",
+					"Get-Content $logFile -Wait"
 				]
 			},
 			"linux": {},
