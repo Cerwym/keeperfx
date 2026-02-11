@@ -72,6 +72,12 @@ jobs:
         ./vdpm sdl2_mixer || echo "Warning: sdl2_mixer install failed, continuing..."
         ./vdpm sdl2_net || echo "Warning: sdl2_net install failed, continuing..."
         
+        # Try to install additional dependencies commonly needed
+        echo "Installing additional dependencies..."
+        ./vdpm zlib || echo "Warning: zlib not available via vdpm"
+        ./vdpm libpng || echo "Warning: libpng not available via vdpm"
+        ./vdpm freetype || echo "Warning: freetype not available via vdpm"
+        
         # Verify SDL2 installation
         echo "Verifying SDL2 installation..."
         if pkg-config --exists sdl2 2>/dev/null; then

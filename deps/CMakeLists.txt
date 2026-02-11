@@ -1,6 +1,67 @@
 cmake_minimum_required(VERSION 3.20)
 
+# For Vita builds, we use system libraries from VitaSDK instead of downloading Windows binaries
+if(VITA)
+    message(STATUS "Vita build detected - using VitaSDK system libraries")
+    
+    ## centitoml - build from source (works on all platforms)
+    # First we need centijson which it depends on
+    # Try to find it via pkg-config or create a stub
+    find_library(CENTIJSON_LIB NAMES json centijson)
+    if(CENTIJSON_LIB)
+        message(STATUS "Found centijson library: ${CENTIJSON_LIB}")
+        add_library(centijson_static STATIC IMPORTED)
+        set_target_properties(centijson_static PROPERTIES IMPORTED_LOCATION ${CENTIJSON_LIB})
+        # Try to find include directory
+        find_path(CENTIJSON_INCLUDE_DIR NAMES json.h PATH_SUFFIXES include)
+        if(CENTIJSON_INCLUDE_DIR)
+            set_target_properties(centijson_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CENTIJSON_INCLUDE_DIR})
+        endif()
+    else()
+        message(WARNING "centijson not found - centitoml may not work properly")
+        # Create a dummy target to avoid build errors
+        add_library(centijson_static INTERFACE)
+    endif()
+    
+    # Build centitoml from source
+    add_library(centitoml OBJECT "centitoml/toml_api.c")
+    target_link_libraries(centitoml PUBLIC centijson_static)
+    target_include_directories(centitoml PUBLIC "centitoml")
+    target_link_libraries(keeperfx PUBLIC centitoml)
+    target_link_libraries(keeperfx_hvlog PUBLIC centitoml)
+    
+    # Try to find other common dependencies via system
+    find_library(ZLIB_LIB NAMES z zlib)
+    if(ZLIB_LIB)
+        message(STATUS "Found zlib: ${ZLIB_LIB}")
+        add_library(zlib_static STATIC IMPORTED)
+        set_target_properties(zlib_static PROPERTIES IMPORTED_LOCATION ${ZLIB_LIB})
+        target_link_libraries(keeperfx PUBLIC zlib_static)
+        target_link_libraries(keeperfx_hvlog PUBLIC zlib_static)
+    else()
+        message(WARNING "zlib not found - some features may not work")
+    endif()
+    
+    find_library(PNG_LIB NAMES png libpng)
+    if(PNG_LIB)
+        message(STATUS "Found libpng: ${PNG_LIB}")
+        add_library(png_static STATIC IMPORTED)
+        set_target_properties(png_static PROPERTIES IMPORTED_LOCATION ${PNG_LIB})
+        target_link_libraries(keeperfx PUBLIC png_static)
+        target_link_libraries(keeperfx_hvlog PUBLIC png_static)
+    else()
+        message(WARNING "libpng not found")
+    endif()
+    
+    # For Vita, we rely on system packages installed via vdpm
+    # Libraries are found via pkg-config or VitaSDK paths
+    # Most dependencies are handled through CMAKE_FIND_ROOT_PATH in vita.cmake
+    
+    message(STATUS "Vita dependencies configured - some features may be disabled if libraries not found")
+    return()
+endif()
 
+# Windows/MinGW dependency handling below
 if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/enet )
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/enet)
 	if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/enet-mingw32.tar.gz )
