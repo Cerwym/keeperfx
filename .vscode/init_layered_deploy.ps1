@@ -154,11 +154,19 @@ foreach ($file in $datFiles) {
 }
 
 # Copy keeperfx.exe (will be overwritten by builds)
-Write-ColorOutput "`nCopying executable..." 'Green'
+Write-ColorOutput "`nCopying executable and DLLs..." 'Green'
 $exeSource = Join-Path $CleanMasterPath "keeperfx.exe"
 $exeTarget = Join-Path $deployPath "keeperfx.exe"
 Copy-Item $exeSource $exeTarget -Force
 Write-ColorOutput "  keeperfx.exe copied" 'Green'
+
+# Copy DLLs
+$dllFiles = Get-ChildItem -Path $CleanMasterPath -Filter "*.dll" -File
+foreach ($dll in $dllFiles) {
+    $dllTarget = Join-Path $deployPath $dll.Name
+    Copy-Item $dll.FullName $dllTarget -Force
+    Write-ColorOutput "  $($dll.Name) copied" 'Green'
+}
 
 # Copy config files (user may want to modify)
 Write-ColorOutput "`nCopying configuration files..." 'Green'
