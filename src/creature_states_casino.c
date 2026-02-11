@@ -94,13 +94,13 @@ short creature_gambling(struct Thing* creatng)
             return CrStRet_Modified;
             
         case 3:  // Victory celebration
-            // Play happy animation/sound
-            // For now, just finish
+            // Play happy sound - creature won!
+            play_creature_sound(creatng, CrSnd_Happy, 3, 0);
             return CrStRet_ResetOk; // Done, return to idle
             
         case 4:  // Disappointed reaction
-            // Play sad animation/sound
-            // For now, just finish
+            // Play sad sound - creature lost
+            play_creature_sound(creatng, CrSnd_Sad, 2, 0);
             return CrStRet_ResetOk;
             
         default:
