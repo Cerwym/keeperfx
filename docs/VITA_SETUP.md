@@ -15,36 +15,71 @@ VitaSDK is the official SDK for PlayStation Vita homebrew development.
 
 ### Windows
 
+You can use either MSYS2 or WSL (Windows Subsystem for Linux) to build KeeperFX for Vita on Windows.
+
+#### Option 1: Windows with MSYS2
+
 1. Download and install [MSYS2](https://www.msys2.org/)
 2. Open MSYS2 MinGW 64-bit terminal
-3. Install VitaSDK:
+3. Install dependencies:
    ```bash
-   curl -L https://github.com/vitasdk/vdpm/releases/latest/download/setup-vitasdk.sh | bash
+   pacman -S make git wget p7zip tar cmake
    ```
-4. Add VitaSDK to your PATH:
+4. Clone and setup VitaSDK:
    ```bash
-   echo 'export VITASDK=/opt/vitasdk' >> ~/.bashrc
+   git clone https://github.com/vitasdk/vdpm
+   cd vdpm
+   ./bootstrap-vitasdk.sh
+   export VITASDK=/usr/local/vitasdk
+   export PATH=$VITASDK/bin:$PATH
+   ./install-all.sh
+   ```
+5. Add VitaSDK to your PATH permanently:
+   ```bash
+   echo 'export VITASDK=/usr/local/vitasdk' >> ~/.bashrc
    echo 'export PATH=$VITASDK/bin:$PATH' >> ~/.bashrc
    source ~/.bashrc
    ```
+
+#### Option 2: Windows with WSL (Bash on Ubuntu on Windows)
+
+WSL is the recommended approach for Windows 10/11 users.
+
+1. Enable WSL by following [Microsoft's guide](https://docs.microsoft.com/en-us/windows/wsl/install)
+2. Install Ubuntu from the Microsoft Store
+3. Open Ubuntu terminal and follow the Linux instructions below
+
+**Note:** WSL provides a native Linux environment, so all Linux commands work identically.
 
 ### Linux
 
 1. Install dependencies:
    ```bash
    # Ubuntu/Debian
-   sudo apt-get install cmake git make pkg-config libtool
+   sudo apt-get update
+   sudo apt-get install cmake git make pkg-config libtool wget
    
    # Arch Linux
-   sudo pacman -S cmake git make pkg-config libtool
+   sudo pacman -S cmake git make pkg-config libtool wget
    ```
-2. Install VitaSDK:
+
+2. Clone and setup VitaSDK with vdpm:
    ```bash
-   curl -L https://github.com/vitasdk/vdpm/releases/latest/download/setup-vitasdk.sh | bash
+   git clone https://github.com/vitasdk/vdpm
+   cd vdpm
+   ./bootstrap-vitasdk.sh
+   export VITASDK=/usr/local/vitasdk
+   export PATH=$VITASDK/bin:$PATH
    ```
-3. Add VitaSDK to your PATH:
+
+3. Install all packages (optional, for full development):
    ```bash
-   echo 'export VITASDK=/opt/vitasdk' >> ~/.bashrc
+   ./install-all.sh
+   ```
+
+4. Add VitaSDK to your PATH permanently:
+   ```bash
+   echo 'export VITASDK=/usr/local/vitasdk' >> ~/.bashrc
    echo 'export PATH=$VITASDK/bin:$PATH' >> ~/.bashrc
    source ~/.bashrc
    ```
@@ -55,29 +90,49 @@ VitaSDK is the official SDK for PlayStation Vita homebrew development.
    ```bash
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
    ```
+
 2. Install dependencies:
    ```bash
    brew install cmake git wget
    ```
-3. Install VitaSDK:
+
+3. Clone and setup VitaSDK with vdpm:
    ```bash
-   curl -L https://github.com/vitasdk/vdpm/releases/latest/download/setup-vitasdk.sh | bash
+   git clone https://github.com/vitasdk/vdpm
+   cd vdpm
+   ./bootstrap-vitasdk.sh
+   export VITASDK=/usr/local/vitasdk
+   export PATH=$VITASDK/bin:$PATH
    ```
-4. Add VitaSDK to your PATH:
+
+4. Install all packages (optional, for full development):
    ```bash
-   echo 'export VITASDK=/opt/vitasdk' >> ~/.zshrc
+   ./install-all.sh
+   ```
+
+5. Add VitaSDK to your PATH permanently:
+   ```bash
+   echo 'export VITASDK=/usr/local/vitasdk' >> ~/.zshrc
    echo 'export PATH=$VITASDK/bin:$PATH' >> ~/.zshrc
    source ~/.zshrc
    ```
 
 ## Installing SDL2 for Vita
 
-KeeperFX uses SDL2 for graphics. Install SDL2 libraries for Vita:
+KeeperFX uses SDL2 for graphics. Install SDL2 libraries for Vita using vdpm:
 
 ```bash
+# Navigate to your vdpm directory
+cd vdpm
+
 # Install SDL2 and related libraries
-vdpm install sdl2
-vdpm install sdl2_image
+./vdpm sdl2
+./vdpm sdl2_image
+./vdpm sdl2_mixer
+./vdpm sdl2_net
+```
+
+Alternatively, if you ran `./install-all.sh` during VitaSDK setup, SDL2 libraries are already installed.
 vdpm install sdl2_mixer
 vdpm install sdl2_net
 ```
@@ -221,13 +276,36 @@ After building, create a VPK (Vita Package) file for installation on your Vita:
 ## Troubleshooting
 
 ### "VITASDK environment variable not set"
-Make sure you've added the VITASDK path to your shell configuration and restarted your terminal.
+Make sure you've added the VITASDK path to your shell configuration and restarted your terminal. The path should be `/usr/local/vitasdk`.
 
 ### SDL2 headers not found
-Run `vdpm install sdl2 sdl2_image sdl2_mixer sdl2_net` to install SDL2 libraries.
+Navigate to your vdpm directory and run:
+```bash
+./vdpm sdl2
+./vdpm sdl2_image
+./vdpm sdl2_mixer
+./vdpm sdl2_net
+```
+
+Or install all packages at once:
+```bash
+./install-all.sh
+```
 
 ### Build fails with "arm-vita-eabi-gcc not found"
-Ensure VitaSDK is properly installed and the bin directory is in your PATH.
+Ensure VitaSDK is properly installed and the bin directory is in your PATH. Run:
+```bash
+export VITASDK=/usr/local/vitasdk
+export PATH=$VITASDK/bin:$PATH
+```
+
+### vdpm command not found
+Make sure you've cloned the vdpm repository and are running commands from within it:
+```bash
+git clone https://github.com/vitasdk/vdpm
+cd vdpm
+./bootstrap-vitasdk.sh
+```
 
 ### Game crashes on Vita
 Check the Vita console output via USB debugging or review crash logs in `ux0:/data/`.

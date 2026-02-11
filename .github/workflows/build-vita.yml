@@ -24,77 +24,69 @@ jobs:
 
     - name: Install dependencies
       run: |
-        apk add cmake ninja git pkgconfig make curl
+        apk add cmake ninja git pkgconfig make curl bash tar wget
 
-    - name: Setup SDL2 libraries
+    - name: Setup VitaSDK and vdpm
       run: |
-        # Check if SDL2 is already available in the container
-        echo "Checking for existing SDL2 installation..."
-        if pkg-config --exists sdl2 2>/dev/null; then
-          echo "SDL2 is already installed"
-          pkg-config --modversion sdl2
-        else
-          echo "SDL2 not found, attempting installation..."
-          
-          # Try using vdpm if available
-          if command -v vdpm >/dev/null 2>&1; then
-            echo "Using vdpm to install SDL2 libraries..."
-            vdpm install sdl2 sdl2_image sdl2_mixer sdl2_net || {
-              echo "Warning: vdpm installation failed"
-              
-              # Fallback: Check for precompiled tarballs in deps/vita/
-              echo "Checking for precompiled tarballs in deps/vita/..."
-              if [ -f "deps/vita/sdl2.tar.gz" ]; then
-                echo "Found SDL2 tarballs, extracting to $VITASDK/arm-vita-eabi..."
-                cd $VITASDK/arm-vita-eabi
-                for tarball in $OLDPWD/deps/vita/*.tar.gz; do
-                  if [ -f "$tarball" ]; then
-                    echo "Extracting $(basename $tarball)..."
-                    tar -xzf "$tarball"
-                  fi
-                done
-                cd $OLDPWD
-              else
-                echo "No precompiled tarballs found in deps/vita/"
-                echo "Please add SDL2 tarballs to deps/vita/ or ensure vdpm works"
-                exit 1
-              fi
-            }
-          else
-            echo "vdpm not available in container"
-            
-            # Fallback: Check for precompiled tarballs
-            if [ -f "deps/vita/sdl2.tar.gz" ]; then
-              echo "Using precompiled tarballs from deps/vita/..."
-              cd $VITASDK/arm-vita-eabi
-              for tarball in $OLDPWD/deps/vita/*.tar.gz; do
-                if [ -f "$tarball" ]; then
-                  echo "Extracting $(basename $tarball)..."
-                  tar -xzf "$tarball"
-                fi
-              done
-              cd $OLDPWD
-            else
-              echo "Error: No SDL2 installation method available"
-              echo "Either vdpm should work or SDL2 tarballs should be in deps/vita/"
-              exit 1
-            fi
-          fi
-        fi
+        # Setup environment variables
+        export VITASDK=/usr/local/vitasdk
+        export PATH=$VITASDK/bin:$PATH
         
-        # Verify installation
-        echo "Verifying SDL2 availability..."
-        if pkg-config --exists sdl2 2>/dev/null; then
-          echo "✓ SDL2 found: $(pkg-config --modversion sdl2)"
-          pkg-config --libs sdl2
-        else
-          echo "⚠ SDL2 not detected via pkg-config, checking for headers..."
-          if [ -f "$VITASDK/arm-vita-eabi/include/SDL2/SDL.h" ]; then
-            echo "✓ SDL2 headers found in $VITASDK/arm-vita-eabi/include/SDL2/"
+        echo "VITASDK=$VITASDK" >> $GITHUB_ENV
+        echo "$VITASDK/bin" >> $GITHUB_PATH
+        
+        # Clone and setup vdpm
+        echo "Setting up vdpm..."
+        cd /tmp
+        git clone --depth=1 https://github.com/vitasdk/vdpm.git
+        cd vdpm
+        
+        # Bootstrap VitaSDK (this sets up the toolchain if not present)
+        bash bootstrap-vitasdk.sh
+        
+        # Verify VitaSDK installation
+        echo "Verifying VitaSDK installation..."
+        which arm-vita-eabi-gcc
+        arm-vita-eabi-gcc --version
+
+    - name: Install SDL2 libraries via vdpm
+      run: |
+        export VITASDK=/usr/local/vitasdk
+        export PATH=$VITASDK/bin:$PATH
+        
+        # Install SDL2 and related libraries using vdpm
+        echo "Installing SDL2 libraries..."
+        cd /tmp/vdpm
+        
+        # Install packages one by one with proper error handling
+        ./vdpm sdl2 || {
+          echo "Failed to install sdl2, checking for fallback..."
+          if [ -f "$GITHUB_WORKSPACE/deps/vita/sdl2.tar.gz" ]; then
+            echo "Using precompiled sdl2 from deps/vita/"
+            cd $VITASDK/arm-vita-eabi
+            tar -xzf "$GITHUB_WORKSPACE/deps/vita/sdl2.tar.gz"
+            cd "$GITHUB_WORKSPACE"
           else
-            echo "✗ SDL2 not found. Build will likely fail."
+            echo "Error: Failed to install sdl2 and no fallback available"
             exit 1
           fi
+        }
+        
+        ./vdpm sdl2_image || echo "Warning: sdl2_image install failed, continuing..."
+        ./vdpm sdl2_mixer || echo "Warning: sdl2_mixer install failed, continuing..."
+        ./vdpm sdl2_net || echo "Warning: sdl2_net install failed, continuing..."
+        
+        # Verify SDL2 installation
+        echo "Verifying SDL2 installation..."
+        if pkg-config --exists sdl2 2>/dev/null; then
+          echo "✓ SDL2 installed via pkg-config: $(pkg-config --modversion sdl2)"
+          pkg-config --cflags sdl2
+          pkg-config --libs sdl2
+        elif [ -f "$VITASDK/arm-vita-eabi/include/SDL2/SDL.h" ]; then
+          echo "✓ SDL2 headers found at $VITASDK/arm-vita-eabi/include/SDL2/"
+        else
+          echo "✗ SDL2 not found"
+          exit 1
         fi
 
     - name: Configure CMake
