@@ -42,7 +42,8 @@ WINDRES  = $(CROSS_COMPILE)windres
 DLLTOOL  = $(CROSS_COMPILE)dlltool
 DOXYTOOL = doxygen
 BUILD_NUMBER ?= $(VER_BUILD)
-PACKAGE_SUFFIX ?= Prototype
+GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+PACKAGE_SUFFIX ?= $(GIT_BRANCH)
 PNGTOICO = tools/png2ico/png2ico$(CROSS_EXEEXT)
 PNGTORAW = tools/pngpal2raw/bin/pngpal2raw$(CROSS_EXEEXT)
 PNGTOBSPAL = tools/png2bestpal/bin/png2bestpal$(CROSS_EXEEXT)
@@ -627,6 +628,7 @@ src/ver_defs.h: version.mk Makefile
 	$(ECHO) \#define VER_BUILD   $(BUILD_NUMBER) >> "$(@D)/tmp"
 	$(ECHO) \#define VER_STRING  \"$(VER_STRING)\" >> "$(@D)/tmp"
 	$(ECHO) \#define PACKAGE_SUFFIX  \"$(PACKAGE_SUFFIX)\" >> "$(@D)/tmp"
+	$(ECHO) \#define GIT_BRANCH  \"$(GIT_BRANCH)\" >> "$(@D)/tmp"
 	$(ECHO) \#define GIT_REVISION  \"`git describe  --always`\" >> "$(@D)/tmp"
 	$(MV) "$(@D)/tmp" "$@"
 
