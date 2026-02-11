@@ -170,13 +170,42 @@ foreach ($dll in $dllFiles) {
 
 # Copy config files (user may want to modify)
 Write-ColorOutput "`nCopying configuration files..." 'Green'
-$configPath = Join-Path $deployPath "config"
-New-Item -ItemType Directory -Path $configPath -Force | Out-Null
 
-$configSource = Join-Path $CleanMasterPath "config\keeperfx.cfg"
+# Copy keeperfx.cfg to root (game expects it there)
+$configSource = Join-Path $CleanMasterPath "keeperfx.cfg"
 if (Test-Path $configSource) {
-    Copy-Item $configSource (Join-Path $configPath "keeperfx.cfg") -Force
-    Write-ColorOutput "  keeperfx.cfg copied" 'Green'
+    Copy-Item $configSource (Join-Path $deployPath "keeperfx.cfg") -Force
+    Write-ColorOutput "  keeperfx.cfg copied to root" 'Green'
+} else {
+    # Try alternate location
+    $configSource = Join-Path $CleanMasterPath "config\keeperfx.cfg"
+    if (Test-Path $configSource) {
+        Copy-Item $configSource (Join-Path $deployPath "keeperfx.cfg") -Force
+        Write-ColorOutput "  keeperfx.cfg copied to root (from config/)" 'Green'
+    }
+}
+
+# Copy mods directory (including load_order.cfg)
+$modsSourcePath = Join-Path $CleanMasterPath "mods"
+$modsTargetPath = Join-Path $deployPath "mods"
+if (Test-Path $modsSourcePath) {
+    Copy-Item $modsSourcePath $modsTargetPath -Recurse -Force
+    Write-ColorOutput "  mods/ directory copied" 'Green'
+} else {
+    # Try alternate location
+    $modsSourcePath = Join-Path $CleanMasterPath "config\mods"
+    if (Test-Path $modsSourcePath) {
+        Copy-Item $modsSourcePath $modsTargetPath -Recurse -Force
+        Write-ColorOutput "  mods/ directory copied (from config/)" 'Green'
+        
+        # Rename _load_order.cfg to load_order.cfg if needed
+        $underscoreFile = Join-Path $modsTargetPath "_load_order.cfg"
+        $normalFile = Join-Path $modsTargetPath "load_order.cfg"
+        if ((Test-Path $underscoreFile) -and (-not (Test-Path $normalFile))) {
+            Copy-Item $underscoreFile $normalFile -Force
+            Write-ColorOutput "  load_order.cfg created" 'Green'
+        }
+    }
 }
 
 # Create manifest

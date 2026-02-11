@@ -3,6 +3,12 @@ name: Test Prototypes
 on:
   pull_request:
     types: [ready_for_review, review_requested]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch/tag/commit to build (leave empty for current branch)'
+        required: false
+        default: ''
 
 jobs:
   build-prototype:
@@ -13,6 +19,8 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        submodules: recursive
+        ref: ${{ github.event.inputs.ref || github.ref }}
         
     - uses: dkfans/setup-cpp@master
 
@@ -22,11 +30,21 @@ jobs:
         sudo apt update
         sudo apt install -y build-essential g++-mingw-w64-i686 libpng16-16t64 7zip
 
+    - name: Compile Assets
+      run: |
+        set -eux
+        make pkg-gfx pkg-sfx pkg-lang
+
     - name: Build
       run: |
         set -eux
         BUILD_NUMBER=$(git rev-list --count origin/master)
-        GITHUB_SHA=$(cat $GITHUB_EVENT_PATH | jq -r .pull_request.head.sha)
+        # Use PR head SHA if available, otherwise current commit
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          GITHUB_SHA=${{ github.event.pull_request.head.sha }}
+        else
+          GITHUB_SHA=${{ github.sha }}
+        fi
         PACKAGE_SUFFIX=Prototype_$(git rev-parse --short=7 "$GITHUB_SHA")
         make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX heavylog DEBUG=1 -k
         make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX standard

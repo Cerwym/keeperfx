@@ -123,6 +123,39 @@
 			"group": "build"
 		},
 		{
+			"label": "Show Log Contents",
+			"type": "shell",
+			"windows": {
+				"command": [
+					"Write-Host '\n=== KeeperFX Log Contents ===' -ForegroundColor Cyan;",
+					"$logPath = '${workspaceFolder}\\.deploy\\keeperfx.log';",
+					"if (Test-Path $logPath) {",
+					"    Get-Content $logPath | ForEach-Object {",
+					"        if ($_ -match '^Error:') { Write-Host $_ -ForegroundColor Red }",
+					"        elseif ($_ -match '^Warning:') { Write-Host $_ -ForegroundColor Yellow }",
+					"        elseif ($_ -match '^Sync:') { Write-Host $_ -ForegroundColor Green }",
+					"        else { Write-Host $_ }",
+					"    };",
+					"    Write-Host '\n=== End of Log ===' -ForegroundColor Cyan",
+					"} else {",
+					"    Write-Host 'Log file not found at: $logPath' -ForegroundColor Red",
+					"}"
+				]
+			},
+			"linux": {
+				"command": "cat ${workspaceFolder}/.deploy/keeperfx.log 2>/dev/null || echo 'Log file not found'"
+			},
+			"problemMatcher": [],
+			"group": "none",
+			"presentation": {
+				"echo": false,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared",
+				"showReuseMessage": false
+			}
+		},
+		{
 			"label": "Clean",
 			"type": "shell",
 			"windows": {

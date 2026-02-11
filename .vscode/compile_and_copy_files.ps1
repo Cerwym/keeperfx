@@ -26,6 +26,25 @@ if( -not (Test-Path $compileSettingsFile))
 # inform user of relevant information
 Write-Host ('Source Code directory: ' + "${workspaceFolder}".Replace('\\', '/')) -ForegroundColor White;
 
+# Display version information
+$versionFile = Join-Path $workspaceFolder "version.mk"
+if (Test-Path $versionFile) {
+    $versionContent = Get-Content $versionFile
+    $major = ($versionContent | Select-String "^VER_MAJOR=(\d+)").Matches.Groups[1].Value
+    $minor = ($versionContent | Select-String "^VER_MINOR=(\d+)").Matches.Groups[1].Value
+    $release = ($versionContent | Select-String "^VER_RELEASE=(\d+)").Matches.Groups[1].Value
+    $build = ($versionContent | Select-String "^VER_BUILD=(\d+)").Matches.Groups[1].Value
+    
+    # Get git info
+    $shortSha = git rev-parse --short=7 HEAD 2>$null
+    $uncommittedChanges = (git status --porcelain 2>$null | Measure-Object).Count
+    
+    Write-Host "Building KeeperFX version: $major.$minor.$release.$build-Cerwym" -ForegroundColor Cyan
+    if ($shortSha) {
+        Write-Host "  Commit: $shortSha$(if ($uncommittedChanges -gt 0) { " (+$uncommittedChanges uncommitted)" })" -ForegroundColor Gray
+    }
+}
+
 # grab game directory via regex
 $regexPattern = '\"cwd\"\s*:\s*\"(.*?)\"';
 Write-Host "regexPattern: '$regexPattern'" -ForegroundColor DarkGray;

@@ -21,6 +21,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        submodules: recursive
         
     - uses: dkfans/setup-cpp@master
 
@@ -30,12 +31,12 @@ jobs:
         sudo apt update
         sudo apt install -y build-essential g++-mingw-w64-i686 libpng16-16t64 7zip
 
-    - name: Build gfx
+    - name: Compile Assets
       run: |
         set -eux
         BUILD_NUMBER=$(git rev-list --count HEAD)
         PACKAGE_SUFFIX=Alpha
-        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX pkg-enginegfx
+        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX pkg-gfx pkg-sfx pkg-lang
 
     - name: Build
       run: |

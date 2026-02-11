@@ -281,10 +281,64 @@ Before submitting a PR:
 - [ ] No `.vscode/` script changes
 - [ ] No `pkg_gfx.mk` / `pkg_sfx.mk` infrastructure modifications
 - [ ] Feature compiles without submodules (test in clean clone)
-- [ ] Commit messages follow upstream conventions
+- [ ] Commit messages follow Conventional Commits format (enforced by hook)
 - [ ] Documentation updated for feature (if needed)
 - [ ] No `.deploy/` references
 - [ ] No workflow file changes
+- [ ] No `-Cerwym` fork identifier references in submitted code
+
+## Versioning and Releases
+
+The fork uses **Semantic Versioning** with **Conventional Commits** for automated version management.
+
+### Commit Messages
+
+All commits must follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+<type>[scope]: <description>
+
+Examples:
+feat(casino): implement gambling mechanics
+fix(creature): prevent null pointer in AI
+docs: update build instructions
+```
+
+The commit-msg hook enforces this format. See [.local/VERSIONING.md](VERSIONING.md) for detailed guidelines.
+
+### Creating Releases
+
+```powershell
+# Full automated release process
+.\.vscode\create_release.ps1
+
+# Or step-by-step:
+.\.vscode\bump_version.ps1              # Analyze commits and bump version
+.\.vscode\generate_changelog.ps1        # Generate changelog entry
+# Manually commit, tag, and push
+```
+
+### Building Prototypes
+
+```powershell
+# Local prototype with testing notes
+.\.vscode\build_local_prototype.ps1
+
+# GitHub Actions prototype (automatic on PR ready for review)
+# Or manual trigger from GitHub UI
+```
+
+### Version Format
+
+`MAJOR.MINOR.PATCH.BUILD-Cerwym [SUFFIX]`
+
+Example: `1.3.2.5234-Cerwym Prototype_abc1234`
+
+- **-Cerwym**: Fork identifier (appears in logs, version strings, packages)
+- **BUILD**: Git commit count (auto-generated)
+- **SUFFIX**: `Prototype_xxx`, `Alpha`, or empty for releases
+
+See [.local/VERSIONING.md](VERSIONING.md) for complete documentation.
 
 ## Benefits of This Workflow
 
@@ -325,6 +379,7 @@ Infrastructure on dev-environment may conflict with upstream changes. Resolve in
 
 ## See Also
 
+- [.local/VERSIONING.md](VERSIONING.md) – Semantic versioning and release management
 - [docs/SUBMODULES.md](../docs/SUBMODULES.md) – Detailed submodule operations
 - [.local/MODULAR_ASSET_ARCHITECTURE.md](MODULAR_ASSET_ARCHITECTURE.md) – Infrastructure design
 - [.local/IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) – Current implementation state

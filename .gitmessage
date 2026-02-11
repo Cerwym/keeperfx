@@ -1,0 +1,62 @@
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+
+# Conventional Commits Format
+# ===========================
+# <type>[optional scope]: <description>
+#
+# [optional body]
+#
+# [optional footer: BREAKING CHANGE: <description>]
+#
+# Valid Types:
+#   feat:     New feature for the user
+#   fix:      Bug fix for the user
+#   docs:     Documentation only changes
+#   style:    Code style changes (formatting, semicolons, etc)
+#   refactor: Code refactoring (neither fixes bug nor adds feature)
+#   perf:     Performance improvements
+#   test:     Adding or updating tests
+#   build:    Build system or external dependencies
+#   ci:       CI/CD pipeline changes
+#   chore:    Maintenance tasks, version bumps, etc
+#   revert:   Reverts a previous commit
+#
+# Examples:
+#   feat(casino): implement gold-based gambling mechanics
+#   fix(room_casino): prevent creatures from breaking walls
+#   docs: update FORK_WORKFLOW.md with versioning info
+#
+# Breaking Changes (triggers MAJOR version bump):
+#   feat(api): remove deprecated room_model field
+#   
+#   BREAKING CHANGE: room_model field removed from API.
+#   Use room_kind field instead.
+#
+# Scope Guidelines:
+#   - Use component/module name: (casino), (creature), (frontend)
+#   - Keep lowercase, no spaces
+#   - Optional but recommended for clarity
+#
+# Description Guidelines:
+#   - Use imperative mood: "add" not "added" or "adds"
+#   - Don't capitalize first letter
+#   - No period at the end
+#   - Minimum 10 characters
+#
+# Body Guidelines (optional):
+#   - Separate from description with blank line
+#   - Explain what and why, not how
+#   - Wrap at 72 characters
+#
+# Footer Guidelines (optional):
+#   - Separate from body with blank line
+#   - Use for breaking changes, issue references
+#   - Format: "BREAKING CHANGE: <description>"
+#   - Format: "Fixes #123" or "Closes #456"
+#
+# Note: The commit hook will validate this format
+# Note: -Cerwym fork identifier is automatically added to version strings

@@ -451,7 +451,10 @@ LANGS = eng chi cht cze dut fre ger ita jpn kor lat pol rus spa swe
 # load program version
 include version.mk
 
-VER_STRING = $(VER_MAJOR).$(VER_MINOR).$(VER_RELEASE).$(BUILD_NUMBER) $(PACKAGE_SUFFIX)
+# Fork identifier to distinguish from upstream KeeperFX
+FORK_IDENTIFIER = Cerwym
+
+VER_STRING = $(VER_MAJOR).$(VER_MINOR).$(VER_RELEASE).$(BUILD_NUMBER)-$(FORK_IDENTIFIER) $(PACKAGE_SUFFIX)
 
 # Enable parallel compilation by default. Users can still override with: make -j8, make -j1, etc.
 ifndef MAKEFLAGS
@@ -641,6 +644,7 @@ src/ver_defs.h: version.mk Makefile
 	$(ECHO) \#define VER_MINOR   $(VER_MINOR) >> "$(@D)/tmp"
 	$(ECHO) \#define VER_RELEASE $(VER_RELEASE) >> "$(@D)/tmp"
 	$(ECHO) \#define VER_BUILD   $(BUILD_NUMBER) >> "$(@D)/tmp"
+	$(ECHO) \#define FORK_IDENTIFIER  \"$(FORK_IDENTIFIER)\" >> "$(@D)/tmp"
 	$(ECHO) \#define VER_STRING  \"$(VER_STRING)\" >> "$(@D)/tmp"
 	$(ECHO) \#define PACKAGE_SUFFIX  \"$(PACKAGE_SUFFIX)\" >> "$(@D)/tmp"
 	$(ECHO) \#define GIT_REVISION  \"`git describe  --always`\" >> "$(@D)/tmp"
