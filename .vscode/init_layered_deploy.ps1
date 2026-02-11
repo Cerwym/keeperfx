@@ -24,14 +24,19 @@ param(
     [string]$CleanMasterPath,
     
     [Parameter(Mandatory=$false)]
-    [string]$WorkspaceFolder = $PSScriptRoot | Split-Path -Parent
+    [string]$WorkspaceFolder
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Set default workspace folder if not provided
+if (-not $WorkspaceFolder) {
+    $WorkspaceFolder = Split-Path -Parent $PSScriptRoot
+}
+
 # ANSI color codes for output
-$Color = @{
+$script:Colors = @{
     Reset = "`e[0m"
     Green = "`e[32m"
     Yellow = "`e[33m"
@@ -41,8 +46,8 @@ $Color = @{
 }
 
 function Write-ColorOutput {
-    param([string]$Message, [string]$Color = 'Reset')
-    Write-Host "$($Color)$Message$($Color.Reset)" -NoNewline
+    param([string]$Message, [string]$ColorCode = 'Reset')
+    Write-Host "$($script:Colors[$ColorCode])$Message$($script:Colors.Reset)" -NoNewline
     Write-Host ""
 }
 
@@ -53,7 +58,7 @@ function Test-AdminPrivileges {
 }
 
 # Main script
-Write-ColorOutput "=== KeeperFX Layered Deployment Initializer ===" $Color.Cyan
+Write-ColorOutput "=== KeeperFX Layered Deployment Initializer ===" 'Cyan'
 
 # Get or validate clean master path
 if (-not $CleanMasterPath) {
@@ -65,24 +70,24 @@ if (-not $CleanMasterPath) {
 }
 
 if (-not $CleanMasterPath) {
-    Write-ColorOutput "ERROR: Clean master path not specified." $Color.Red
-    Write-ColorOutput "Run setup_clean_master.ps1 first or provide -CleanMasterPath parameter." $Color.Yellow
+    Write-ColorOutput "ERROR: Clean master path not specified." 'Red'
+    Write-ColorOutput "Run setup_clean_master.ps1 first or provide -CleanMasterPath parameter." 'Yellow'
     exit 1
 }
 
 if (-not (Test-Path $CleanMasterPath)) {
-    Write-ColorOutput "ERROR: Clean master not found at: $CleanMasterPath" $Color.Red
+    Write-ColorOutput "ERROR: Clean master not found at: $CleanMasterPath" 'Red'
     exit 1
 }
 
-Write-ColorOutput "Clean master: $CleanMasterPath" $Color.Blue
+Write-ColorOutput "Clean master: $CleanMasterPath" 'Blue'
 
 # Verify clean master has expected structure
 $requiredFiles = @('keeperfx.exe', 'data', 'ldata', 'levels', 'fxdata')
 foreach ($item in $requiredFiles) {
     $itemPath = Join-Path $CleanMasterPath $item
     if (-not (Test-Path $itemPath)) {
-        Write-ColorOutput "ERROR: Clean master missing: $item" $Color.Red
+        Write-ColorOutput "ERROR: Clean master missing: $item" 'Red'
         exit 1
     }
 }
@@ -90,18 +95,18 @@ foreach ($item in $requiredFiles) {
 # Setup deployment directory
 $deployPath = Join-Path $WorkspaceFolder ".deploy"
 if (Test-Path $deployPath) {
-    Write-ColorOutput "Deployment already exists at: $deployPath" $Color.Yellow
+    Write-ColorOutput "Deployment already exists at: $deployPath" 'Yellow'
     $response = Read-Host "Delete and recreate? (y/N)"
     if ($response -ne 'y') {
-        Write-ColorOutput "Aborted." $Color.Yellow
+        Write-ColorOutput "Aborted." 'Yellow'
         exit 0
     }
     
-    Write-ColorOutput "Removing existing deployment..." $Color.Yellow
+    Write-ColorOutput "Removing existing deployment..." 'Yellow'
     & "$PSScriptRoot\reset_layered_deploy.ps1" -Force
 }
 
-Write-ColorOutput "Creating deployment directory..." $Color.Green
+Write-ColorOutput "Creating deployment directory..." 'Green'
 New-Item -ItemType Directory -Path $deployPath -Force | Out-Null
 
 # Create metadata directory
@@ -109,7 +114,7 @@ $metadataPath = Join-Path $deployPath ".overlay"
 New-Item -ItemType Directory -Path $metadataPath -Force | Out-Null
 
 # Layer 0: Create junctions for large read-only directories
-Write-ColorOutput "`nLayer 0: Creating junctions (base directories)..." $Color.Green
+Write-ColorOutput "`nLayer 0: Creating junctions (base directories)..." 'Green'
 
 $junctionDirs = @('ldata', 'levels', 'fxdata', 'lang', 'campgns')
 foreach ($dir in $junctionDirs) {
@@ -120,15 +125,15 @@ foreach ($dir in $junctionDirs) {
         Write-Host "  Junction: $dir -> " -NoNewline
         cmd /c mklink /J "$targetPath" "$sourcePath" 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
-            Write-ColorOutput "OK" $Color.Green
+            Write-ColorOutput "OK" 'Green'
         } else {
-            Write-ColorOutput "FAILED" $Color.Red
+            Write-ColorOutput "FAILED" 'Red'
         }
     }
 }
 
 # Layer 1: Create hard links for data/*.dat files (frequently modified)
-Write-ColorOutput "`nLayer 1: Creating hard links (modifiable files)..." $Color.Green
+Write-ColorOutput "`nLayer 1: Creating hard links (modifiable files)..." 'Green'
 
 $dataSourcePath = Join-Path $CleanMasterPath "data"
 $dataTargetPath = Join-Path $deployPath "data"
@@ -142,28 +147,28 @@ foreach ($file in $datFiles) {
     Write-Host "  Hardlink: data\$($file.Name) -> " -NoNewline
     cmd /c mklink /H "$targetPath" "$sourcePath" 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
-        Write-ColorOutput "OK" $Color.Green
+        Write-ColorOutput "OK" 'Green'
     } else {
-        Write-ColorOutput "FAILED" $Color.Red
+        Write-ColorOutput "FAILED" 'Red'
     }
 }
 
 # Copy keeperfx.exe (will be overwritten by builds)
-Write-ColorOutput "`nCopying executable..." $Color.Green
+Write-ColorOutput "`nCopying executable..." 'Green'
 $exeSource = Join-Path $CleanMasterPath "keeperfx.exe"
 $exeTarget = Join-Path $deployPath "keeperfx.exe"
 Copy-Item $exeSource $exeTarget -Force
-Write-ColorOutput "  keeperfx.exe copied" $Color.Green
+Write-ColorOutput "  keeperfx.exe copied" 'Green'
 
 # Copy config files (user may want to modify)
-Write-ColorOutput "`nCopying configuration files..." $Color.Green
+Write-ColorOutput "`nCopying configuration files..." 'Green'
 $configPath = Join-Path $deployPath "config"
 New-Item -ItemType Directory -Path $configPath -Force | Out-Null
 
 $configSource = Join-Path $CleanMasterPath "config\keeperfx.cfg"
 if (Test-Path $configSource) {
     Copy-Item $configSource (Join-Path $configPath "keeperfx.cfg") -Force
-    Write-ColorOutput "  keeperfx.cfg copied" $Color.Green
+    Write-ColorOutput "  keeperfx.cfg copied" 'Green'
 }
 
 # Create manifest
@@ -179,11 +184,12 @@ $manifest = @{
 $manifestPath = Join-Path $metadataPath "manifest.json"
 $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath -Encoding UTF8
 
-Write-ColorOutput "`n=== Deployment Ready ===" $Color.Cyan
-Write-ColorOutput "Location: $deployPath" $Color.Blue
-Write-ColorOutput "Disk usage: ~20MB (junctions + hard links)" $Color.Green
-Write-ColorOutput "`nTo deploy your builds:" $Color.Yellow
-Write-ColorOutput "  1. Build: wsl make" $Color.Yellow
-Write-ColorOutput "  2. Deploy: .\.vscode\deploy_assets.ps1" $Color.Yellow
-Write-ColorOutput "  3. Run: .\.vscode\launch_deploy.ps1" $Color.Yellow
-Write-ColorOutput "`nManifest saved to: .deploy\.overlay\manifest.json" $Color.Blue
+Write-ColorOutput "`n=== Deployment Ready ===" 'Cyan'
+Write-ColorOutput "Location: $deployPath" 'Blue'
+Write-ColorOutput "Disk usage: ~20MB (junctions + hard links)" 'Green'
+Write-ColorOutput "`nTo deploy your builds:" 'Yellow'
+Write-ColorOutput "  1. Build: wsl make" 'Yellow'
+Write-ColorOutput "  2. Deploy: .\.vscode\deploy_assets.ps1" 'Yellow'
+Write-ColorOutput "  3. Run: .\.vscode\launch_deploy.ps1" 'Yellow'
+Write-ColorOutput "`nManifest saved to: .deploy\.overlay\manifest.json" 'Blue'
+
