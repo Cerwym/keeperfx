@@ -24,13 +24,18 @@ param(
     [switch]$Force,
     
     [Parameter(Mandatory=$false)]
-    [string]$WorkspaceFolder = $PSScriptRoot | Split-Path -Parent
+    [string]$WorkspaceFolder
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Color = @{
+# Set default workspace folder if not provided
+if (-not $WorkspaceFolder) {
+    $WorkspaceFolder = Split-Path -Parent $PSScriptRoot
+}
+
+$script:Colors = @{
     Reset = "`e[0m"
     Green = "`e[32m"
     Yellow = "`e[33m"
@@ -38,28 +43,28 @@ $Color = @{
 }
 
 function Write-ColorOutput {
-    param([string]$Message, [string]$Color = 'Reset')
-    Write-Host "$($Color)$Message$($Color.Reset)"
+    param([string]$Message, [string]$ColorCode = 'Reset')
+    Write-Host "$($script:Colors[$ColorCode])$Message$($script:Colors.Reset)"
 }
 
 $deployPath = Join-Path $WorkspaceFolder ".deploy"
 
 if (-not (Test-Path $deployPath)) {
-    Write-ColorOutput "No deployment found at: $deployPath" $Color.Yellow
+    Write-ColorOutput "No deployment found at: $deployPath" 'Yellow'
     exit 0
 }
 
 if (-not $Force) {
-    Write-ColorOutput "This will remove: $deployPath" $Color.Yellow
-    Write-ColorOutput "Clean master files will NOT be affected (junctions/hardlinks only)." $Color.Green
+    Write-ColorOutput "This will remove: $deployPath" 'Yellow'
+    Write-ColorOutput "Clean master files will NOT be affected (junctions/hardlinks only)." 'Green'
     $response = Read-Host "Continue? (y/N)"
     if ($response -ne 'y') {
-        Write-ColorOutput "Aborted." $Color.Yellow
+        Write-ColorOutput "Aborted." 'Yellow'
         exit 0
     }
 }
 
-Write-ColorOutput "Removing layered deployment..." $Color.Yellow
+Write-ColorOutput "Removing layered deployment..." 'Yellow'
 
 # Remove junctions first (safest)
 $junctionDirs = @('ldata', 'levels', 'fxdata', 'lang', 'campgns')
@@ -70,7 +75,7 @@ foreach ($dir in $junctionDirs) {
         if ($item.LinkType -eq 'Junction') {
             Write-Host "  Removing junction: $dir -> " -NoNewline
             Remove-Item $junctionPath -Force -Recurse
-            Write-ColorOutput "OK" $Color.Green
+            Write-ColorOutput "OK" 'Green'
         }
     }
 }
@@ -78,5 +83,6 @@ foreach ($dir in $junctionDirs) {
 # Remove entire deployment directory
 Remove-Item $deployPath -Recurse -Force -ErrorAction SilentlyContinue
 
-Write-ColorOutput "Deployment removed successfully." $Color.Green
-Write-ColorOutput "Clean master files are intact." $Color.Blue
+Write-ColorOutput "Deployment removed successfully." 'Green'
+Write-ColorOutput "Clean master files are intact." 'Blue'
+

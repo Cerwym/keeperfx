@@ -32,11 +32,16 @@ param(
     [switch]$UseExisting,
     
     [Parameter(Mandatory=$false)]
-    [string]$WorkspaceFolder = $PSScriptRoot | Split-Path -Parent
+    [string]$WorkspaceFolder
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+# Set default workspace folder if not provided
+if (-not $WorkspaceFolder) {
+    $WorkspaceFolder = Split-Path -Parent $PSScriptRoot
+}
 
 $Color = @{
     Reset = "`e[0m"
@@ -48,15 +53,19 @@ $Color = @{
 }
 
 function Write-ColorOutput {
-    param([string]$Message, [string]$Color = 'Reset')
-    Write-Host "$($Color)$Message$($Color.Reset)"
+    param([string]$Message, [string]$ColorCode = 'Reset')
+    $colors = @{
+        Reset = "`e[0m"; Green = "`e[32m"; Yellow = "`e[33m"
+        Blue = "`e[34m"; Red = "`e[31m"; Cyan = "`e[36m"
+    }
+    Write-Host "$($colors[$ColorCode])$Message$($colors.Reset)"
 }
 
-Write-ColorOutput "=== Clean Master Setup ===" $Color.Cyan
+Write-ColorOutput "=== Clean Master Setup ===" 'Cyan'
 
 # Check if target already exists
 if (Test-Path $TargetPath) {
-    Write-ColorOutput "Clean master already exists at: $TargetPath" $Color.Yellow
+    Write-ColorOutput "Clean master already exists at: $TargetPath" 'Yellow'
     
     # Verify it has expected structure
     $requiredFiles = @('keeperfx.exe', 'data', 'ldata', 'levels')
@@ -69,12 +78,12 @@ if (Test-Path $TargetPath) {
     }
     
     if ($isValid) {
-        Write-ColorOutput "Validation: OK - All required files present" $Color.Green
+        Write-ColorOutput "Validation: OK - All required files present" 'Green'
         
         if (-not $UseExisting) {
             $response = Read-Host "Use this existing installation? (Y/n)"
             if ($response -eq 'n') {
-                Write-ColorOutput "Aborted." $Color.Yellow
+                Write-ColorOutput "Aborted." 'Yellow'
                 exit 1
             }
         }
@@ -88,11 +97,11 @@ if (Test-Path $TargetPath) {
         $settings.'keeperfx.cleanMasterPath' = $TargetPath
         $settings | ConvertTo-Json -Depth 10 | Set-Content $settingsPath -Encoding UTF8
         
-        Write-ColorOutput "`nClean master configured: $TargetPath" $Color.Green
-        Write-ColorOutput "Next: Run .\init_layered_deploy.ps1 to create deployment" $Color.Blue
+        Write-ColorOutput "`nClean master configured: $TargetPath" 'Green'
+        Write-ColorOutput "Next: Run .\init_layered_deploy.ps1 to create deployment" 'Blue'
         exit 0
     } else {
-        Write-ColorOutput "Validation: FAILED - Missing required files" $Color.Red
+        Write-ColorOutput "Validation: FAILED - Missing required files" 'Red'
         $response = Read-Host "Delete and start fresh? (y/N)"
         if ($response -ne 'y') {
             exit 1
@@ -104,23 +113,23 @@ if (Test-Path $TargetPath) {
 # Copy from source if provided
 if ($SourcePath) {
     if (-not (Test-Path $SourcePath)) {
-        Write-ColorOutput "ERROR: Source path not found: $SourcePath" $Color.Red
+        Write-ColorOutput "ERROR: Source path not found: $SourcePath" 'Red'
         exit 1
     }
     
-    Write-ColorOutput "Copying from: $SourcePath" $Color.Blue
-    Write-ColorOutput "         to: $TargetPath" $Color.Blue
-    Write-ColorOutput "This may take a minute..." $Color.Yellow
+    Write-ColorOutput "Copying from: $SourcePath" 'Blue'
+    Write-ColorOutput "         to: $TargetPath" 'Blue'
+    Write-ColorOutput "This may take a minute..." 'Yellow'
     
     New-Item -ItemType Directory -Path $TargetPath -Force | Out-Null
     Copy-Item "$SourcePath\*" $TargetPath -Recurse -Force
     
-    Write-ColorOutput "Copy complete!" $Color.Green
+    Write-ColorOutput "Copy complete!" 'Green'
 } else {
-    Write-ColorOutput "ERROR: No clean master found and no source specified." $Color.Red
-    Write-ColorOutput "Usage:" $Color.Yellow
-    Write-ColorOutput "  .\setup_clean_master.ps1 -SourcePath 'C:\temp'" $Color.Yellow
-    Write-ColorOutput "  .\setup_clean_master.ps1 -UseExisting -TargetPath 'C:\path\to\clean'" $Color.Yellow
+    Write-ColorOutput "ERROR: No clean master found and no source specified." 'Red'
+    Write-ColorOutput "Usage:" 'Yellow'
+    Write-ColorOutput "  .\setup_clean_master.ps1 -SourcePath 'C:\temp'" 'Yellow'
+    Write-ColorOutput "  .\setup_clean_master.ps1 -UseExisting -TargetPath 'C:\path\to\clean'" 'Yellow'
     exit 1
 }
 
@@ -133,7 +142,8 @@ if (Test-Path $settingsPath) {
 $settings.'keeperfx.cleanMasterPath' = $TargetPath
 $settings | ConvertTo-Json -Depth 10 | Set-Content $settingsPath -Encoding UTF8
 
-Write-ColorOutput "`n=== Setup Complete ===" $Color.Cyan
-Write-ColorOutput "Clean master: $TargetPath" $Color.Green
-Write-ColorOutput "Settings saved to: .vscode\settings.json" $Color.Blue
-Write-ColorOutput "`nNext: Run .\init_layered_deploy.ps1 to create deployment" $Color.Yellow
+Write-ColorOutput "`n=== Setup Complete ===" 'Cyan'
+Write-ColorOutput "Clean master: $TargetPath" 'Green'
+Write-ColorOutput "Settings saved to: .vscode\settings.json" 'Blue'
+Write-ColorOutput "`nNext: Run .\init_layered_deploy.ps1 to create deployment" 'Yellow'
+

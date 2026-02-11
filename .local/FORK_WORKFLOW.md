@@ -6,9 +6,10 @@ This document describes the branch structure and workflow for maintaining the en
 
 ```
 Cerwym/keeperfx (your fork)
-├── master ──────────────► Tracks dkfans/keeperfx:master (upstream mirror)
-├── dev-environment ─────► Enhanced fork base (modular assets, tooling)
-│   └── Infrastructure only (submodules, build system, deployment scripts)
+├── dev-environment ─────► DEFAULT BRANCH - Enhanced fork base (modular assets, tooling)
+│   └── Infrastructure + all development happens here
+├── master ──────────────► 1:1 sync with dkfans/keeperfx:master (SYNC ONLY, never commit)
+│   └── Pure upstream mirror - only pull from upstream, push to origin for mirroring
 └── feature/* ───────────► Feature branches (based on dev-environment)
     └── Pure feature code (rebased onto dev-environment)
 
@@ -16,12 +17,25 @@ dkfans/keeperfx (upstream)
 └── master ──────────────► Receives clean PRs (features only, no infrastructure)
 ```
 
+**Key Principle:** `dev-environment` is YOUR truth (default), `master` is THEIR truth (sync point).
+
 ## Key Principles
 
-1. **Infrastructure stays in fork**: Modular asset architecture, layered deployment, and development tooling live on `dev-environment`
-2. **Features are portable**: Feature branches contain only code relevant to upstream
-3. **PRs are clean**: Cherry-pick feature commits onto `upstream/master` for submission
-4. **Development is enhanced**: Work in feature branches inherits all fork infrastructure
+1. **dev-environment is your default**: All development starts here - it's the default branch on GitHub
+2. **master is sync-only**: Configured to track `upstream` remote only - NEVER commit directly to it
+3. **Infrastructure stays in fork**: Modular asset architecture, layered deployment, and development tooling live on `dev-environment`
+4. **Features are portable**: Feature branches contain only code relevant to upstream
+5. **PRs are clean**: Cherry-pick feature commits onto `upstream/master` for submission
+6. **Development is enhanced**: Work in feature branches inherits all fork infrastructure
+
+### Git Configuration
+
+The repository is configured with these branch tracking settings:
+- `master` → tracks `upstream/master` (dkfans/keeperfx) - sync only
+- `dev-environment` → tracks `origin/dev-environment` (Cerwym/keeperfx) - default & development base
+- `feature/*` → track `origin/feature/*` (Cerwym/keeperfx) - working branches
+
+To verify: `git config --get branch.master.remote` should return `upstream`
 
 ## Daily Workflow
 
@@ -31,12 +45,12 @@ dkfans/keeperfx (upstream)
 # In main workspace (not worktree)
 cd C:\Users\peter\source\repos\keeperfx
 
-# Ensure dev-environment is up to date
-git checkout dev-environment
+# Ensure dev-environment is up to date (it's the default branch)
+git checkout dev-environment  # Already default, but explicit is clear
 git pull origin dev-environment
 
-# Create feature branch
-git checkout -b feature/new-thing dev-environment
+# Create feature branch (automatically based on current branch = dev-environment)
+git checkout -b feature/new-thing
 git push -u origin feature/new-thing
 
 # Create worktree
@@ -48,6 +62,8 @@ cd ..\keeperfx.worktrees\feature-new-thing
 
 # Start developing with full infrastructure!
 ```
+
+**Note:** Since `dev-environment` is now the default branch, new clones automatically get the enhanced infrastructure.
 
 ### Developing a Feature
 
@@ -99,15 +115,12 @@ Then create PR: `Cerwym/keeperfx:pr/new-thing` → `dkfans/keeperfx:master`
 
 ### Syncing Upstream Changes
 
-Periodically pull upstream improvements:
-
-```powershell
-# Update upstream mirror
+Periodically pull upstre (master tracks upstream ONLY - never commit to it)
 git checkout master
-git pull upstream master
-git push origin master
+git pull upstream master    # Gets dkfans/keeperfx changes
+git push origin master      # Mirrors to your fork (optional)
 
-# Optionally merge into dev-environment (review carefully!)
+# Merge into dev-environment (review carefully!)
 git checkout dev-environment
 git merge master
 # Resolve conflicts if infrastructure conflicts with upstream changes
@@ -115,6 +128,11 @@ git push origin dev-environment
 
 # Update feature branches
 git checkout feature/my-thing
+git rebase dev-environment
+git push --force-with-lease origin feature/my-thing
+```
+
+**Important:** `master` is configured to track `upstream` remote only. Never make commits directly to `master` - it exists purely as a sync point with dkfans/keeperfx. checkout feature/my-thing
 git rebase dev-environment
 git push --force-with-lease origin feature/my-thing
 ```
