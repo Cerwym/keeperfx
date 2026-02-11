@@ -40,6 +40,10 @@ if( -not $regexResult.Matches -or $regexResult.Matches.Length -le 0 -or -not $re
 }
 
 $gameDir = $regexResult.Matches[0].Groups[1].Value.Replace('\\', '/');
+
+# Expand VS Code variables
+$gameDir = $gameDir.Replace('${workspaceFolder}', $workspaceFolder.Replace('\', '/'));
+
 Write-Host "Found current working directory (cwd): '$gameDir' in '$launchJsonFile'" -ForegroundColor White;
 if( -not (Test-Path $gameDir) )
 {
