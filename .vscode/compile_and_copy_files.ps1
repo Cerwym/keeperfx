@@ -72,8 +72,11 @@ if ($compileSetting -like '*FTEST_DEBUG=1*')
 if ($compileSetting -match 'PACKAGE_SUFFIX\s*=\s*(.+)')
 {
     $customSuffix = $Matches[1].Trim();
-    $branchName = (wsl git rev-parse --abbrev-ref HEAD 2>$null).Trim();
+    $branchName = wsl git rev-parse --abbrev-ref HEAD 2>$null;
     if ($branchName) {
+        $branchName = $branchName.Trim();
+        # Replace forward slashes and other special characters with hyphens
+        $branchName = $branchName -replace '[/\\:]', '-';
         $packageSuffix = "PACKAGE_SUFFIX=$customSuffix-$branchName";
     } else {
         $packageSuffix = "PACKAGE_SUFFIX=$customSuffix";
