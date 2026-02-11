@@ -54,7 +54,6 @@ unsigned char get_casino_odds_tier(const struct Room* room);
 void set_casino_odds_tier(struct Room* room, unsigned char tier);
 
 // Gambling mechanics
-TbBool can_creature_use_casino(const struct Thing* creatng);
 GoldAmount calculate_gambling_bet(const struct Thing* creatng);
 TbBool resolve_gambling_outcome(struct Thing* creatng, struct Room* room, GoldAmount bet);
 

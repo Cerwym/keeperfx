@@ -40,6 +40,7 @@ short creature_gambling(struct Thing* creatng);
 
 // Decision logic
 TbBool creature_should_visit_casino(struct Thing* creatng);
+TbBool can_creature_use_casino(struct Thing* creatng);
 
 // Navigation
 struct Room* find_casino_for_creature(struct Thing* creatng);

@@ -137,6 +137,32 @@ TbBool creature_should_visit_casino(struct Thing* creatng)
 }
 
 /**
+ * Checks if a creature is eligible to use the casino.
+ * Verifies cooldown, minimum gold, and basic requirements.
+ */
+TbBool can_creature_use_casino(struct Thing* creatng)
+{
+    struct CreatureControl* cctrl = creature_control_get_from_thing(creatng);
+    
+    // Minimum gold requirement
+    if (cctrl->current_gold_held < 100) {
+        return false;
+    }
+    
+    // Cooldown check - don't visit too frequently (2000 turns = ~40 seconds)
+    if ((game.play_gameturn - cctrl->last_casino_visit_turn) < 2000) {
+        return false;
+    }
+    
+    // Mood check - angry/livid creatures don't gamble
+    if ((cctrl->mood_flags & (CCMoo_Angry | CCMoo_Livid)) != 0) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
  * Finds an available casino room for a creature to visit.
  * Prefers casinos that are active and have spare capacity.
  */
@@ -180,10 +206,12 @@ TbBool setup_creature_gambling(struct Thing* creatng)
     }
     
     // Transition to gambling state
-    // Note: CrSt_CreatureGambling needs to be added to creature state enum
-    // For now, this will cause a compile error until state is added
-    // internal_set_thing_state(creatng, CrSt_CreatureGambling);
-    // creatng->continue_state = CrSt_CreatureGambling;
+    struct CreatureControl* cctrl = creature_control_get_from_thing(creatng);
+    cctrl->target_room_id = room->index;
+    cctrl->last_casino_visit_turn = game.play_gameturn;
+    
+    internal_set_thing_state(creatng, CrSt_CreatureGambling);
+    creatng->continue_state = CrSt_CreatureGambling;
     
     return true;
 }
