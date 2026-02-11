@@ -114,4 +114,5 @@ if (-not (Test-Path $deployPath)) {
 # Deploy compiled assets
 Write-Host 'Deploying assets to .deploy/...' -ForegroundColor Cyan;
 Copy-Item -Path "${workspaceFolder}\\bin\\keeperfx.exe" -Destination $deployPath -Force;
+Copy-Item -Path "${workspaceFolder}\\bin\\*.dll" -Destination $deployPath -Force -ErrorAction SilentlyContinue;
 Write-Host 'Deployment complete!' -ForegroundColor Green;
