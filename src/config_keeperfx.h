@@ -122,6 +122,7 @@ extern uint16_t api_port;
 extern TbBool exit_on_lua_error;
 extern TbBool FLEE_BUTTON_DEFAULT;
 extern TbBool IMPRISON_BUTTON_DEFAULT;
+extern int renderer_type;
 /******************************************************************************/
 void load_configuration_for_mod_all(void);
 short load_configuration(void);
