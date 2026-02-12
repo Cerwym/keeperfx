@@ -17,14 +17,14 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
-#include "pre_inc.h"
+#include "../pre_inc.h"
 #include "renderer_interface.h"
 
-#include "bflib_render.h"
-#include "bflib_video.h"
-#include "globals.h"
+#include "../bflib_render.h"
+#include "../bflib_video.h"
+#include "../globals.h"
 
-#include "post_inc.h"
+#include "../post_inc.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -20,7 +20,7 @@
 #ifndef RENDERER_INTERFACE_H
 #define RENDERER_INTERFACE_H
 
-#include "bflib_basics.h"
+#include "../bflib_basics.h"
 
 #ifdef __cplusplus
 extern "C" {
