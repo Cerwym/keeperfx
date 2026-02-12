@@ -22,6 +22,7 @@
 
 #include <bgfx/c99/bgfx.h>
 #include <bgfx/platform.h>
+#include <bx/math.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 
@@ -342,7 +343,17 @@ static TbResult bgfx_renderer_init(struct SDL_Window* window, int width, int hei
 
     // Setup orthographic projection
     float ortho[16];
-    bx_mtx_ortho(ortho, 0.0f, (float)width, (float)height, 0.0f, 0.0f, 100.0f, 0.0f, bgfx_get_caps()->homogeneousDepth);
+    // Create ortho matrix manually for 2D rendering
+    // Left=0, Right=width, Bottom=height, Top=0, Near=0, Far=100
+    memset(ortho, 0, sizeof(ortho));
+    ortho[0] = 2.0f / (float)width;
+    ortho[5] = -2.0f / (float)height;
+    ortho[10] = -2.0f / 100.0f;
+    ortho[12] = -1.0f;
+    ortho[13] = 1.0f;
+    ortho[14] = -1.0f;
+    ortho[15] = 1.0f;
+    
     bgfx_set_view_transform(0, NULL, ortho);
     bgfx_set_view_rect(0, 0, 0, width, height);
 
