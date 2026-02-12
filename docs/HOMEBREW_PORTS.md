@@ -18,18 +18,23 @@ Files:
 - `shaders/3ds/palette_vshader.v.pica`
 
 ### PlayStation Vita
-- **Renderer**: GXM (Graphics eXtension Module)
+- **Renderer**: bgfx with vitaGL backend (OpenGL ES wrapper)
 - **Audio**: SceAudio
 - **Input**: Physical buttons, analog sticks, front and rear touchscreens
 - **Resolution**: 960×544
 - **SDK**: vitasdk
 
 Files:
-- `src/renderer/renderer_gxm.c`
 - `src/audio/audio_vita.c`
 - `src/input/input_vita.c`
-- `shaders/vita/palette_v.cg`
-- `shaders/vita/palette_f.cg`
+- Note: Rendering uses existing bgfx implementation via vitaGL (OpenGL ES on Vita)
+
+#### Why vitaGL?
+vitaGL (https://github.com/Rinnegatamante/vitaGL) provides an OpenGL ES 2.0 wrapper on top of the Vita's native GXM API. This allows:
+- **Code reuse**: The existing bgfx renderer works without platform-specific changes
+- **Proven approach**: Used by successful ports like sm64-vita (https://github.com/bythos14/sm64-vita)
+- **Maintainability**: Single renderer codebase for multiple platforms
+- **Community support**: Active development and homebrew community adoption
 
 ### Nintendo Switch
 - **Renderer**: bgfx with deko3d backend (already supported)
@@ -102,11 +107,19 @@ make
 # Set up environment
 export VITASDK=/usr/local/vitasdk
 
+# Install vitaGL dependency
+# vitaGL provides OpenGL ES compatibility layer for bgfx
+# See: https://github.com/Rinnegatamante/vitaGL
+
 # Build
 mkdir build-vita && cd build-vita
 cmake .. -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake -DPLATFORM_VITA=ON
 make
 ```
+
+**Dependencies**: 
+- vitaGL (OpenGL ES wrapper for Vita)
+- bgfx (uses OpenGL backend via vitaGL)
 
 ### Nintendo Switch
 ```bash
@@ -124,12 +137,12 @@ make
 ## Implementation Status
 
 ### Completed
-- ✅ Renderer interfaces for 3DS, Vita
+- ✅ Renderer interface for 3DS (citro3d)
 - ✅ Audio interfaces for 3DS, Vita, Switch
 - ✅ Input interfaces for 3DS, Vita, Switch
 - ✅ Shader templates for 3DS (PICA assembly)
-- ✅ Shader templates for Vita (Cg)
 - ✅ Interface declarations in header files
+- ✅ Vita uses bgfx renderer via vitaGL (no custom renderer needed)
 
 ### Needs Implementation
 - ⚠️ Actual sample loading and playback logic
@@ -161,10 +174,14 @@ make
 - **Memory**: 512MB shared RAM, 128MB VRAM
 - **CPU**: ARM Cortex-A9 quad-core @ 444MHz
 - **GPU**: SGX543MP4+ @ 222MHz
+- **Rendering**: Uses vitaGL (OpenGL ES wrapper) + bgfx for consistency with other platforms
 - **Challenges**:
-  - Deferred rendering architecture
-  - Swizzled texture formats for performance
-  - Proper VRAM management
+  - vitaGL provides OpenGL ES 2.0 compatibility layer over native GXM
+  - Proper VRAM management through vitaGL
+  - Performance tuning for OpenGL ES emulation overhead
+- **References**:
+  - vitaGL: https://github.com/Rinnegatamante/vitaGL
+  - sm64-vita: https://github.com/bythos14/sm64-vita (example port using vitaGL)
 
 ### Nintendo Switch
 - **Memory**: 4GB shared RAM
