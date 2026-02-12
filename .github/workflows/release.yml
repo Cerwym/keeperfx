@@ -23,27 +23,37 @@ jobs:
             os: windows-latest
             preset: windows-x86-release
             artifact-name: keeperfx-windows-x86
-            asset-name: keeperfx-${{ github.event.inputs.version || github.ref_name }}-windows-x86.zip
+            platform: windows-x86
             
           - name: Windows x64
             os: windows-latest
             preset: windows-x64-release
             artifact-name: keeperfx-windows-x64
-            asset-name: keeperfx-${{ github.event.inputs.version || github.ref_name }}-windows-x64.zip
+            platform: windows-x64
             
           - name: Linux x64
             os: ubuntu-24.04
             preset: linux-x64-release
             artifact-name: keeperfx-linux-x64
-            asset-name: keeperfx-${{ github.event.inputs.version || github.ref_name }}-linux-x64.tar.gz
+            platform: linux-x64
             
           - name: macOS Universal
             os: macos-14
             preset: macos-universal
             artifact-name: keeperfx-macos-universal
-            asset-name: keeperfx-${{ github.event.inputs.version || github.ref_name }}-macos-universal.zip
+            platform: macos-universal
 
     steps:
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          fi
+        shell: bash
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -81,31 +91,31 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           cd out/build/${{ matrix.preset }}
-          7z a ../../../${{ matrix.asset-name }} keeperfx* *.exe *.map
+          7z a ../../../keeperfx-${{ env.VERSION }}-${{ matrix.platform }}.zip keeperfx* *.exe *.map
 
       - name: Package artifacts (Linux)
         if: runner.os == 'Linux'
         run: |
           cd out/build/${{ matrix.preset }}
-          tar czf ../../../${{ matrix.asset-name }} keeperfx* *.map
+          tar czf ../../../keeperfx-${{ env.VERSION }}-${{ matrix.platform }}.tar.gz keeperfx* *.map
 
       - name: Package artifacts (macOS)
         if: runner.os == 'macOS'
         run: |
           cd out/build/${{ matrix.preset }}
-          zip -r ../../../${{ matrix.asset-name }} keeperfx* *.map
+          zip -r ../../../keeperfx-${{ env.VERSION }}-${{ matrix.platform }}.zip keeperfx* *.map
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          path: ${{ matrix.asset-name }}
+          path: keeperfx-${{ env.VERSION }}-${{ matrix.platform }}.*
 
       - name: Upload to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.asset-name }}
+          files: keeperfx-${{ env.VERSION }}-${{ matrix.platform }}.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -114,6 +124,16 @@ jobs:
     runs-on: ubuntu-24.04
     
     steps:
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          fi
+        shell: bash
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -146,19 +166,19 @@ jobs:
       - name: Package artifacts
         run: |
           cd out/build/wasm-release
-          tar czf ../../../keeperfx-${{ github.event.inputs.version || github.ref_name }}-wasm.tar.gz *.wasm *.js *.html
+          tar czf ../../../keeperfx-${{ env.VERSION }}-wasm.tar.gz *.wasm *.js *.html
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: keeperfx-wasm
-          path: keeperfx-*-wasm.tar.gz
+          path: keeperfx-${{ env.VERSION }}-wasm.tar.gz
 
       - name: Upload to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: keeperfx-*-wasm.tar.gz
+          files: keeperfx-${{ env.VERSION }}-wasm.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -175,18 +195,31 @@ jobs:
             preset: 3ds-release
             container: devkitpro/devkitarm:latest
             artifact-name: keeperfx-3ds
+            platform: 3ds
             
           - name: PS Vita
             preset: vita-release
             container: gnuton/vitasdk-docker:latest
             artifact-name: keeperfx-vita
+            platform: vita
             
           - name: Nintendo Switch
             preset: switch-release
             container: devkitpro/devkita64:latest
             artifact-name: keeperfx-switch
+            platform: switch
 
     steps:
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+          else
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          fi
+        shell: bash
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -214,18 +247,18 @@ jobs:
       - name: Package artifacts
         run: |
           cd out/build/${{ matrix.preset }}
-          tar czf ../../../keeperfx-${{ github.event.inputs.version || github.ref_name }}-${{ matrix.artifact-name }}.tar.gz *
+          tar czf ../../../keeperfx-${{ env.VERSION }}-${{ matrix.platform }}.tar.gz *
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact-name }}
-          path: keeperfx-*-${{ matrix.artifact-name }}.tar.gz
+          path: keeperfx-${{ env.VERSION }}-${{ matrix.platform }}.tar.gz
 
       - name: Upload to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: keeperfx-*-${{ matrix.artifact-name }}.tar.gz
+          files: keeperfx-${{ env.VERSION }}-${{ matrix.platform }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

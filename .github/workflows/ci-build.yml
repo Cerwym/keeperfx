@@ -39,7 +39,7 @@ jobs:
           - name: macOS Universal
             os: macos-14
             preset: macos-universal
-            vcpkg-triplet: x64-osx
+            vcpkg-triplet: arm64-osx
             artifact-name: keeperfx-macos-universal
             test: false
 

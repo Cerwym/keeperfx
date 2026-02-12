@@ -62,18 +62,19 @@ set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
 
 set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas -Werror)
 set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
-set(GNU_LINK_FLAG -mwindows -Wl,--enable-auto-import)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
 target_compile_options(keeperfx PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
 target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
-target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
-target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
-target_link_libraries (keeperfx PUBLIC -static stdc++ winpthread -dynamic)
-target_link_libraries (keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
 
-# System libraries.
-target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
-target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
+# System libraries (Windows only).
+if(WIN32)
+    target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
+    target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
+    target_link_libraries(keeperfx PUBLIC -static stdc++ winpthread -dynamic)
+    target_link_libraries(keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
+    target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
+    target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
+endif()
 
 # Go into submodules.
 add_subdirectory(deps)
@@ -151,8 +152,12 @@ if(BUILD_TESTING)
             target_link_libraries(keeperfx_tests PRIVATE
                 $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
             target_link_libraries(keeperfx_tests PRIVATE bgfx::bgfx bx::bx bimg::bimg)
-            target_link_libraries(keeperfx_tests PRIVATE imagehlp dbghelp)
-            target_link_libraries(keeperfx_tests PUBLIC -static stdc++ winpthread -dynamic)
+            
+            # Windows-specific libraries
+            if(WIN32)
+                target_link_libraries(keeperfx_tests PRIVATE imagehlp dbghelp)
+                target_link_libraries(keeperfx_tests PUBLIC -static stdc++ winpthread -dynamic)
+            endif()
             
             # Add the test
             add_test(NAME keeperfx_unit_tests COMMAND keeperfx_tests)
