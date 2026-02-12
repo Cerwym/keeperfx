@@ -1,0 +1,77 @@
+name: CI Homebrew
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  build-homebrew:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.container }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Nintendo 3DS
+            preset: 3ds-release
+            container: devkitpro/devkitarm:latest
+            artifact-name: keeperfx-3ds
+            artifact-pattern: "*.3dsx *.cia *.elf"
+            
+          - name: PS Vita
+            preset: vita-release
+            container: gnuton/vitasdk-docker:latest
+            artifact-name: keeperfx-vita
+            artifact-pattern: "*.vpk *.elf"
+            
+          - name: Nintendo Switch
+            preset: switch-release
+            container: devkitpro/devkita64:latest
+            artifact-name: keeperfx-switch
+            artifact-pattern: "*.nro *.elf"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '9558037875497b9db8cf38fcd7db68ec661bffe7'
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg
+            ~/.cache/vcpkg
+          key: vcpkg-${{ matrix.preset }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-${{ matrix.preset }}-
+
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Configure CMake
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.preset }}
+
+      - name: Build
+        uses: lukka/run-cmake@v10
+        with:
+          buildPreset: ${{ matrix.preset }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: out/build/${{ matrix.preset }}/${{ matrix.artifact-pattern }}
+          if-no-files-found: warn

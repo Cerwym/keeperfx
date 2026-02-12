@@ -1,4 +1,4 @@
-﻿{
+{
     "version": 3,
     "configurePresets": [
         {
@@ -20,6 +20,14 @@
             "hidden": true,
             "architecture": {
                 "value": "x86",
+                "strategy": "external"
+            }
+        },
+        {
+            "name": "x64",
+            "hidden": true,
+            "architecture": {
+                "value": "x64",
                 "strategy": "external"
             }
         },
@@ -120,6 +128,66 @@
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
+        },
+
+        {
+            "name": "windows-x86-release",
+            "displayName": "Windows x86 Release",
+            "inherits": [ "base", "x86", "Release", "MSVC" ]
+        },
+        {
+            "name": "windows-x64-release",
+            "displayName": "Windows x64 Release",
+            "inherits": [ "base", "x64", "Release", "MSVC" ]
+        },
+        {
+            "name": "linux-x64-release",
+            "displayName": "Linux x64 Release",
+            "inherits": [ "base", "Release" ],
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++"
+            }
+        },
+        {
+            "name": "macos-universal",
+            "displayName": "macOS Universal",
+            "inherits": [ "base", "Release" ],
+            "cacheVariables": {
+                "CMAKE_OSX_ARCHITECTURES": "x86_64;arm64"
+            }
+        },
+        {
+            "name": "wasm-release",
+            "displayName": "WebAssembly Release",
+            "inherits": [ "base", "Release" ],
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+            }
+        },
+        {
+            "name": "3ds-release",
+            "displayName": "3DS Release",
+            "inherits": [ "base", "Release" ],
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{DEVKITPRO}/cmake/3DS.cmake"
+            }
+        },
+        {
+            "name": "vita-release",
+            "displayName": "PS Vita Release",
+            "inherits": [ "base", "Release" ],
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake"
+            }
+        },
+        {
+            "name": "switch-release",
+            "displayName": "Nintendo Switch Release",
+            "inherits": [ "base", "Release" ],
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{DEVKITPRO}/cmake/Switch.cmake"
+            }
         }
     ],
     "buildPresets": [
@@ -216,6 +284,81 @@
             "displayName": "Release MinGW32 HeavyLog",
             "inherits": "HeavyLog",
             "configurePreset": "x86-MinGW32-Release"
+        },
+
+        {
+            "name": "windows-x86-release",
+            "displayName": "Windows x86 Release Build",
+            "configurePreset": "windows-x86-release",
+            "inherits": "StandardLog"
+        },
+        {
+            "name": "windows-x64-release",
+            "displayName": "Windows x64 Release Build",
+            "configurePreset": "windows-x64-release",
+            "inherits": "StandardLog"
+        },
+        {
+            "name": "linux-x64-release",
+            "displayName": "Linux x64 Release Build",
+            "configurePreset": "linux-x64-release",
+            "inherits": "StandardLog"
+        },
+        {
+            "name": "macos-universal",
+            "displayName": "macOS Universal Build",
+            "configurePreset": "macos-universal",
+            "inherits": "StandardLog"
+        },
+        {
+            "name": "wasm-release",
+            "displayName": "WebAssembly Release Build",
+            "configurePreset": "wasm-release",
+            "inherits": "StandardLog"
+        },
+        {
+            "name": "3ds-release",
+            "displayName": "3DS Release Build",
+            "configurePreset": "3ds-release",
+            "inherits": "StandardLog"
+        },
+        {
+            "name": "vita-release",
+            "displayName": "PS Vita Release Build",
+            "configurePreset": "vita-release",
+            "inherits": "StandardLog"
+        },
+        {
+            "name": "switch-release",
+            "displayName": "Nintendo Switch Release Build",
+            "configurePreset": "switch-release",
+            "inherits": "StandardLog"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "windows-x86-release",
+            "displayName": "Windows x86 Release Tests",
+            "configurePreset": "windows-x86-release",
+            "output": {"outputOnFailure": true}
+        },
+        {
+            "name": "windows-x64-release",
+            "displayName": "Windows x64 Release Tests",
+            "configurePreset": "windows-x64-release",
+            "output": {"outputOnFailure": true}
+        },
+        {
+            "name": "linux-x64-release",
+            "displayName": "Linux x64 Release Tests",
+            "configurePreset": "linux-x64-release",
+            "output": {"outputOnFailure": true}
+        },
+        {
+            "name": "macos-universal",
+            "displayName": "macOS Universal Tests",
+            "configurePreset": "macos-universal",
+            "output": {"outputOnFailure": true}
         }
     ]
 }
