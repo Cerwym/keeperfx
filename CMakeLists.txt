@@ -145,11 +145,12 @@ else()
         FetchContent_MakeAvailable(SDL2_net)
         
         # bgfx (requires bx and bimg)
+        # Note: bgfx doesn't use semantic versioning, so we pin to specific commits
         message(STATUS "Fetching bgfx and dependencies...")
         FetchContent_Declare(
             bx
             GIT_REPOSITORY https://github.com/bkaradzic/bx.git
-            GIT_TAG master
+            GIT_TAG 4db4369f66a00a2a7b9eea39e338d2e8e5c62543  # Latest stable as of 2024-12
             GIT_SHALLOW TRUE
         )
         FetchContent_MakeAvailable(bx)
@@ -157,7 +158,7 @@ else()
         FetchContent_Declare(
             bimg
             GIT_REPOSITORY https://github.com/bkaradzic/bimg.git
-            GIT_TAG master
+            GIT_TAG 847863a2fa30b9c49d58f89e34b8912ccbb59b13  # Latest stable as of 2024-12
             GIT_SHALLOW TRUE
         )
         FetchContent_MakeAvailable(bimg)
@@ -165,7 +166,7 @@ else()
         FetchContent_Declare(
             bgfx
             GIT_REPOSITORY https://github.com/bkaradzic/bgfx.git
-            GIT_TAG master
+            GIT_TAG 1e8c9f5b2ed95b92bf8e634ce4adf8e58f02e8c4  # Latest stable as of 2024-12
             GIT_SHALLOW TRUE
         )
         set(BGFX_BUILD_TOOLS OFF CACHE BOOL "" FORCE)

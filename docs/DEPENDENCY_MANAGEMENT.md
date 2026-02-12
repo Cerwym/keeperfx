@@ -18,9 +18,11 @@ KeeperFX uses **CMake FetchContent** for automatic dependency management, inspir
 - **SDL2_image** (2.8.2): Image loading
 - **SDL2_mixer** (2.8.0): Audio mixing
 - **SDL2_net** (2.2.0): Networking
-- **bgfx** (master): Cross-platform rendering abstraction
-- **bx** (master): Base library for bgfx
-- **bimg** (master): Image library for bgfx
+- **bgfx** (commit 1e8c9f5): Cross-platform rendering abstraction
+- **bx** (commit 4db4369): Base library for bgfx
+- **bimg** (commit 847863a): Image library for bgfx
+
+Note: bgfx and its dependencies don't use semantic versioning, so we pin to specific stable commits rather than release tags.
 
 ## Usage
 
@@ -157,6 +159,6 @@ FetchContent_MakeAvailable(my_library)
 ## References
 
 - [CMake FetchContent documentation](https://cmake.org/cmake/help/latest/module/FetchContent.html)
-- [isle-portable build system](https://github.com/isledecomp/isle-portable/blob/master/CMakeLists.txt)
+- [isle-portable build system](https://github.com/isledecomp/isle-portable/blob/f8e5c98/CMakeLists.txt) (specific commit for reference stability)
 - [SDL2 releases](https://github.com/libsdl-org/SDL/releases)
 - [bgfx GitHub](https://github.com/bkaradzic/bgfx)
