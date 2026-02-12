@@ -7,6 +7,12 @@
 #      Allows to invoke "make all" or similar commands to compile all
 #      source code files and link them into executable file.
 #  @par Comment:
+#      ⚠️  DEPRECATION WARNING ⚠️
+#      This Makefile is being phased out in favor of CMake as the primary
+#      build system. Please use CMake for new development:
+#        cmake --preset windows-x64-release
+#        cmake --build --preset windows-x64-release
+#      
 #      Please note that the make must be run from 'sh'; starting if from
 #      Windows 'cmd.exe' won't work.
 #      You need mingw32 and coreutils to do the build.

@@ -55,6 +55,42 @@ if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/ffmpeg)
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/ffmpeg-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/ffmpeg)
 endif()
 
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/openal)
+	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/openal)
+	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/openal-mingw32.tar.gz)
+		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/2024-11-14/openal-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/openal-mingw32.tar.gz SHOW_PROGRESS)
+	endif()
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/openal-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/openal)
+endif()
+
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/luajit)
+	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/luajit)
+	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/luajit-mingw32.tar.gz)
+		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/20250418/luajit-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/luajit-mingw32.tar.gz SHOW_PROGRESS)
+	endif()
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/luajit-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/luajit)
+endif()
+
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/miniupnpc)
+	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/miniupnpc)
+	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/miniupnpc-mingw32.tar.gz)
+		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/20260102/miniupnpc-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/miniupnpc-mingw32.tar.gz SHOW_PROGRESS)
+	endif()
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/miniupnpc-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/miniupnpc)
+endif()
+
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/libnatpmp)
+	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/libnatpmp)
+	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/libnatpmp-mingw32.tar.gz)
+		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/20260102/libnatpmp-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/libnatpmp-mingw32.tar.gz SHOW_PROGRESS)
+	endif()
+
+	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/libnatpmp-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/libnatpmp)
+endif()
+
 ## enet
 add_library(enet_static STATIC IMPORTED)
 set_target_properties(enet_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/enet/libenet.a)
@@ -62,6 +98,7 @@ set_target_properties(enet_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMA
 target_link_libraries(enet_static INTERFACE ws2_32 winmm)
 target_link_libraries(keeperfx PUBLIC enet_static)
 target_link_libraries(keeperfx_hvlog PUBLIC enet_static)
+target_link_libraries(tests PUBLIC enet_static)
 
 ## spng
 add_library(spng_static STATIC IMPORTED)
@@ -69,6 +106,7 @@ set_target_properties(spng_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_S
 set_target_properties(spng_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/spng/include)
 target_link_libraries(keeperfx PUBLIC spng_static)
 target_link_libraries(keeperfx_hvlog PUBLIC spng_static)
+target_link_libraries(tests PUBLIC spng_static)
 
 ## centijson
 add_library(centijson_static STATIC IMPORTED)
@@ -76,6 +114,7 @@ set_target_properties(centijson_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURR
 set_target_properties(centijson_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/centijson/include)
 target_link_libraries(keeperfx PUBLIC centijson_static)
 target_link_libraries(keeperfx_hvlog PUBLIC centijson_static)
+target_link_libraries(tests PUBLIC centijson_static)
 
 ## astronomy.
 add_library(astronomy_static STATIC IMPORTED)
@@ -83,6 +122,7 @@ set_target_properties(astronomy_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURR
 set_target_properties(astronomy_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/astronomy/include)
 target_link_libraries(keeperfx PUBLIC astronomy_static)
 target_link_libraries(keeperfx_hvlog PUBLIC astronomy_static)
+target_link_libraries(tests PUBLIC astronomy_static)
 
 ## zlib
 add_library(zlib_static STATIC IMPORTED)
@@ -90,6 +130,7 @@ set_target_properties(zlib_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_S
 set_target_properties(zlib_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/zlib/include)
 target_link_libraries(keeperfx PUBLIC zlib_static)
 target_link_libraries(keeperfx_hvlog PUBLIC zlib_static)
+target_link_libraries(tests PUBLIC zlib_static)
 
 # Add minizip
 add_library(minizip_static STATIC IMPORTED)
@@ -98,6 +139,7 @@ set_target_properties(minizip_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${
 target_link_libraries(minizip_static INTERFACE zlib_static)
 target_link_libraries(keeperfx PUBLIC minizip_static)
 target_link_libraries(keeperfx_hvlog PUBLIC minizip_static)
+target_link_libraries(tests PUBLIC minizip_static)
 
 ## centitoml.
 add_library(centitoml OBJECT "centitoml/toml_api.c")
@@ -105,6 +147,7 @@ target_link_libraries(centitoml PUBLIC centijson_static)
 target_include_directories(centitoml INTERFACE "centitoml")
 target_link_libraries(keeperfx PUBLIC centitoml)
 target_link_libraries(keeperfx_hvlog PUBLIC centitoml)
+target_link_libraries(tests PUBLIC centitoml)
 
 ## ffmpeg
 add_library(libavcodec_static STATIC IMPORTED)
@@ -125,3 +168,37 @@ set_target_properties(libswresample_static PROPERTIES INTERFACE_INCLUDE_DIRECTOR
 
 target_link_libraries(keeperfx PUBLIC bcrypt libavcodec_static libavformat_static libavutil_static libswresample_static)
 target_link_libraries(keeperfx_hvlog PUBLIC bcrypt libavcodec_static libavformat_static libavutil_static libswresample_static)
+target_link_libraries(tests PUBLIC bcrypt libavcodec_static libavformat_static libavutil_static libswresample_static)
+
+## OpenAL
+add_library(openal_static STATIC IMPORTED)
+set_target_properties(openal_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/openal/libOpenAL32.a)
+set_target_properties(openal_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/openal/include)
+target_link_libraries(keeperfx PUBLIC openal_static)
+target_link_libraries(keeperfx_hvlog PUBLIC openal_static)
+target_link_libraries(tests PUBLIC openal_static)
+
+## LuaJIT
+add_library(luajit_static STATIC IMPORTED)
+set_target_properties(luajit_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/luajit/lib/libluajit.a)
+set_target_properties(luajit_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/luajit/include)
+target_link_libraries(keeperfx PUBLIC luajit_static)
+target_link_libraries(keeperfx_hvlog PUBLIC luajit_static)
+target_link_libraries(tests PUBLIC luajit_static)
+
+## miniupnpc
+add_library(miniupnpc_static STATIC IMPORTED)
+set_target_properties(miniupnpc_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/miniupnpc/libminiupnpc.a)
+set_target_properties(miniupnpc_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/miniupnpc/include)
+target_link_libraries(keeperfx PUBLIC miniupnpc_static)
+target_link_libraries(keeperfx_hvlog PUBLIC miniupnpc_static)
+target_link_libraries(tests PUBLIC miniupnpc_static)
+
+## libnatpmp
+add_library(libnatpmp_static STATIC IMPORTED)
+set_target_properties(libnatpmp_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/libnatpmp/libnatpmp.a)
+set_target_properties(libnatpmp_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/libnatpmp/include)
+target_link_libraries(libnatpmp_static INTERFACE iphlpapi)
+target_link_libraries(keeperfx PUBLIC libnatpmp_static)
+target_link_libraries(keeperfx_hvlog PUBLIC libnatpmp_static)
+target_link_libraries(tests PUBLIC libnatpmp_static)

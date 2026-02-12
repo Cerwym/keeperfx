@@ -120,6 +120,14 @@
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
+        },
+        {
+            "name": "windows-x64-release",
+            "displayName": "Windows x64 Release",
+            "inherits": [ "MingGW32-Base", "x86", "Release" ],
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
         }
     ],
     "buildPresets": [
@@ -216,6 +224,12 @@
             "displayName": "Release MinGW32 HeavyLog",
             "inherits": "HeavyLog",
             "configurePreset": "x86-MinGW32-Release"
+        },
+        {
+            "name": "windows-x64-release",
+            "displayName": "Windows x64 Release",
+            "inherits": "StandardLog",
+            "configurePreset": "windows-x64-release"
         }
     ]
 }

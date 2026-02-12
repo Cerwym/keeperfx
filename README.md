@@ -46,6 +46,55 @@ or [Steam](https://store.steampowered.com/app/1996630/Dungeon_Keeper_Gold/).
 
 
 ## Development
+
+### Building with CMake (Recommended)
+
+KeeperFX uses CMake as its primary build system. To build the project:
+
+#### Prerequisites
+- CMake 3.20 or later
+- MinGW-w64 (for Windows builds)
+- vcpkg (optional, for dependency management)
+- Git
+
+#### Build Steps
+```bash
+# Clone the repository
+git clone https://github.com/dkfans/keeperfx.git
+cd keeperfx
+
+# Configure with CMake preset
+cmake --preset windows-x64-release
+
+# Build
+cmake --build --preset windows-x64-release
+```
+
+This will:
+1. Download all required dependencies (SDL2, ffmpeg, OpenAL, etc.)
+2. Download build tools (png2ico, po2ngdat, sndbanker, etc.)
+3. Compile keeperfx.exe and keeperfx_hvlog.exe
+4. Build the test suite
+
+**Available presets:**
+- `windows-x64-release` - Release build with standard logging
+- `x86-MinGW32-Debug` - Debug build
+- `x86-MinGW32-Release` - Release build
+
+To build the test executable:
+```bash
+cmake --build --preset windows-x64-release --target tests
+```
+
+### Building with Make (Legacy)
+
+> ⚠️ **DEPRECATION WARNING**: The Makefile build system is being phased out in favor of CMake. 
+> Please use CMake for new development.
+
+For legacy Make-based builds, see the [legacy build documentation](https://github.com/dkfans/keeperfx/wiki/Building-KeeperFX).
+
+### Development Resources
+
 To get started with KeeperFX development, refer to the [Development Guide](https://github.com/dkfans/keeperfx/wiki/Building-KeeperFX) for 
 detailed instructions on setting up a development environment and building KeeperFX from source.
 
