@@ -30,20 +30,45 @@ configure_file(${KEEPERFX_VER_DEFS_H_IN} ${KEEPERFX_VER_DEFS_H_OUT})
 # Platform detection - allows explicit override via -DPLATFORM_XXX=ON
 # Falls back to environment variable detection if not explicitly set
 if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
+    # Count how many SDK environments are detected
+    set(SDK_COUNT 0)
+    
     if(DEFINED ENV{VITASDK})
+        math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
         set(PLATFORM_VITA ON CACHE BOOL "Build for PlayStation Vita")
-        message(STATUS "Building for PlayStation Vita")
+        message(STATUS "Detected VITASDK environment")
     endif()
 
     if(DEFINED ENV{DEVKITPRO})
         if(DEFINED ENV{DEVKITARM})
+            math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
             set(PLATFORM_3DS ON CACHE BOOL "Build for Nintendo 3DS")
-            message(STATUS "Building for Nintendo 3DS")
-        elseif(DEFINED ENV{DEVKITA64})
+            message(STATUS "Detected DEVKITARM environment")
+        endif()
+        if(DEFINED ENV{DEVKITA64})
+            math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
             set(PLATFORM_SWITCH ON CACHE BOOL "Build for Nintendo Switch")
-            message(STATUS "Building for Nintendo Switch")
+            message(STATUS "Detected DEVKITA64 environment")
         endif()
     endif()
+    
+    # Warn if multiple SDKs detected
+    if(SDK_COUNT GREATER 1)
+        message(WARNING "Multiple homebrew SDK environments detected. "
+                "Please explicitly specify target platform with -DPLATFORM_VITA=ON, "
+                "-DPLATFORM_3DS=ON, or -DPLATFORM_SWITCH=ON to avoid ambiguity.")
+    endif()
+endif()
+
+# Report selected platform
+if(PLATFORM_VITA)
+    message(STATUS "Building for PlayStation Vita")
+elseif(PLATFORM_3DS)
+    message(STATUS "Building for Nintendo 3DS")
+elseif(PLATFORM_SWITCH)
+    message(STATUS "Building for Nintendo Switch")
+else()
+    message(STATUS "Building for desktop platform")
 endif()
 
 # Find dependencies based on platform
@@ -96,9 +121,11 @@ set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-str
 
 # Platform-specific compiler flags
 if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
-    # Homebrew platforms don't use x86-64 architecture
+    # ARM platforms: architecture flags are set by platform-specific toolchain files
+    # (ARMv6 for 3DS, ARMv7 for Vita, ARMv8/AArch64 for Switch)
     set(GNU_COMPILER_FLAG -fno-omit-frame-pointer -fmessage-length=0)
 else()
+    # x86-64 for desktop platforms
     set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
 endif()
 
