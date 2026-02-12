@@ -81,6 +81,7 @@ static uint32_t s_frontBufferIndex = 0;
 
 // Depth/stencil surface
 static void* s_depthBufferData = NULL;
+static SceUID s_depthBufferUid = -1;
 static SceGxmDepthStencilSurface s_depthSurface;
 
 // Vertex and index buffers
@@ -93,7 +94,9 @@ static uint32_t s_indexCount = 0;
 static SceGxmTexture s_paletteTexture;
 static SceGxmTexture s_atlasTexture;
 static void* s_paletteTextureData = NULL;
+static SceUID s_paletteTextureUid = -1;
 static void* s_atlasTextureData = NULL;
+static SceUID s_atlasTextureUid = -1;
 
 // Uniforms
 static const SceGxmProgramParameter* s_projectionParam = NULL;
@@ -257,13 +260,12 @@ static TbResult renderer_gxm_init(struct SDL_Window* window, int width, int heig
 
     // Allocate depth buffer
     const uint32_t depthBufferSize = DISPLAY_STRIDE_IN_PIXELS * DISPLAY_HEIGHT * 4;
-    SceUID depthBufferUid;
     s_depthBufferData = gpu_alloc(
         SCE_KERNEL_MEMBLOCK_TYPE_USER_RW_UNCACHE,
         depthBufferSize,
         SCE_GXM_DEPTHSTENCIL_SURFACE_ALIGNMENT,
         SCE_GXM_MEMORY_ATTRIB_READ | SCE_GXM_MEMORY_ATTRIB_WRITE,
-        &depthBufferUid
+        &s_depthBufferUid
     );
 
     if (!s_depthBufferData) {
@@ -325,13 +327,13 @@ static void renderer_gxm_shutdown(void)
 
     // Free depth buffer
     if (s_depthBufferData)
-        gpu_free(-1);  // Would need to track the UID
+        gpu_free(s_depthBufferUid);
 
     // Free textures
     if (s_paletteTextureData)
-        gpu_free(-1);
+        gpu_free(s_paletteTextureUid);
     if (s_atlasTextureData)
-        gpu_free(-1);
+        gpu_free(s_atlasTextureUid);
 
     // Terminate GXM
     sceGxmTerminate();
