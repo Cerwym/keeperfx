@@ -27,11 +27,38 @@ set(KEEPERFX_VER_DEFS_H_IN ${CMAKE_SOURCE_DIR}/ver_defs.h.in)
 set(KEEPERFX_VER_DEFS_H_OUT ${CMAKE_SOURCE_DIR}/ver_defs.h)
 configure_file(${KEEPERFX_VER_DEFS_H_IN} ${KEEPERFX_VER_DEFS_H_OUT})
 
-find_package(SDL2 CONFIG REQUIRED)
-find_package(SDL2_image CONFIG REQUIRED)
-find_package(SDL2_mixer CONFIG REQUIRED)
-find_package(SDL2_net CONFIG REQUIRED)
-find_package(bgfx CONFIG REQUIRED)
+# Platform detection
+if(DEFINED ENV{VITASDK})
+    set(PLATFORM_VITA ON)
+    message(STATUS "Building for PlayStation Vita")
+endif()
+
+if(DEFINED ENV{DEVKITPRO})
+    if(DEFINED ENV{DEVKITARM})
+        set(PLATFORM_3DS ON)
+        message(STATUS "Building for Nintendo 3DS")
+    elseif(DEFINED ENV{DEVKITA64})
+        set(PLATFORM_SWITCH ON)
+        message(STATUS "Building for Nintendo Switch")
+    endif()
+endif()
+
+# Find dependencies based on platform
+if(PLATFORM_VITA)
+    # Vita uses vitaGL and libraries from vitasdk
+    # Dependencies are handled by the Vita toolchain
+    message(STATUS "Using Vita SDK libraries (vitaGL for OpenGL ES)")
+elseif(PLATFORM_3DS OR PLATFORM_SWITCH)
+    # 3DS and Switch have their own dependency management
+    message(STATUS "Using devkitPro libraries")
+else()
+    # Desktop platforms use vcpkg
+    find_package(SDL2 CONFIG REQUIRED)
+    find_package(SDL2_image CONFIG REQUIRED)
+    find_package(SDL2_mixer CONFIG REQUIRED)
+    find_package(SDL2_net CONFIG REQUIRED)
+    find_package(bgfx CONFIG REQUIRED)
+endif()
 
 # Global definitions.
 add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
@@ -57,11 +84,21 @@ target_sources(keeperfx_hvlog PRIVATE "res/keeperfx_stdres.rc")
 message(STATUS "We are using ${CMAKE_CXX_COMPILER_ID}")
 
 # The default bfd linker in MinGW is extremely slow. LLVM linker (LLD) is much much faster.
-set_property(TARGET keeperfx PROPERTY LINKER_TYPE LLD)
-set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
+if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
+    set_property(TARGET keeperfx PROPERTY LINKER_TYPE LLD)
+    set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
+endif()
 
 set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas -Werror)
-set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
+
+# Platform-specific compiler flags
+if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
+    # Homebrew platforms don't use x86-64 architecture
+    set(GNU_COMPILER_FLAG -fno-omit-frame-pointer -fmessage-length=0)
+else()
+    set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
+endif()
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
 target_compile_options(keeperfx PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
 target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
@@ -82,31 +119,68 @@ add_subdirectory(deps)
 add_subdirectory(tools)
 
 # External libraries.
-target_link_libraries(keeperfx
-    PRIVATE
-    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
-target_link_libraries(keeperfx
-    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
-target_link_libraries(keeperfx
-    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
-target_link_libraries(keeperfx
-    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+if(PLATFORM_VITA)
+    # Vita-specific libraries (vitaGL, SceLibc, etc.)
+    target_link_libraries(keeperfx PRIVATE
+        SDL2
+        vitaGL
+        vitashark
+        SceLibKernel_stub
+        SceDisplay_stub
+        SceGxm_stub
+        SceSysmodule_stub
+        SceCtrl_stub
+        SceTouch_stub
+        SceMotion_stub
+        m
+        SceAudio_stub
+        SceCommonDialog_stub
+    )
+elseif(PLATFORM_3DS)
+    # 3DS-specific libraries (citro3d, etc.)
+    target_link_libraries(keeperfx PRIVATE
+        citro3d
+        ctru
+        m
+    )
+elseif(PLATFORM_SWITCH)
+    # Switch-specific libraries
+    target_link_libraries(keeperfx PRIVATE
+        SDL2
+        EGL
+        glapi
+        drm_nouveau
+        nx
+        m
+    )
+else()
+    # Desktop platforms
+    target_link_libraries(keeperfx
+        PRIVATE
+        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
+    target_link_libraries(keeperfx
+        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+    target_link_libraries(keeperfx
+        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
+    target_link_libraries(keeperfx
+        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
 
-# bgfx library
-target_link_libraries(keeperfx PRIVATE bgfx::bgfx bx::bx bimg::bimg)
+    # bgfx library
+    target_link_libraries(keeperfx PRIVATE bgfx::bgfx bx::bx bimg::bimg)
 
-target_link_libraries(keeperfx_hvlog
-    PRIVATE
-    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
-target_link_libraries(keeperfx_hvlog
-    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
-target_link_libraries(keeperfx_hvlog
-    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
-target_link_libraries(keeperfx_hvlog
-    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+    target_link_libraries(keeperfx_hvlog
+        PRIVATE
+        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
+    target_link_libraries(keeperfx_hvlog
+        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+    target_link_libraries(keeperfx_hvlog
+        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
+    target_link_libraries(keeperfx_hvlog
+        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
 
-# bgfx library
-target_link_libraries(keeperfx_hvlog PRIVATE bgfx::bgfx bx::bx bimg::bimg)
+    # bgfx library
+    target_link_libraries(keeperfx_hvlog PRIVATE bgfx::bgfx bx::bx bimg::bimg)
+endif()
 
 # Testing support with CUnit
 option(BUILD_TESTING "Build the testing tree" ON)

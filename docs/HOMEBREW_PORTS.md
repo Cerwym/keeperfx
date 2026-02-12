@@ -110,16 +110,23 @@ export VITASDK=/usr/local/vitasdk
 # Install vitaGL dependency
 # vitaGL provides OpenGL ES compatibility layer for bgfx
 # See: https://github.com/Rinnegatamante/vitaGL
+# Usually pre-installed in vitasdk, but can be installed with:
+# vdpm vitaGL
 
 # Build
 mkdir build-vita && cd build-vita
-cmake .. -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake -DPLATFORM_VITA=ON
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake
 make
+
+# Or use CMake preset
+cmake --preset vita-release
+cmake --build --preset vita-release
 ```
 
 **Dependencies**: 
-- vitaGL (OpenGL ES wrapper for Vita)
-- bgfx (uses OpenGL backend via vitaGL)
+- vitaGL (OpenGL ES wrapper for Vita) - installed via vdpm
+- SDL2 (Vita port) - included in vitasdk
+- bgfx will work through vitaGL's OpenGL ES implementation
 
 ### Nintendo Switch
 ```bash
