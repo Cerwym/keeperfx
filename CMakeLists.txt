@@ -53,11 +53,27 @@ add_executable(keeperfx_hvlog ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
 target_compile_definitions(keeperfx_hvlog PUBLIC BFDEBUG_LEVEL=10)
 target_sources(keeperfx_hvlog PRIVATE "res/keeperfx_stdres.rc")
 
+# Test executable with CUnit
+file(GLOB TEST_SOURCES "tests/*.cpp")
+add_library(cunit_static STATIC
+    "deps/CUnit-2.1-3/CUnit/Sources/Basic/Basic.c"
+    "deps/CUnit-2.1-3/CUnit/Sources/Framework/TestDB.c"
+    "deps/CUnit-2.1-3/CUnit/Sources/Framework/CUError.c"
+    "deps/CUnit-2.1-3/CUnit/Sources/Framework/TestRun.c"
+    "deps/CUnit-2.1-3/CUnit/Sources/Framework/Util.c"
+)
+target_include_directories(cunit_static PUBLIC "deps/CUnit-2.1-3/CUnit/Headers")
+
+add_executable(tests ${TEST_SOURCES} ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
+target_compile_definitions(tests PUBLIC BFDEBUG_LEVEL=0)
+target_link_libraries(tests PRIVATE cunit_static)
+
 message(STATUS "We are using ${CMAKE_CXX_COMPILER_ID}")
 
 # The default bfd linker in MinGW is extremely slow. LLVM linker (LLD) is much much faster.
 set_property(TARGET keeperfx PROPERTY LINKER_TYPE LLD)
 set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
+set_property(TARGET tests PROPERTY LINKER_TYPE LLD)
 
 set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas -Werror)
 set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
@@ -65,14 +81,18 @@ set(GNU_LINK_FLAG -mwindows -Wl,--enable-auto-import)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
 target_compile_options(keeperfx PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
 target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
+target_compile_options(tests PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
 target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
 target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
+target_link_options(tests PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,tests.map)
 target_link_libraries (keeperfx PUBLIC -static stdc++ winpthread -dynamic)
 target_link_libraries (keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
+target_link_libraries (tests PUBLIC -static stdc++ winpthread -dynamic)
 
 # System libraries.
-target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
-target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
+target_link_libraries(keeperfx PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32)
+target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32)
+target_link_libraries(tests PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32)
 
 # Go into submodules.
 add_subdirectory(deps)
@@ -97,4 +117,15 @@ target_link_libraries(keeperfx_hvlog
 target_link_libraries(keeperfx_hvlog
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
 target_link_libraries(keeperfx_hvlog
+    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+
+# Link test executable with SDL2 libraries
+target_link_libraries(tests
+    PRIVATE
+    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
+target_link_libraries(tests
+    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+target_link_libraries(tests
+    PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
+target_link_libraries(tests
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
