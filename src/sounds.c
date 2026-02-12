@@ -23,6 +23,7 @@
 #include "bflib_basics.h"
 #include "bflib_sound.h"
 #include "bflib_sndlib.h"
+#include "audio/audio_interface.h"
 #include "bflib_fileio.h"
 #include "bflib_math.h"
 #include "bflib_planar.h"
@@ -516,14 +517,24 @@ void mute_audio(TbBool mute)
     {
         if (mute)
         {
-            SetSoundMasterVolume(0);
-            set_music_volume(0);
+            // Use audio interface for volume control
+            if (g_audio != NULL) {
+                g_audio->set_volume(0, 0, -1);
+            } else {
+                SetSoundMasterVolume(0);
+                set_music_volume(0);
+            }
             pause_music(); // volume seems to have no effect on CD audio, so just pause/resume it
         }
         else
         {
-            set_music_volume(settings.music_volume);
-            SetSoundMasterVolume(settings.sound_volume);
+            // Use audio interface for volume control
+            if (g_audio != NULL) {
+                g_audio->set_volume(settings.sound_volume, settings.music_volume, -1);
+            } else {
+                set_music_volume(settings.music_volume);
+                SetSoundMasterVolume(settings.sound_volume);
+            }
             resume_music();
         }
     }
