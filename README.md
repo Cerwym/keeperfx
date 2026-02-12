@@ -52,6 +52,10 @@ detailed instructions on setting up a development environment and building Keepe
 If you wish to discuss development, you can join the [Keeper Klan discord](https://discord.gg/hE4p7vy2Hb) and ask to 
 be added to the KeeperFX development channel.
 
+### Rendering Refactoring Project
+We're working on refactoring the rendering system to support multiple backends (OpenGL, Vulkan, DirectX). 
+See [Rendering Refactoring Plan](docs/rendering-refactoring-plan.md) and [Quick Start Guide](docs/rendering-quickstart.md) to get involved!
+
 
 ## Components
 | Component | Language | Info |
@@ -78,6 +82,7 @@ be added to the KeeperFX development channel.
 
 ## Further Improvements
 KeeperFX could be further improved in these key areas:
+- **Rendering system refactoring** - Support for hardware-accelerated rendering (OpenGL, Vulkan, DirectX) - [See plan](docs/rendering-refactoring-plan.md)
 - Multiplayer performance and features
 - Expand and improve AI / Computer player behavior
 - Improve pathfinding performance
