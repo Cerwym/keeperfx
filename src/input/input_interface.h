@@ -26,6 +26,11 @@ extern "C" {
 #endif
 /******************************************************************************/
 
+// Mouse button bit masks
+#define INPUT_MOUSE_BUTTON_LEFT   0x01
+#define INPUT_MOUSE_BUTTON_RIGHT  0x02
+#define INPUT_MOUSE_BUTTON_MIDDLE 0x04
+
 typedef struct InputInterface {
     void (*poll_events)(void);
     TbBool (*is_key_down)(int keycode);

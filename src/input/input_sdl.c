@@ -52,11 +52,11 @@ static void input_sdl_get_mouse(int* x, int* y, int* buttons)
     if (buttons != NULL) {
         *buttons = 0;
         if (lbDisplay.LeftButton)
-            *buttons |= 0x01;
+            *buttons |= INPUT_MOUSE_BUTTON_LEFT;
         if (lbDisplay.RightButton)
-            *buttons |= 0x02;
+            *buttons |= INPUT_MOUSE_BUTTON_RIGHT;
         if (lbDisplay.MiddleButton)
-            *buttons |= 0x04;
+            *buttons |= INPUT_MOUSE_BUTTON_MIDDLE;
     }
 }
 

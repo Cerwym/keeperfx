@@ -267,7 +267,7 @@ void update_left_button_clicked(void)
   if (g_input != NULL) {
     int x, y, buttons;
     g_input->get_mouse(&x, &y, &buttons);
-    left_button_clicked = (buttons & 0x01) ? 1 : 0;
+    left_button_clicked = (buttons & INPUT_MOUSE_BUTTON_LEFT) ? 1 : 0;
     left_button_clicked_x = x * (long)pixel_size;
     left_button_clicked_y = y * (long)pixel_size;
   } else {
