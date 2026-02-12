@@ -1058,6 +1058,17 @@ short setup_game(void)
       return 0;
   }
 
+  // Initialize the renderer now that we have a valid window
+  if (g_renderer != NULL && g_renderer->init != NULL)
+  {
+      TbScreenModeInfo *mdinfo = LbScreenGetModeInfo(LbScreenActiveMode());
+      if (g_renderer->init(lbWindow, mdinfo->Width, mdinfo->Height) != Lb_SUCCESS)
+      {
+          ERRORLOG("Failed to initialize renderer");
+          return 0;
+      }
+  }
+
   if (flag_is_set(start_params.startup_flags, SFlg_Legal))
   {
       if (is_ar_wider_than_original(LbGraphicsScreenWidth(), LbGraphicsScreenHeight()))
