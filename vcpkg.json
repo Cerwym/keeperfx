@@ -3,6 +3,7 @@
         "sdl2",
         "sdl2-image",
         "sdl2-mixer",
-        "sdl2-net"
+        "sdl2-net",
+        "bgfx"
     ]
 }
