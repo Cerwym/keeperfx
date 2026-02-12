@@ -58,7 +58,7 @@ Console homebrew builds for 3DS, Vita, and Switch.
 Multi-platform release workflow.
 
 **Features:**
-- Builds all 7 platforms (desktop + WASM + consoles)
+- Builds all 8 platforms (Windows x86/x64, Linux, macOS, WASM, 3DS, Vita, Switch)
 - Platform-specific artifact packaging
 - Automatic upload to GitHub releases
 - Manual trigger with version input

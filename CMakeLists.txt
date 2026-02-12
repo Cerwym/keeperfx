@@ -68,12 +68,13 @@ target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
 
 # System libraries (Windows only).
 if(WIN32)
+    set(GNU_LINK_FLAG -mwindows -Wl,--enable-auto-import)
+    target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
+    target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
     target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
     target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
     target_link_libraries(keeperfx PUBLIC -static stdc++ winpthread -dynamic)
     target_link_libraries(keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
-    target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
-    target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
 endif()
 
 # Go into submodules.
@@ -134,6 +135,8 @@ if(BUILD_TESTING)
         # Build test executable
         file(GLOB TEST_SOURCES "tests/*.cpp" "tests/*.c")
         if(TEST_SOURCES)
+            # Note: Currently includes all source files - this may need refactoring
+            # to link against main targets as libraries or manage entry points carefully
             add_executable(keeperfx_tests ${TEST_SOURCES} ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
             
             # Copy compile options from main target
