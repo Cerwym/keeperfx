@@ -1045,6 +1045,10 @@ short setup_game(void)
           g_renderer = get_software_renderer();
           SYNCMSG("Using SOFTWARE renderer");
           break;
+      case 2: // HARDWARE
+          g_renderer = get_hardware_renderer();
+          WARNMSG("Hardware renderer selected but not yet implemented, may fail");
+          break;
       default:
           g_renderer = get_software_renderer();
           WARNMSG("Unknown renderer type %d, defaulting to SOFTWARE", renderer_type);

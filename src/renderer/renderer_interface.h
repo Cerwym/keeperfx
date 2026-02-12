@@ -67,6 +67,9 @@ extern RendererInterface* g_renderer;
 /** Get the software renderer implementation */
 RendererInterface* get_software_renderer(void);
 
+/** Get the hardware renderer implementation (stub - not yet implemented) */
+RendererInterface* get_hardware_renderer(void);
+
 /******************************************************************************/
 #ifdef __cplusplus
 }

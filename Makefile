@@ -198,6 +198,9 @@ obj/engine_redraw.o \
 obj/engine_render.o \
 obj/engine_render_data.o \
 obj/engine_textures.o \
+obj/renderer/renderer_common.o \
+obj/renderer/renderer_software.o \
+obj/renderer/renderer_hardware.o \
 obj/front_credits.o \
 obj/front_easter.o \
 obj/front_fmvids.o \
@@ -498,6 +501,7 @@ obj/std/ftests \
 obj/std/ftests/tests \
 obj/tests obj/cu \
 obj/std/centitoml obj/hvlog/centitoml \
+obj/std/renderer obj/hvlog/renderer \
 sdl/for_final_package
 
 $(shell $(MKDIR) $(FOLDERS))

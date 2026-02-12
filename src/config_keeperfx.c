@@ -199,6 +199,8 @@ const struct NamedCommand conf_commands[] = {
 
   const struct NamedCommand renderer_type_commands[] = {
   {"SOFTWARE", 1},
+  {"HARDWARE", 2},
+  {"OPENGL", 2},  // Alias for HARDWARE
   {NULL,       0},
   };
 
