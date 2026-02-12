@@ -31,7 +31,6 @@ find_package(SDL2 CONFIG REQUIRED)
 find_package(SDL2_image CONFIG REQUIRED)
 find_package(SDL2_mixer CONFIG REQUIRED)
 find_package(SDL2_net CONFIG REQUIRED)
-find_package(bgfx CONFIG REQUIRED)
 
 # Global definitions.
 add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
@@ -90,9 +89,6 @@ target_link_libraries(keeperfx
 target_link_libraries(keeperfx
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
 
-# bgfx library
-target_link_libraries(keeperfx PRIVATE bgfx::bgfx bx::bx bimg::bimg)
-
 target_link_libraries(keeperfx_hvlog
     PRIVATE
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
@@ -102,6 +98,3 @@ target_link_libraries(keeperfx_hvlog
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
 target_link_libraries(keeperfx_hvlog
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
-
-# bgfx library
-target_link_libraries(keeperfx_hvlog PRIVATE bgfx::bgfx bx::bx bimg::bimg)
