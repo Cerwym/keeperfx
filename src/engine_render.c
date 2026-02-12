@@ -6542,6 +6542,13 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
     struct PolyPoint point_b;
     struct PolyPoint point_c;
     SYNCDBG(9,"Starting");
+    
+    // Safety check: ensure renderer is initialized
+    if (g_renderer == NULL) {
+        ERRORLOG("Renderer not initialized!");
+        return;
+    }
+    
     // Color rendering array pointers used by draw_keepersprite()
     render_fade_tables = pixmap.fade_tables;
     render_ghost = pixmap.ghost;
