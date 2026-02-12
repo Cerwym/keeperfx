@@ -42,6 +42,10 @@ extern "C" {
 #endif
 
 /******************************************************************************/
+// External declarations
+extern unsigned char lbPalette[768];  // From bflib_video.h - RGB palette (256 * 3)
+
+/******************************************************************************/
 // Constants
 #define MAX_BATCH_VERTICES 65536
 #define MAX_BATCH_INDICES  (MAX_BATCH_VERTICES * 3 / 2)
@@ -206,7 +210,9 @@ static TbResult create_texture_atlas(void)
     }
     
     // Copy block_ptrs textures into atlas
-    // Note: We iterate through all blocks and skip null entries
+    // We iterate through all blocks because block_ptrs is a flat array indexed by
+    // (variation * TEXTURE_BLOCKS_COUNT + block), and we need to maintain correct
+    // spatial packing in the atlas regardless of null entries
     uint32_t blockIdx = 0;
     uint32_t totalBlocks = TEXTURE_VARIATIONS_COUNT * TEXTURE_BLOCKS_COUNT;
     
@@ -259,7 +265,6 @@ static TbResult create_palette_texture(void)
 {
     // Create 256x1 palette texture from current palette
     // lbPalette is defined in bflib_video.h - 768 bytes (256 * 3 RGB)
-    extern unsigned char lbPalette[768];
     
     uint8_t paletteData[256 * 4]; // RGBA format
     
@@ -302,13 +307,23 @@ static bgfx_shader_handle_t load_shader(const char* name)
         return BGFX_INVALID_HANDLE;
     }
     
-    // Get file size
-    fseek(file, 0, SEEK_END);
-    long size = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    // Get file size - using fseek/ftell for compatibility
+    // Note: For files larger than 2GB, this may need platform-specific handling
+    if (fseek(file, 0, SEEK_END) != 0) {
+        ERRORLOG("Failed to seek in shader file: %s", filepath);
+        fclose(file);
+        return BGFX_INVALID_HANDLE;
+    }
     
-    if (size <= 0) {
-        ERRORLOG("Invalid shader file size: %s", filepath);
+    long size = ftell(file);
+    if (size <= 0 || size > 10 * 1024 * 1024) { // Sanity check: shader > 10MB is suspicious
+        ERRORLOG("Invalid shader file size (%ld bytes): %s", size, filepath);
+        fclose(file);
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    if (fseek(file, 0, SEEK_SET) != 0) {
+        ERRORLOG("Failed to seek in shader file: %s", filepath);
         fclose(file);
         return BGFX_INVALID_HANDLE;
     }
