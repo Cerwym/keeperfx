@@ -35,6 +35,8 @@ typedef struct InputInterface {
 
 extern InputInterface* g_input;
 
+void input_sdl_initialize(void);
+
 /******************************************************************************/
 #ifdef __cplusplus
 }

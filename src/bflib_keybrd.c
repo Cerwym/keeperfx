@@ -26,6 +26,7 @@
 #include <SDL2/SDL.h>
 #include "globals.h"
 #include "bflib_mouse.h"
+#include "input/input_interface.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus
@@ -96,6 +97,7 @@ short LbIKeyboardClose(void)
 short LbIKeyboardOpen(void)
 {
   init_inputcontrol();
+  input_sdl_initialize();  // Initialize input interface
     return 1;
 }
 

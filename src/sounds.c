@@ -409,6 +409,7 @@ TbBool init_sound(void)
     snd_settng->redbook_enable = ((features_enabled & Ft_NoCdMusic) == 0);
     snd_settng->sound_system = 0;
     InitAudio(snd_settng);
+    audio_openal_initialize();  // Initialize audio interface
     sdl_flags = InitialiseSDLAudio();
     if (!GetSoundInstalled())
     {

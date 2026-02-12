@@ -75,7 +75,12 @@ static AudioInterface audio_openal_impl = {
     audio_openal_set_volume,
 };
 
-AudioInterface* g_audio = &audio_openal_impl;
+AudioInterface* g_audio = NULL;
+
+void audio_openal_initialize(void)
+{
+    g_audio = &audio_openal_impl;
+}
 
 /******************************************************************************/
 #ifdef __cplusplus

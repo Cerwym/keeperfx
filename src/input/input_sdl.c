@@ -77,7 +77,12 @@ static InputInterface input_sdl_impl = {
     input_sdl_get_gamepad_axis,
 };
 
-InputInterface* g_input = &input_sdl_impl;
+InputInterface* g_input = NULL;
+
+void input_sdl_initialize(void)
+{
+    g_input = &input_sdl_impl;
+}
 
 /******************************************************************************/
 #ifdef __cplusplus
