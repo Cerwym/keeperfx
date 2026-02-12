@@ -45,7 +45,7 @@ extern "C" {
 // Constants
 #define MAX_BATCH_VERTICES 65536
 #define MAX_BATCH_INDICES  (MAX_BATCH_VERTICES * 3 / 2)
-#define TEXTURE_ATLAS_SIZE 1024
+#define TEXTURE_ATLAS_SIZE 8192  // 8192x8192 atlas for all texture blocks
 #define TEXTURE_BLOCK_SIZE 32
 
 // Palette mode configuration
@@ -189,10 +189,10 @@ static TbResult create_texture_atlas(void)
     // Each block is 32x32, we have TEXTURE_VARIATIONS_COUNT (32) × TEXTURE_BLOCKS_COUNT (1088)
     // Total textures: 32 * 1088 = 34816 blocks
     // At 32x32 each, we need roughly sqrt(34816) * 32 = 5920x5920 pixels
-    // Let's use 8192x8192 atlas to have some margin
+    // Using 8192x8192 atlas to have margin
     
-    const uint32_t atlasSize = 8192;
-    const uint32_t blockSize = 32;
+    const uint32_t atlasSize = TEXTURE_ATLAS_SIZE;
+    const uint32_t blockSize = TEXTURE_BLOCK_SIZE;
     const uint32_t blocksPerRow = atlasSize / blockSize; // 256 blocks per row
     
     SYNCLOG("Creating texture atlas: %dx%d pixels for %d texture blocks", 
@@ -206,12 +206,19 @@ static TbResult create_texture_atlas(void)
     }
     
     // Copy block_ptrs textures into atlas
+    // Note: We iterate through all blocks and skip null entries
     uint32_t blockIdx = 0;
     uint32_t totalBlocks = TEXTURE_VARIATIONS_COUNT * TEXTURE_BLOCKS_COUNT;
     
-    for (uint32_t i = 0; i < totalBlocks && blockIdx < totalBlocks; i++) {
+    for (uint32_t i = 0; i < totalBlocks; i++) {
         if (block_ptrs[i] == NULL) {
             continue; // Skip null blocks
+        }
+        
+        // Ensure we don't overflow the atlas
+        if (blockIdx >= blocksPerRow * blocksPerRow) {
+            WARNLOG("Atlas full, cannot add more blocks (added %d/%d)", blockIdx, totalBlocks);
+            break;
         }
         
         uint32_t blockX = (blockIdx % blocksPerRow) * blockSize;
@@ -387,8 +394,12 @@ static TbResult bgfx_renderer_init(struct SDL_Window* window, int width, int hei
         return 0;
     }
 
-    // Setup vertex layout
-    bgfx_vertex_layout_begin(&s_vertexLayout, BGFX_RENDERER_TYPE_NOOP);
+    // Get actual renderer type after initialization
+    bgfx_renderer_type_t rendererType = bgfx_get_renderer_type();
+    SYNCLOG("bgfx initialized with renderer: %d", rendererType);
+
+    // Setup vertex layout using the actual renderer type
+    bgfx_vertex_layout_begin(&s_vertexLayout, rendererType);
     bgfx_vertex_layout_add(&s_vertexLayout, BGFX_ATTRIB_POSITION, 3, BGFX_ATTRIB_TYPE_FLOAT, false, false);
     bgfx_vertex_layout_add(&s_vertexLayout, BGFX_ATTRIB_TEXCOORD0, 2, BGFX_ATTRIB_TYPE_FLOAT, false, false);
     bgfx_vertex_layout_add(&s_vertexLayout, BGFX_ATTRIB_COLOR0, 4, BGFX_ATTRIB_TYPE_UINT8, true, false);
