@@ -1,0 +1,207 @@
+# Homebrew Console Ports
+
+This directory contains platform-specific implementations for homebrew console platforms.
+
+## Supported Platforms
+
+### Nintendo 3DS
+- **Renderer**: citro3d (PICA200 GPU)
+- **Audio**: NDSP (Nintendo DSP)
+- **Input**: Physical buttons, Circle Pad, and touchscreen
+- **Resolution**: 400×240 (top screen)
+- **SDK**: devkitARM with citro3d
+
+Files:
+- `src/renderer/renderer_citro3d.c`
+- `src/audio/audio_ndsp.c`
+- `src/input/input_3ds.c`
+- `shaders/3ds/palette_vshader.v.pica`
+
+### PlayStation Vita
+- **Renderer**: GXM (Graphics eXtension Module)
+- **Audio**: SceAudio
+- **Input**: Physical buttons, analog sticks, front and rear touchscreens
+- **Resolution**: 960×544
+- **SDK**: vitasdk
+
+Files:
+- `src/renderer/renderer_gxm.c`
+- `src/audio/audio_vita.c`
+- `src/input/input_vita.c`
+- `shaders/vita/palette_v.cg`
+- `shaders/vita/palette_f.cg`
+
+### Nintendo Switch
+- **Renderer**: bgfx with deko3d backend (already supported)
+- **Audio**: audren (Audio Renderer)
+- **Input**: Joy-Con buttons, analog sticks, and touchscreen
+- **Resolution**: 1280×720 (handheld), 1920×1080 (docked)
+- **SDK**: libnx
+
+Files:
+- `src/audio/audio_switch.c`
+- `src/input/input_switch.c`
+- Note: Rendering uses existing bgfx implementation with deko3d backend
+
+## Architecture
+
+All implementations follow the established interface pattern:
+
+### Renderer Interface
+```c
+typedef struct RendererInterface {
+    TbResult (*init)(struct SDL_Window* window, int width, int height);
+    void (*shutdown)(void);
+    void (*begin_frame)(void);
+    void (*end_frame)(void);
+    void (*draw_gpoly)(struct PolyPoint* p1, struct PolyPoint* p2, struct PolyPoint* p3);
+    void (*draw_trig)(struct PolyPoint* p1, struct PolyPoint* p2, struct PolyPoint* p3);
+} RendererInterface;
+```
+
+### Audio Interface
+```c
+typedef struct AudioInterface {
+    TbResult (*init)(void);
+    void (*shutdown)(void);
+    void (*play_sample)(int id, long x, long y, long z, int volume);
+    void (*play_music)(int track);
+    void (*set_listener)(long x, long y, long z, int angle);
+    void (*set_volume)(int master, int music, int sfx);
+} AudioInterface;
+```
+
+### Input Interface
+```c
+typedef struct InputInterface {
+    void (*poll_events)(void);
+    TbBool (*is_key_down)(int keycode);
+    void (*get_mouse)(int* x, int* y, int* buttons);
+    TbBool (*get_gamepad_axis)(int axis, int* value);
+} InputInterface;
+```
+
+## Building for Homebrew Platforms
+
+### Nintendo 3DS
+```bash
+# Install devkitARM and citro3d
+# Set up environment
+export DEVKITPRO=/opt/devkitpro
+export DEVKITARM=$DEVKITPRO/devkitARM
+
+# Build
+mkdir build-3ds && cd build-3ds
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake -DPLATFORM_3DS=ON
+make
+```
+
+### PlayStation Vita
+```bash
+# Install vitasdk
+# Set up environment
+export VITASDK=/usr/local/vitasdk
+
+# Build
+mkdir build-vita && cd build-vita
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$VITASDK/share/vita.toolchain.cmake -DPLATFORM_VITA=ON
+make
+```
+
+### Nintendo Switch
+```bash
+# Install devkitA64 and libnx
+# Set up environment
+export DEVKITPRO=/opt/devkitpro
+export DEVKITA64=$DEVKITPRO/devkitA64
+
+# Build
+mkdir build-switch && cd build-switch
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/Switch.cmake -DPLATFORM_SWITCH=ON
+make
+```
+
+## Implementation Status
+
+### Completed
+- ✅ Renderer interfaces for 3DS, Vita
+- ✅ Audio interfaces for 3DS, Vita, Switch
+- ✅ Input interfaces for 3DS, Vita, Switch
+- ✅ Shader templates for 3DS (PICA assembly)
+- ✅ Shader templates for Vita (Cg)
+- ✅ Interface declarations in header files
+
+### Needs Implementation
+- ⚠️ Actual sample loading and playback logic
+- ⚠️ Music streaming implementation
+- ⚠️ Texture atlas management for homebrew platforms
+- ⚠️ Platform-specific build system integration
+- ⚠️ Shader compilation pipeline
+- ⚠️ Memory management optimization for limited RAM
+
+### Future Enhancements
+- 🔮 Stereoscopic 3D support for Nintendo 3DS
+- 🔮 Gyroscope support for all platforms
+- 🔮 Multi-touch gesture recognition
+- 🔮 Platform-specific UI scaling and adaptation
+- 🔮 Performance profiling and optimization
+
+## Platform-Specific Considerations
+
+### Nintendo 3DS
+- **Memory**: Limited to 128MB (64MB app + 64MB system)
+- **CPU**: ARM11 MPCore @ 268MHz
+- **GPU**: PICA200 @ 268MHz
+- **Challenges**: 
+  - Small screen resolution requires UI adaptation
+  - Limited RAM requires aggressive asset management
+  - Power management for battery life
+
+### PlayStation Vita
+- **Memory**: 512MB shared RAM, 128MB VRAM
+- **CPU**: ARM Cortex-A9 quad-core @ 444MHz
+- **GPU**: SGX543MP4+ @ 222MHz
+- **Challenges**:
+  - Deferred rendering architecture
+  - Swizzled texture formats for performance
+  - Proper VRAM management
+
+### Nintendo Switch
+- **Memory**: 4GB shared RAM
+- **CPU**: ARM Cortex-A57 quad-core @ 1020MHz
+- **GPU**: NVIDIA Maxwell @ 307-768MHz
+- **Challenges**:
+  - Handheld vs docked mode switching
+  - Dynamic resolution scaling
+  - Touch screen only in handheld mode
+
+## Testing
+
+Each platform should be tested for:
+- ✓ Rendering performance (target 30+ FPS)
+- ✓ Audio playback and 3D positioning
+- ✓ Input responsiveness
+- ✓ Memory usage within platform limits
+- ✓ Battery life (for portable platforms)
+- ✓ Stability (no crashes during extended play)
+
+## Contributing
+
+When adding support for additional homebrew platforms:
+1. Follow the established interface pattern
+2. Create platform-specific implementations in separate files
+3. Use `#ifdef PLATFORM_XXX` guards
+4. Document platform-specific quirks and limitations
+5. Provide shader sources in platform-native formats
+6. Test thoroughly on real hardware
+
+## Resources
+
+- **Nintendo 3DS**: https://github.com/devkitPro/3dstools
+- **PlayStation Vita**: https://vitasdk.org/
+- **Nintendo Switch**: https://github.com/switchbrew/libnx
+
+## License
+
+These implementations are part of KeeperFX and licensed under GPL v2.
+See LICENSE file in repository root for details.

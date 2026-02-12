@@ -73,6 +73,12 @@ RendererInterface* get_hardware_renderer(void);
 /** Get the bgfx renderer implementation */
 RendererInterface* get_bgfx_renderer(void);
 
+/** Get the citro3d renderer implementation (Nintendo 3DS) */
+RendererInterface* get_citro3d_renderer(void);
+
+/** Get the GXM renderer implementation (PlayStation Vita) */
+RendererInterface* get_gxm_renderer(void);
+
 /******************************************************************************/
 #ifdef __cplusplus
 }
