@@ -26,6 +26,7 @@
 #include "bflib_keybrd.h"
 #include "bflib_mouse.h"
 #include "bflib_math.h"
+#include "input/input_interface.h"
 
 #include "config_settings.h"
 #include "config_strings.h"
@@ -262,9 +263,18 @@ void update_right_button_released(void)
 
 void update_left_button_clicked(void)
 {
-  left_button_clicked = lbDisplay.LeftButton;
-  left_button_clicked_x = lbDisplay.MouseX * (long)pixel_size;
-  left_button_clicked_y = lbDisplay.MouseY * (long)pixel_size;
+  // Use input interface for mouse button state if available
+  if (g_input != NULL) {
+    int x, y, buttons;
+    g_input->get_mouse(&x, &y, &buttons);
+    left_button_clicked = (buttons & INPUT_MOUSE_BUTTON_LEFT) ? 1 : 0;
+    left_button_clicked_x = x * (long)pixel_size;
+    left_button_clicked_y = y * (long)pixel_size;
+  } else {
+    left_button_clicked = lbDisplay.LeftButton;
+    left_button_clicked_x = lbDisplay.MouseX * (long)pixel_size;
+    left_button_clicked_y = lbDisplay.MouseY * (long)pixel_size;
+  }
 }
 
 void update_right_button_clicked(void)
