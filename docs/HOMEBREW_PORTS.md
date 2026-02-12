@@ -2,6 +2,36 @@
 
 This directory contains platform-specific implementations for homebrew console platforms.
 
+## Dependency Management
+
+KeeperFX uses **CMake FetchContent** to automatically download and build dependencies. This provides:
+- Consistent dependency versions across all platforms
+- No need for external package managers (vcpkg, conan, etc.)
+- Self-contained build system
+- Better CI/CD reliability
+
+### Using FetchContent (Default)
+
+By default, dependencies are downloaded and built automatically:
+
+```bash
+mkdir build && cd build
+cmake ..
+cmake --build .
+```
+
+### Using System Packages (Optional)
+
+If you prefer to use system-installed packages:
+
+```bash
+mkdir build && cd build
+cmake .. -DDOWNLOAD_DEPENDENCIES=OFF
+cmake --build .
+```
+
+This requires SDL2, SDL2_image, SDL2_mixer, SDL2_net, and bgfx to be installed on your system.
+
 ## Supported Platforms
 
 ### Nintendo 3DS

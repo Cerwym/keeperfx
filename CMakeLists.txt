@@ -27,36 +27,45 @@ set(KEEPERFX_VER_DEFS_H_IN ${CMAKE_SOURCE_DIR}/ver_defs.h.in)
 set(KEEPERFX_VER_DEFS_H_OUT ${CMAKE_SOURCE_DIR}/ver_defs.h)
 configure_file(${KEEPERFX_VER_DEFS_H_IN} ${KEEPERFX_VER_DEFS_H_OUT})
 
-# Platform detection - allows explicit override via -DPLATFORM_XXX=ON
-# Falls back to environment variable detection if not explicitly set
+# Platform detection - uses toolchain-provided variables when available
+# Falls back to environment variable detection
 if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
-    # Count how many SDK environments are detected
-    set(SDK_COUNT 0)
-    
-    if(DEFINED ENV{VITASDK})
-        math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
+    # Check for toolchain-defined variables first (more reliable)
+    if(VITA)
         set(PLATFORM_VITA ON CACHE BOOL "Build for PlayStation Vita")
-        message(STATUS "Detected VITASDK environment")
-    endif()
+    elseif(NINTENDO_3DS OR CMAKE_SYSTEM_NAME STREQUAL "3DS")
+        set(PLATFORM_3DS ON CACHE BOOL "Build for Nintendo 3DS")
+    elseif(NINTENDO_SWITCH OR CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
+        set(PLATFORM_SWITCH ON CACHE BOOL "Build for Nintendo Switch")
+    else()
+        # Fall back to environment variables
+        set(SDK_COUNT 0)
+        
+        if(DEFINED ENV{VITASDK})
+            math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
+            set(PLATFORM_VITA ON CACHE BOOL "Build for PlayStation Vita")
+            message(STATUS "Detected VITASDK environment")
+        endif()
 
-    if(DEFINED ENV{DEVKITPRO})
-        if(DEFINED ENV{DEVKITARM})
-            math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
-            set(PLATFORM_3DS ON CACHE BOOL "Build for Nintendo 3DS")
-            message(STATUS "Detected DEVKITARM environment")
+        if(DEFINED ENV{DEVKITPRO})
+            if(DEFINED ENV{DEVKITARM})
+                math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
+                set(PLATFORM_3DS ON CACHE BOOL "Build for Nintendo 3DS")
+                message(STATUS "Detected DEVKITARM environment")
+            endif()
+            if(DEFINED ENV{DEVKITA64})
+                math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
+                set(PLATFORM_SWITCH ON CACHE BOOL "Build for Nintendo Switch")
+                message(STATUS "Detected DEVKITA64 environment")
+            endif()
         endif()
-        if(DEFINED ENV{DEVKITA64})
-            math(EXPR SDK_COUNT "${SDK_COUNT} + 1")
-            set(PLATFORM_SWITCH ON CACHE BOOL "Build for Nintendo Switch")
-            message(STATUS "Detected DEVKITA64 environment")
+        
+        # Warn if multiple SDKs detected
+        if(SDK_COUNT GREATER 1)
+            message(WARNING "Multiple homebrew SDK environments detected. "
+                    "Please explicitly specify target platform with -DPLATFORM_VITA=ON, "
+                    "-DPLATFORM_3DS=ON, or -DPLATFORM_SWITCH=ON to avoid ambiguity.")
         endif()
-    endif()
-    
-    # Warn if multiple SDKs detected
-    if(SDK_COUNT GREATER 1)
-        message(WARNING "Multiple homebrew SDK environments detected. "
-                "Please explicitly specify target platform with -DPLATFORM_VITA=ON, "
-                "-DPLATFORM_3DS=ON, or -DPLATFORM_SWITCH=ON to avoid ambiguity.")
     endif()
 endif()
 
@@ -71,7 +80,10 @@ else()
     message(STATUS "Building for desktop platform")
 endif()
 
-# Find dependencies based on platform
+# Dependency management option
+option(DOWNLOAD_DEPENDENCIES "Download and build dependencies using FetchContent" ON)
+
+# Find or fetch dependencies based on platform
 if(PLATFORM_VITA)
     # Vita libraries come from vitasdk but must be explicitly linked
     # vitaGL provides OpenGL ES wrapper over GXM for bgfx compatibility
@@ -80,12 +92,111 @@ elseif(PLATFORM_3DS OR PLATFORM_SWITCH)
     # 3DS and Switch libraries come from devkitPro
     message(STATUS "Using devkitPro libraries")
 else()
-    # Desktop platforms use vcpkg
-    find_package(SDL2 CONFIG REQUIRED)
-    find_package(SDL2_image CONFIG REQUIRED)
-    find_package(SDL2_mixer CONFIG REQUIRED)
-    find_package(SDL2_net CONFIG REQUIRED)
-    find_package(bgfx CONFIG REQUIRED)
+    # Desktop platforms: use FetchContent or find_package
+    if(DOWNLOAD_DEPENDENCIES)
+        message(STATUS "Downloading dependencies via FetchContent...")
+        include(FetchContent)
+        
+        # SDL2
+        message(STATUS "Fetching SDL2...")
+        FetchContent_Declare(
+            SDL2
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
+            GIT_TAG release-2.30.9
+            GIT_SHALLOW TRUE
+        )
+        set(SDL2_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
+        set(SDL_SHARED ON CACHE BOOL "" FORCE)
+        set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(SDL2)
+        
+        # SDL2_image
+        message(STATUS "Fetching SDL2_image...")
+        FetchContent_Declare(
+            SDL2_image
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
+            GIT_TAG release-2.8.2
+            GIT_SHALLOW TRUE
+        )
+        set(SDL2IMAGE_INSTALL OFF CACHE BOOL "" FORCE)
+        set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(SDL2_image)
+        
+        # SDL2_mixer
+        message(STATUS "Fetching SDL2_mixer...")
+        FetchContent_Declare(
+            SDL2_mixer
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
+            GIT_TAG release-2.8.0
+            GIT_SHALLOW TRUE
+        )
+        set(SDL2MIXER_INSTALL OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(SDL2_mixer)
+        
+        # SDL2_net
+        message(STATUS "Fetching SDL2_net...")
+        FetchContent_Declare(
+            SDL2_net
+            GIT_REPOSITORY https://github.com/libsdl-org/SDL_net.git
+            GIT_TAG release-2.2.0
+            GIT_SHALLOW TRUE
+        )
+        set(SDL2NET_INSTALL OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(SDL2_net)
+        
+        # bgfx (requires bx and bimg)
+        message(STATUS "Fetching bgfx and dependencies...")
+        FetchContent_Declare(
+            bx
+            GIT_REPOSITORY https://github.com/bkaradzic/bx.git
+            GIT_TAG master
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(bx)
+        
+        FetchContent_Declare(
+            bimg
+            GIT_REPOSITORY https://github.com/bkaradzic/bimg.git
+            GIT_TAG master
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(bimg)
+        
+        FetchContent_Declare(
+            bgfx
+            GIT_REPOSITORY https://github.com/bkaradzic/bgfx.git
+            GIT_TAG master
+            GIT_SHALLOW TRUE
+        )
+        set(BGFX_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+        set(BGFX_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(BGFX_INSTALL OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(bgfx)
+        
+        # Create aliases for compatibility
+        if(NOT TARGET SDL2::SDL2)
+            add_library(SDL2::SDL2 ALIAS SDL2)
+        endif()
+        if(NOT TARGET SDL2_image::SDL2_image)
+            add_library(SDL2_image::SDL2_image ALIAS SDL2_image)
+        endif()
+        if(NOT TARGET SDL2_mixer::SDL2_mixer)
+            add_library(SDL2_mixer::SDL2_mixer ALIAS SDL2_mixer)
+        endif()
+        if(NOT TARGET SDL2_net::SDL2_net)
+            add_library(SDL2_net::SDL2_net ALIAS SDL2_net)
+        endif()
+        
+        message(STATUS "Dependencies fetched successfully")
+    else()
+        # Use system-installed packages via find_package
+        message(STATUS "Using system-installed dependencies...")
+        find_package(SDL2 CONFIG REQUIRED)
+        find_package(SDL2_image CONFIG REQUIRED)
+        find_package(SDL2_mixer CONFIG REQUIRED)
+        find_package(SDL2_net CONFIG REQUIRED)
+        find_package(bgfx CONFIG REQUIRED)
+    endif()
 endif()
 
 # Global definitions.
@@ -188,31 +299,47 @@ elseif(PLATFORM_SWITCH)
     )
 else()
     # Desktop platforms - link for both keeperfx and keeperfx_hvlog
-    target_link_libraries(keeperfx
-        PRIVATE
-        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
-    target_link_libraries(keeperfx
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
-    target_link_libraries(keeperfx
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
-    target_link_libraries(keeperfx
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+    if(DOWNLOAD_DEPENDENCIES)
+        # FetchContent targets
+        target_link_libraries(keeperfx PRIVATE SDL2::SDL2)
+        target_link_libraries(keeperfx PRIVATE SDL2_mixer::SDL2_mixer)
+        target_link_libraries(keeperfx PRIVATE SDL2_net::SDL2_net)
+        target_link_libraries(keeperfx PRIVATE SDL2_image::SDL2_image)
+        target_link_libraries(keeperfx PRIVATE bgfx bx bimg)
 
-    # bgfx library
-    target_link_libraries(keeperfx PRIVATE bgfx::bgfx bx::bx bimg::bimg)
+        target_link_libraries(keeperfx_hvlog PRIVATE SDL2::SDL2)
+        target_link_libraries(keeperfx_hvlog PRIVATE SDL2_mixer::SDL2_mixer)
+        target_link_libraries(keeperfx_hvlog PRIVATE SDL2_net::SDL2_net)
+        target_link_libraries(keeperfx_hvlog PRIVATE SDL2_image::SDL2_image)
+        target_link_libraries(keeperfx_hvlog PRIVATE bgfx bx bimg)
+    else()
+        # System packages
+        target_link_libraries(keeperfx
+            PRIVATE
+            $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
+        target_link_libraries(keeperfx
+            PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+        target_link_libraries(keeperfx
+            PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
+        target_link_libraries(keeperfx
+            PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
 
-    target_link_libraries(keeperfx_hvlog
-        PRIVATE
-        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
-    target_link_libraries(keeperfx_hvlog
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
-    target_link_libraries(keeperfx_hvlog
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
-    target_link_libraries(keeperfx_hvlog
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+        # bgfx library
+        target_link_libraries(keeperfx PRIVATE bgfx::bgfx bx::bx bimg::bimg)
 
-    # bgfx library
-    target_link_libraries(keeperfx_hvlog PRIVATE bgfx::bgfx bx::bx bimg::bimg)
+        target_link_libraries(keeperfx_hvlog
+            PRIVATE
+            $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
+        target_link_libraries(keeperfx_hvlog
+            PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+        target_link_libraries(keeperfx_hvlog
+            PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
+        target_link_libraries(keeperfx_hvlog
+            PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+
+        # bgfx library
+        target_link_libraries(keeperfx_hvlog PRIVATE bgfx::bgfx bx::bx bimg::bimg)
+    endif()
 endif()
 
 # Testing support with CUnit
