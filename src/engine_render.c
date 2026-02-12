@@ -30,6 +30,7 @@
 #include "bflib_sprite.h"
 #include "bflib_video.h"
 #include "bflib_vidraw.h"
+#include "renderer/renderer_interface.h"
 #include "config_creature.h"
 #include "config_players.h"
 #include "config_settings.h"
@@ -6541,6 +6542,13 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
     struct PolyPoint point_b;
     struct PolyPoint point_c;
     SYNCDBG(9,"Starting");
+    
+    // Safety check: ensure renderer is initialized
+    if (g_renderer == NULL) {
+        ERRORLOG("Renderer not initialized!");
+        return;
+    }
+    
     // Color rendering array pointers used by draw_keepersprite()
     render_fade_tables = pixmap.fade_tables;
     render_ghost = pixmap.ghost;
@@ -6559,13 +6567,13 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
             case QK_PolygonStandard: // All textured polygons for isometric and 'far' textures in 1st person view
                 vec_mode = VM_QuadTextured;
                 vec_map = block_ptrs[item.polygonStandard->block];
-                draw_gpoly(&item.polygonStandard->vertex_first, &item.polygonStandard->vertex_second, &item.polygonStandard->vertex_third);
+                g_renderer->draw_gpoly(&item.polygonStandard->vertex_first, &item.polygonStandard->vertex_second, &item.polygonStandard->vertex_third);
                 break;
             case QK_PolygonSimple: // Possibly unused
                 vec_mode = VM_SolidColor;
                 vec_colour = ((item.polygonSimple->vertex_third.S + item.polygonSimple->vertex_second.S + item.polygonSimple->vertex_first.S)/3) >> 16;
                 vec_map = block_ptrs[item.polygonSimple->block];
-                trig(&item.polygonSimple->vertex_first, &item.polygonSimple->vertex_second, &item.polygonSimple->vertex_third);
+                g_renderer->draw_trig(&item.polygonSimple->vertex_first, &item.polygonSimple->vertex_second, &item.polygonSimple->vertex_third);
                 break;
             case QK_PolyMode0: // Possibly unused
                 vec_mode = VM_FlatColor;
@@ -6576,7 +6584,7 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
                 point_b.Y = item.polyMode0->vertex_second_y;
                 point_c.X = item.polyMode0->vertex_third_x;
                 point_c.Y = item.polyMode0->vertex_third_y;
-                draw_gpoly(&point_a, &point_b, &point_c);
+                g_renderer->draw_gpoly(&point_a, &point_b, &point_c);
                 break;
             case QK_PolyMode4: // Possibly unused
                 vec_mode = VM_QuadFlatColor;
@@ -6590,7 +6598,7 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
                 point_a.S = item.polyMode4->texture_vertex_first << 16;
                 point_b.S = item.polyMode4->texture_vertex_second << 16;
                 point_c.S = item.polyMode4->texture_vertex_third << 16;
-                draw_gpoly(&point_a, &point_b, &point_c);
+                g_renderer->draw_gpoly(&point_a, &point_b, &point_c);
                 break;
             case QK_TrigMode2: // Possibly unused
                 vec_mode = VM_TriangularGouraud;
@@ -6606,7 +6614,7 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
                 point_b.V = item.trigMode2->texture_v_second << 16;
                 point_c.U = item.trigMode2->texture_u_third << 16;
                 point_c.V = item.trigMode2->texture_v_third << 16;
-                trig(&point_a, &point_b, &point_c);
+                g_renderer->draw_trig(&point_a, &point_b, &point_c);
                 break;
             case QK_PolyMode5: // Possibly unused
                 vec_mode = VM_QuadTextured;
@@ -6625,7 +6633,7 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
                 point_a.S = item.polyMode5->texture_w_first << 16;
                 point_b.S = item.polyMode5->texture_w_second << 16;
                 point_c.S = item.polyMode5->texture_w_third << 16;
-                draw_gpoly(&point_a, &point_b, &point_c);
+                g_renderer->draw_gpoly(&point_a, &point_b, &point_c);
                 break;
             case QK_TrigMode3: // Possibly unused
                 vec_mode = VM_TriangularTexture;
@@ -6641,7 +6649,7 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
                 point_b.V = item.trigMode3->texture_v_second << 16;
                 point_c.U = item.trigMode3->texture_u_third << 16;
                 point_c.V = item.trigMode3->texture_v_third << 16;
-                trig(&point_a, &point_b, &point_c);
+                g_renderer->draw_trig(&point_a, &point_b, &point_c);
                 break;
             case QK_TrigMode6: // Possibly unused
                 vec_mode = VM_TriangularTextured;
@@ -6660,7 +6668,7 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
                 point_a.S = item.trigMode6->texture_w_first << 16;
                 point_b.S = item.trigMode6->texture_w_second << 16;
                 point_c.S = item.trigMode6->texture_w_third << 16;
-                trig(&point_a, &point_b, &point_c);
+                g_renderer->draw_trig(&point_a, &point_b, &point_c);
                 break;
             case QK_RotableSprite: // Possibly unused
                 // draw_map_who did nothing
@@ -6671,7 +6679,7 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
             case QK_BasicPolygon:
                 vec_mode = VM_FlatColor;
                 vec_colour = item.basicUnk10->color_value;
-                draw_gpoly(&item.basicUnk10->vertex_first, &item.basicUnk10->vertex_second, &item.basicUnk10->vertex_third);
+                g_renderer->draw_gpoly(&item.basicUnk10->vertex_first, &item.basicUnk10->vertex_second, &item.basicUnk10->vertex_third);
                 break;
             case QK_JontySprite: // All creatures and things in isometric and 1st person view
                 draw_jonty_mapwho(item.jontySprite);
@@ -6682,8 +6690,8 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
                 vec_map = big_scratch;
                 vec_mode = VM_SpriteTranslucent;
                 vec_colour = item.creatureShadow->vertex_first.S;
-                trig(&item.creatureShadow->vertex_first, &item.creatureShadow->vertex_second, &item.creatureShadow->vertex_third);
-                trig(&item.creatureShadow->vertex_first, &item.creatureShadow->vertex_third, &item.creatureShadow->vertex_fourth);
+                g_renderer->draw_trig(&item.creatureShadow->vertex_first, &item.creatureShadow->vertex_second, &item.creatureShadow->vertex_third);
+                g_renderer->draw_trig(&item.creatureShadow->vertex_first, &item.creatureShadow->vertex_third, &item.creatureShadow->vertex_fourth);
                 break;
             case QK_SlabSelector: // Selection outline box for placing/digging slabs
                 draw_clipped_line(

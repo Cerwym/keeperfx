@@ -79,6 +79,7 @@
 #include "engine_arrays.h"
 #include "engine_textures.h"
 #include "engine_redraw.h"
+#include "renderer/renderer_interface.h"
 #include "front_easter.h"
 #include "front_fmvids.h"
 #include "thing_stats.h"
@@ -1038,11 +1039,38 @@ short setup_game(void)
   // Setup polyscans
   setup_bflib_render();
 
+  // Initialize renderer based on config
+  switch (renderer_type) {
+      case 1: // SOFTWARE
+          g_renderer = get_software_renderer();
+          SYNCMSG("Using SOFTWARE renderer");
+          break;
+      case 2: // HARDWARE
+          g_renderer = get_hardware_renderer();
+          WARNMSG("Hardware renderer selected but not yet implemented, may fail");
+          break;
+      default:
+          g_renderer = get_software_renderer();
+          WARNMSG("Unknown renderer type %d, defaulting to SOFTWARE", renderer_type);
+          break;
+  }
+
   // View the legal screen
   if (!setup_screen_mode_zero(get_frontend_vidmode()))
   {
       ERRORLOG("Unable to set display mode for legal screen");
       return 0;
+  }
+
+  // Initialize the renderer now that we have a valid window
+  if (g_renderer != NULL && g_renderer->init != NULL)
+  {
+      TbScreenModeInfo *mdinfo = LbScreenGetModeInfo(LbScreenActiveMode());
+      if (g_renderer->init(lbWindow, mdinfo->Width, mdinfo->Height) != Lb_SUCCESS)
+      {
+          ERRORLOG("Failed to initialize renderer");
+          return 0;
+      }
   }
 
   if (flag_is_set(start_params.startup_flags, SFlg_Legal))

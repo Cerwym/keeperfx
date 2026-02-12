@@ -60,6 +60,7 @@ unsigned long features_enabled = 0;
 TbBool exit_on_lua_error = false;
 TbBool FLEE_BUTTON_DEFAULT = false;
 TbBool IMPRISON_BUTTON_DEFAULT = false;
+int renderer_type = 1; // 1 = SOFTWARE (default)
 
 /**
  * Language 3-char abbreviations.
@@ -155,6 +156,7 @@ const struct NamedCommand conf_commands[] = {
   {"FRAMES_PER_SECOND"             , 39},
   {"TAG_MODE_TOGGLING"             , 40},
   {"DEFAULT_TAG_MODE"              , 41},
+  {"RENDERER"                      , 42},
   {NULL,                   0},
   };
 
@@ -192,6 +194,13 @@ const struct NamedCommand conf_commands[] = {
   {"DRAG",     2},
   {"PRESET",   3}, //legacy
   {"REMEMBER", 3},
+  {NULL,       0},
+  };
+
+  const struct NamedCommand renderer_type_commands[] = {
+  {"SOFTWARE", 1},
+  {"HARDWARE", 2},
+  {"OPENGL", 2},  // Alias for HARDWARE
   {NULL,       0},
   };
 
@@ -902,6 +911,17 @@ static void load_file_configuration(const char *fname, const char *sname, const 
           else
           {
             default_tag_mode = i;
+          }
+          break;
+      case 42: // RENDERER
+          i = recognize_conf_parameter(buf,&pos,len,renderer_type_commands);
+          if (i <= 0)
+          {
+            CONFWRNLOG("Couldn't recognize \"%s\" command parameter in %s file.",COMMAND_TEXT(cmd_num),config_textname);
+          }
+          else
+          {
+            renderer_type = i;
           }
           break;
       case ccr_comment:
