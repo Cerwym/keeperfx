@@ -27,29 +27,32 @@ set(KEEPERFX_VER_DEFS_H_IN ${CMAKE_SOURCE_DIR}/ver_defs.h.in)
 set(KEEPERFX_VER_DEFS_H_OUT ${CMAKE_SOURCE_DIR}/ver_defs.h)
 configure_file(${KEEPERFX_VER_DEFS_H_IN} ${KEEPERFX_VER_DEFS_H_OUT})
 
-# Platform detection
-if(DEFINED ENV{VITASDK})
-    set(PLATFORM_VITA ON)
-    message(STATUS "Building for PlayStation Vita")
-endif()
+# Platform detection - allows explicit override via -DPLATFORM_XXX=ON
+# Falls back to environment variable detection if not explicitly set
+if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
+    if(DEFINED ENV{VITASDK})
+        set(PLATFORM_VITA ON CACHE BOOL "Build for PlayStation Vita")
+        message(STATUS "Building for PlayStation Vita")
+    endif()
 
-if(DEFINED ENV{DEVKITPRO})
-    if(DEFINED ENV{DEVKITARM})
-        set(PLATFORM_3DS ON)
-        message(STATUS "Building for Nintendo 3DS")
-    elseif(DEFINED ENV{DEVKITA64})
-        set(PLATFORM_SWITCH ON)
-        message(STATUS "Building for Nintendo Switch")
+    if(DEFINED ENV{DEVKITPRO})
+        if(DEFINED ENV{DEVKITARM})
+            set(PLATFORM_3DS ON CACHE BOOL "Build for Nintendo 3DS")
+            message(STATUS "Building for Nintendo 3DS")
+        elseif(DEFINED ENV{DEVKITA64})
+            set(PLATFORM_SWITCH ON CACHE BOOL "Build for Nintendo Switch")
+            message(STATUS "Building for Nintendo Switch")
+        endif()
     endif()
 endif()
 
 # Find dependencies based on platform
 if(PLATFORM_VITA)
-    # Vita uses vitaGL and libraries from vitasdk
-    # Dependencies are handled by the Vita toolchain
+    # Vita libraries come from vitasdk but must be explicitly linked
+    # vitaGL provides OpenGL ES wrapper over GXM for bgfx compatibility
     message(STATUS "Using Vita SDK libraries (vitaGL for OpenGL ES)")
 elseif(PLATFORM_3DS OR PLATFORM_SWITCH)
-    # 3DS and Switch have their own dependency management
+    # 3DS and Switch libraries come from devkitPro
     message(STATUS "Using devkitPro libraries")
 else()
     # Desktop platforms use vcpkg
@@ -121,6 +124,7 @@ add_subdirectory(tools)
 # External libraries.
 if(PLATFORM_VITA)
     # Vita-specific libraries (vitaGL, SceLibc, etc.)
+    # Note: keeperfx_hvlog is not typically used on Vita due to memory constraints
     target_link_libraries(keeperfx PRIVATE
         SDL2
         vitaGL
@@ -138,6 +142,7 @@ if(PLATFORM_VITA)
     )
 elseif(PLATFORM_3DS)
     # 3DS-specific libraries (citro3d, etc.)
+    # Note: keeperfx_hvlog is not typically used on 3DS due to memory constraints
     target_link_libraries(keeperfx PRIVATE
         citro3d
         ctru
@@ -145,6 +150,7 @@ elseif(PLATFORM_3DS)
     )
 elseif(PLATFORM_SWITCH)
     # Switch-specific libraries
+    # Note: keeperfx_hvlog is not typically used on Switch for homebrew builds
     target_link_libraries(keeperfx PRIVATE
         SDL2
         EGL
@@ -154,7 +160,7 @@ elseif(PLATFORM_SWITCH)
         m
     )
 else()
-    # Desktop platforms
+    # Desktop platforms - link for both keeperfx and keeperfx_hvlog
     target_link_libraries(keeperfx
         PRIVATE
         $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
