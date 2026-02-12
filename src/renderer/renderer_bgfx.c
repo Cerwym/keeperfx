@@ -20,6 +20,9 @@
 #include "../pre_inc.h"
 #include "renderer_interface.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <bgfx/c99/bgfx.h>
 #include <bgfx/platform.h>
 #include <bx/math.h>
@@ -182,30 +185,60 @@ static void batch_triangle(struct PolyPoint* p1, struct PolyPoint* p2, struct Po
 
 static TbResult create_texture_atlas(void)
 {
-    // For now, create a simple placeholder texture atlas
-    // In full implementation, this would pack all block_ptrs textures into an atlas
+    // Create texture atlas from block_ptrs
+    // Each block is 32x32, we have TEXTURE_VARIATIONS_COUNT (32) × TEXTURE_BLOCKS_COUNT (1088)
+    // Total textures: 32 * 1088 = 34816 blocks
+    // At 32x32 each, we need roughly sqrt(34816) * 32 = 5920x5920 pixels
+    // Let's use 8192x8192 atlas to have some margin
     
-    // TODO: Implement full texture atlas creation from block_ptrs
-    // For now, create a minimal test texture
-    const uint32_t size = 256;
-    uint8_t* data = (uint8_t*)malloc(size * size);
-    if (!data) {
-        ERRORLOG("Failed to allocate texture atlas memory");
+    const uint32_t atlasSize = 8192;
+    const uint32_t blockSize = 32;
+    const uint32_t blocksPerRow = atlasSize / blockSize; // 256 blocks per row
+    
+    SYNCLOG("Creating texture atlas: %dx%d pixels for %d texture blocks", 
+            atlasSize, atlasSize, TEXTURE_VARIATIONS_COUNT * TEXTURE_BLOCKS_COUNT);
+    
+    // Allocate atlas memory
+    uint8_t* atlasData = (uint8_t*)calloc(atlasSize * atlasSize, 1);
+    if (!atlasData) {
+        ERRORLOG("Failed to allocate texture atlas memory (%d bytes)", atlasSize * atlasSize);
         return 0;
     }
     
-    // Fill with test pattern (palette indices)
-    for (uint32_t i = 0; i < size * size; i++) {
-        data[i] = (uint8_t)(i % 256);
+    // Copy block_ptrs textures into atlas
+    uint32_t blockIdx = 0;
+    uint32_t totalBlocks = TEXTURE_VARIATIONS_COUNT * TEXTURE_BLOCKS_COUNT;
+    
+    for (uint32_t i = 0; i < totalBlocks && blockIdx < totalBlocks; i++) {
+        if (block_ptrs[i] == NULL) {
+            continue; // Skip null blocks
+        }
+        
+        uint32_t blockX = (blockIdx % blocksPerRow) * blockSize;
+        uint32_t blockY = (blockIdx / blocksPerRow) * blockSize;
+        
+        // Copy 32x32 block into atlas
+        for (uint32_t y = 0; y < blockSize; y++) {
+            for (uint32_t x = 0; x < blockSize; x++) {
+                uint32_t srcIdx = y * blockSize + x;
+                uint32_t dstIdx = (blockY + y) * atlasSize + (blockX + x);
+                atlasData[dstIdx] = block_ptrs[i][srcIdx];
+            }
+        }
+        
+        blockIdx++;
     }
     
-    const bgfx_memory_t* mem = bgfx_make_ref(data, size * size);
-    s_textureAtlas = bgfx_create_texture_2d(size, size, false, 1,
+    SYNCLOG("Copied %d texture blocks into atlas", blockIdx);
+    
+    // Create bgfx texture
+    const bgfx_memory_t* mem = bgfx_make_ref(atlasData, atlasSize * atlasSize);
+    s_textureAtlas = bgfx_create_texture_2d(atlasSize, atlasSize, false, 1,
                                             BGFX_TEXTURE_FORMAT_R8,
                                             BGFX_TEXTURE_NONE | BGFX_SAMPLER_MIN_POINT | BGFX_SAMPLER_MAG_POINT,
                                             mem);
     
-    free(data);
+    free(atlasData);
     
     if (!bgfx_is_valid(s_textureAtlas)) {
         ERRORLOG("Failed to create texture atlas");
@@ -218,15 +251,19 @@ static TbResult create_texture_atlas(void)
 static TbResult create_palette_texture(void)
 {
     // Create 256x1 palette texture from current palette
-    // TODO: Get actual palette data from the game
+    // lbPalette is defined in bflib_video.h - 768 bytes (256 * 3 RGB)
+    extern unsigned char lbPalette[768];
+    
     uint8_t paletteData[256 * 4]; // RGBA format
     
-    // Fill with test gradient for now
+    // Convert RGB palette to RGBA
     for (int i = 0; i < 256; i++) {
-        paletteData[i * 4 + 0] = (uint8_t)i; // R
-        paletteData[i * 4 + 1] = (uint8_t)i; // G
-        paletteData[i * 4 + 2] = (uint8_t)i; // B
-        paletteData[i * 4 + 3] = 255;        // A
+        // Each palette entry is 3 bytes (R, G, B) - values are 0-63 in original
+        // Need to scale from 0-63 to 0-255
+        paletteData[i * 4 + 0] = (lbPalette[i * 3 + 0] * 255) / 63; // R
+        paletteData[i * 4 + 1] = (lbPalette[i * 3 + 1] * 255) / 63; // G
+        paletteData[i * 4 + 2] = (lbPalette[i * 3 + 2] * 255) / 63; // B
+        paletteData[i * 4 + 3] = 255;                                 // A
     }
     
     const bgfx_memory_t* mem = bgfx_make_ref(paletteData, 256 * 4);
@@ -243,12 +280,62 @@ static TbResult create_palette_texture(void)
     return 1;
 }
 
-static bgfx_shader_handle_t load_shader_stub(const char* name)
+static bgfx_shader_handle_t load_shader(const char* name)
 {
-    // For now, return invalid handle as shaders need to be compiled
-    // In full implementation, load pre-compiled shader binaries
-    WARNLOG("Shader loading not yet implemented: %s", name);
-    return BGFX_INVALID_HANDLE;
+    // Try to load compiled shader binary
+    // Shaders should be pre-compiled for the target platform
+    // File format: shaders/<name>.bin
+    
+    char filepath[256];
+    snprintf(filepath, sizeof(filepath), "shaders/%s.bin", name);
+    
+    FILE* file = fopen(filepath, "rb");
+    if (!file) {
+        WARNLOG("Failed to open shader file: %s", filepath);
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    // Get file size
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    
+    if (size <= 0) {
+        ERRORLOG("Invalid shader file size: %s", filepath);
+        fclose(file);
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    // Read shader data
+    uint8_t* data = (uint8_t*)malloc(size);
+    if (!data) {
+        ERRORLOG("Failed to allocate memory for shader: %s", filepath);
+        fclose(file);
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    size_t read = fread(data, 1, size, file);
+    fclose(file);
+    
+    if (read != (size_t)size) {
+        ERRORLOG("Failed to read shader file: %s", filepath);
+        free(data);
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    // Create shader from memory
+    const bgfx_memory_t* mem = bgfx_copy(data, size);
+    free(data);
+    
+    bgfx_shader_handle_t shader = bgfx_create_shader(mem);
+    
+    if (!bgfx_is_valid(shader)) {
+        ERRORLOG("Failed to create shader: %s", filepath);
+        return BGFX_INVALID_HANDLE;
+    }
+    
+    SYNCLOG("Loaded shader: %s", filepath);
+    return shader;
 }
 
 /******************************************************************************/
@@ -311,18 +398,37 @@ static TbResult bgfx_renderer_init(struct SDL_Window* window, int width, int hei
     s_texColorSampler = bgfx_create_uniform("s_texColor", BGFX_UNIFORM_TYPE_SAMPLER, 1);
     s_paletteSampler = bgfx_create_uniform("s_palette", BGFX_UNIFORM_TYPE_SAMPLER, 1);
 
-    // Load shaders (stub for now - shaders need to be pre-compiled)
-    bgfx_shader_handle_t vsh_palette = load_shader_stub("vs_palette");
-    bgfx_shader_handle_t fsh_palette = load_shader_stub("fs_palette");
-    bgfx_shader_handle_t vsh_rgba = load_shader_stub("vs_rgba");
-    bgfx_shader_handle_t fsh_rgba = load_shader_stub("fs_rgba");
+    // Load shaders
+    bgfx_shader_handle_t vsh_palette = load_shader("vs_palette");
+    bgfx_shader_handle_t fsh_palette = load_shader("fs_palette");
+    bgfx_shader_handle_t vsh_rgba = load_shader("vs_rgba");
+    bgfx_shader_handle_t fsh_rgba = load_shader("fs_rgba");
     
-    // Create programs (will be invalid until shaders are loaded)
+    // Create programs
     if (bgfx_is_valid(vsh_palette) && bgfx_is_valid(fsh_palette)) {
         s_programPalette = bgfx_create_program(vsh_palette, fsh_palette, true);
+        if (!bgfx_is_valid(s_programPalette)) {
+            ERRORLOG("Failed to create palette shader program");
+        }
+    } else {
+        ERRORLOG("Palette shaders not loaded - cannot render in palette mode");
     }
+    
     if (bgfx_is_valid(vsh_rgba) && bgfx_is_valid(fsh_rgba)) {
         s_programRGBA = bgfx_create_program(vsh_rgba, fsh_rgba, true);
+        if (!bgfx_is_valid(s_programRGBA)) {
+            ERRORLOG("Failed to create RGBA shader program");
+        }
+    } else {
+        ERRORLOG("RGBA shaders not loaded - cannot render in RGBA mode");
+    }
+    
+    // Check if at least one program is valid
+    if (!bgfx_is_valid(s_programPalette) && !bgfx_is_valid(s_programRGBA)) {
+        ERRORLOG("No valid shader programs loaded - bgfx renderer cannot function");
+        ERRORLOG("Please compile shaders using shaderc (see shaders/README.md)");
+        bgfx_shutdown();
+        return 0;
     }
 
     // Create texture atlas
