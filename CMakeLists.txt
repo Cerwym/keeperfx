@@ -62,18 +62,20 @@ set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
 
 set(WARNFLAGS -Wall -W -Wshadow -Wno-sign-compare -Wno-unused-parameter -Wno-strict-aliasing -Wno-unknown-pragmas -Werror)
 set(GNU_COMPILER_FLAG -march=x86-64 -fno-omit-frame-pointer -fmessage-length=0)
-set(GNU_LINK_FLAG -mwindows -Wl,--enable-auto-import)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit")
 target_compile_options(keeperfx PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
 target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
-target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
-target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
-target_link_libraries (keeperfx PUBLIC -static stdc++ winpthread -dynamic)
-target_link_libraries (keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
 
-# System libraries.
-target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
-target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
+# System libraries (Windows only).
+if(WIN32)
+    set(GNU_LINK_FLAG -mwindows -Wl,--enable-auto-import)
+    target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
+    target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
+    target_link_libraries(keeperfx PRIVATE imagehlp dbghelp)
+    target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp)
+    target_link_libraries(keeperfx PUBLIC -static stdc++ winpthread -dynamic)
+    target_link_libraries(keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
+endif()
 
 # Go into submodules.
 add_subdirectory(deps)
@@ -105,3 +107,63 @@ target_link_libraries(keeperfx_hvlog
 
 # bgfx library
 target_link_libraries(keeperfx_hvlog PRIVATE bgfx::bgfx bx::bx bimg::bimg)
+
+# Testing support with CUnit
+option(BUILD_TESTING "Build the testing tree" ON)
+if(BUILD_TESTING)
+    enable_testing()
+    
+    # Add CUnit library if it exists
+    if(EXISTS ${CMAKE_SOURCE_DIR}/deps/CUnit-2.1-3)
+        add_library(cunit_static STATIC IMPORTED)
+        
+        # Try to find the CUnit library
+        if(EXISTS ${CMAKE_SOURCE_DIR}/deps/CUnit-2.1-3/lib/libcunit.a)
+            set_target_properties(cunit_static PROPERTIES 
+                IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/CUnit-2.1-3/lib/libcunit.a)
+        elseif(EXISTS ${CMAKE_SOURCE_DIR}/deps/CUnit-2.1-3/CUnit/Sources/.libs/libcunit.a)
+            set_target_properties(cunit_static PROPERTIES 
+                IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/CUnit-2.1-3/CUnit/Sources/.libs/libcunit.a)
+        endif()
+        
+        # Set include directories
+        if(EXISTS ${CMAKE_SOURCE_DIR}/deps/CUnit-2.1-3/CUnit/Headers)
+            set_target_properties(cunit_static PROPERTIES 
+                INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_SOURCE_DIR}/deps/CUnit-2.1-3/CUnit/Headers)
+        endif()
+        
+        # Build test executable
+        file(GLOB TEST_SOURCES "tests/*.cpp" "tests/*.c")
+        if(TEST_SOURCES)
+            # Note: Currently includes all source files - this may need refactoring
+            # to link against main targets as libraries or manage entry points carefully
+            add_executable(keeperfx_tests ${TEST_SOURCES} ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
+            
+            # Copy compile options from main target
+            target_compile_options(keeperfx_tests PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
+            target_compile_definitions(keeperfx_tests PUBLIC BFDEBUG_LEVEL=0)
+            target_include_directories(keeperfx_tests PRIVATE src/)
+            
+            # Link libraries
+            target_link_libraries(keeperfx_tests PRIVATE cunit_static)
+            target_link_libraries(keeperfx_tests PRIVATE
+                $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
+            target_link_libraries(keeperfx_tests PRIVATE
+                $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+            target_link_libraries(keeperfx_tests PRIVATE
+                $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
+            target_link_libraries(keeperfx_tests PRIVATE
+                $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+            target_link_libraries(keeperfx_tests PRIVATE bgfx::bgfx bx::bx bimg::bimg)
+            
+            # Windows-specific libraries
+            if(WIN32)
+                target_link_libraries(keeperfx_tests PRIVATE imagehlp dbghelp)
+                target_link_libraries(keeperfx_tests PUBLIC -static stdc++ winpthread -dynamic)
+            endif()
+            
+            # Add the test
+            add_test(NAME keeperfx_unit_tests COMMAND keeperfx_tests)
+        endif()
+    endif()
+endif()
