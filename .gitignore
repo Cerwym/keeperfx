@@ -49,3 +49,7 @@ crash_log.txt
 /campgns/dk2_media
 .git-surgery/
 keeperfx.worktrees/
+
+# Test infrastructure (removed - insufficient tests to warrant maintenance)
+/deps/CUnit-2.1-3/
+/tests/
