@@ -27,7 +27,13 @@ extern "C" {
 #endif
 
 /******************************************************************************/
+// Video recording format constants
+#define VIDEO_FORMAT_MKV 1
+#define VIDEO_FORMAT_FLC 2
+
+/******************************************************************************/
 extern unsigned char screenshot_format;
+extern unsigned char video_recording_format;
 
 /******************************************************************************/
 TbBool perform_any_screen_capturing(void);
