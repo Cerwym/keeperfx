@@ -10,8 +10,7 @@
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "installDir": "${sourceDir}/out/install/${presetName}",
             "cacheVariables": {
-                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
             }
         },
 
@@ -168,24 +167,36 @@
         {
             "name": "3ds-release",
             "displayName": "3DS Release",
-            "inherits": [ "base", "Release" ],
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
             "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
                 "CMAKE_TOOLCHAIN_FILE": "$env{DEVKITPRO}/cmake/3DS.cmake"
             }
         },
         {
             "name": "vita-release",
             "displayName": "PS Vita Release",
-            "inherits": [ "base", "Release" ],
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
             "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
                 "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake"
             }
         },
         {
             "name": "switch-release",
             "displayName": "Nintendo Switch Release",
-            "inherits": [ "base", "Release" ],
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
             "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
                 "CMAKE_TOOLCHAIN_FILE": "$env{DEVKITPRO}/cmake/Switch.cmake"
             }
         }

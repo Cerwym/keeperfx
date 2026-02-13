@@ -38,6 +38,9 @@ typedef struct AudioInterface {
 extern AudioInterface* g_audio;
 
 void audio_openal_initialize(void);
+void audio_ndsp_initialize(void);
+void audio_vita_initialize(void);
+void audio_switch_initialize(void);
 
 /******************************************************************************/
 #ifdef __cplusplus

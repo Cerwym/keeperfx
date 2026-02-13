@@ -18,28 +18,24 @@ jobs:
           - name: Windows x86
             os: windows-latest
             preset: windows-x86-release
-            vcpkg-triplet: x86-windows
             artifact-name: keeperfx-windows-x86
             test: false
             
           - name: Windows x64
             os: windows-latest
             preset: windows-x64-release
-            vcpkg-triplet: x64-windows
             artifact-name: keeperfx-windows-x64
             test: false
             
           - name: Linux x64
             os: ubuntu-24.04
             preset: linux-x64-release
-            vcpkg-triplet: x64-linux
             artifact-name: keeperfx-linux-x64
             test: false
             
           - name: macOS Universal
             os: macos-14
             preset: macos-universal
-            vcpkg-triplet: arm64-osx
             artifact-name: keeperfx-macos-universal
             test: false
 
@@ -50,36 +46,35 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: '9558037875497b9db8cf38fcd7db68ec661bffe7'
-
-      - name: Cache vcpkg packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ github.workspace }}/vcpkg
-            ~/.cache/vcpkg
-            ~/AppData/Local/vcpkg
-          key: vcpkg-${{ matrix.os }}-${{ matrix.vcpkg-triplet }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
-          restore-keys: |
-            vcpkg-${{ matrix.os }}-${{ matrix.vcpkg-triplet }}-
-            vcpkg-${{ matrix.os }}-
+      - name: Mark git directory as safe
+        run: git config --global --add safe.directory '*'
 
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/out/build/${{ matrix.preset }}/_deps
+          key: fetchcontent-${{ matrix.os }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            fetchcontent-${{ matrix.os }}-
 
       - name: Configure CMake
         uses: lukka/run-cmake@v10
         with:
           configurePreset: ${{ matrix.preset }}
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
         continue-on-error: true
 
       - name: Build
         uses: lukka/run-cmake@v10
         with:
           buildPreset: ${{ matrix.preset }}
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
         continue-on-error: true
 
       - name: Run tests
@@ -95,6 +90,7 @@ jobs:
             out/build/${{ matrix.preset }}/keeperfx*
             out/build/${{ matrix.preset }}/*.exe
             out/build/${{ matrix.preset }}/*.map
+            out/build/${{ matrix.preset }}/*.dll
           if-no-files-found: warn
         continue-on-error: true
 
