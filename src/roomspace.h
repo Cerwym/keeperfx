@@ -97,6 +97,13 @@ struct RoomSpace {
     MapSlabCoord drag_end_y;
     TbBool drag_mode;
     unsigned char drag_direction;
+    /** Variables for the spiral placement pattern. */
+    struct {
+        unsigned char forward_direction; /**< The current direction we are moving through the spiral (0=N, 1=E, 2=S, 3=W). */
+        long turns_made; /**< The number of turns made in the spiral. */
+        long steps_to_take_before_turning; /**< The number of steps to take before the next turn in the spiral. */
+        long steps_remaining_before_turn; /**< The number of steps we have left to take before we need to turn in the spiral. */
+    } spiral;
 };
 /******************************************************************************/
 /******************************************************************************/
