@@ -38,6 +38,9 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Mark git directory as safe
+        run: git config --global --add safe.directory '*'
+
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
 
