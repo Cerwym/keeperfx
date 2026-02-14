@@ -567,7 +567,7 @@ obj/std/centitoml/toml_api.o obj/hvlog/centitoml/toml_api.o: deps/centitoml/toml
 	$(CC) $(CFLAGS) -o"$@" "$<"
 	-$(ECHO) ' '
 
-obj/tests/%.o: tests/%.cpp $(GENSRC)
+obj/tests/%.o: src/tests/%.cpp $(GENSRC)
 	-$(ECHO) 'Building file: $<'
 	$(CPP) $(CXXFLAGS) -I"src/" $(CU_INC) -o"$@" "$<"
 	-$(ECHO) ' '
@@ -585,6 +585,13 @@ define BUILD_CPP_FILES_CMD
 	@grep -E "#include \"(\.\./)?(\.\./)?post_inc.h\"" "$<" >/dev/null || echo "\n\nAll files should have #include \"post_inc.h\" as last include\n\n" >&2 | false
 	$(CPP) $(CXXFLAGS) -o"$@" "$<"
 endef
+
+# Pattern rules for src/kfx/lense (must come before general src/%.cpp rule)
+obj/std/%.o: src/kfx/lense/%.cpp libexterns $(GENSRC)
+	$(BUILD_CPP_FILES_CMD)
+
+obj/hvlog/%.o: src/kfx/lense/%.cpp libexterns $(GENSRC)
+	$(BUILD_CPP_FILES_CMD)
 
 obj/std/%.o: src/%.cpp libexterns $(GENSRC)
 	$(BUILD_CPP_FILES_CMD)
@@ -605,14 +612,6 @@ obj/std/%.o: src/%.c libexterns $(GENSRC)
 
 obj/hvlog/%.o: src/%.c libexterns $(GENSRC)
 	$(BUILD_CC_FILES_CMD)
-
-
-# Pattern rules for src/kfx/lense C++ files
-obj/std/%.o: src/kfx/lense/%.cpp libexterns $(GENSRC)
-	$(BUILD_CPP_FILES_CMD)
-
-obj/hvlog/%.o: src/kfx/lense/%.cpp libexterns $(GENSRC)
-	$(BUILD_CPP_FILE_HVLOG_CMD)
 
 
 # Windows resources compilation
