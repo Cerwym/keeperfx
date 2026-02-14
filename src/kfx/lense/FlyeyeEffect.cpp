@@ -7,11 +7,12 @@
  *     Self-contained fish eye/hexagonal tiling effect.
  * @par Comment:
  *     Creates a compound eye view by rendering hexagonal tiles with radial distortion.
+ *     Resolution-independent via pre-computed lookup tables.
  * @author   Tomasz Lis, KeeperFX Team
  * @date     11 Mar 2010 - 09 Feb 2026
  * @par  Copying and copyrights:
  *     This program is free software; you can redistribute it and/or modify
- *    it under the terms of the GNU General Public License as published by
+ *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation; either version 2 of the License, or
  *     (at your option) any later version.
  */
@@ -20,7 +21,7 @@
 #include "FlyeyeEffect.h"
 
 #include <cmath>
-#include <string.h>
+#include <stdlib.h>
 #include "../../config_lenses.h"
 #include "../../lens_api.h"
 
@@ -28,331 +29,29 @@
 #include "../../post_inc.h"
 
 /******************************************************************************/
-// INTERNAL FLYEYE RENDERER CLASSES
+
+// Reference dimensions for resolution-independent scaling
+static const int REF_WIDTH = 640;
+static const int REF_HEIGHT = 480;
+static const int REF_MAXSIZE = 640;
+
+// Hexagonal grid parameters (in reference 640x480 space)
+static const double HEX_SPACING_X = 50.0;
+static const double HEX_SPACING_Y = 60.0;
+static const double HEX_ODD_OFFSET_Y = 30.0;
+
+// Distortion parameters from original algorithm
+static const double LDPAR1 = REF_MAXSIZE * 0.0175;
+static const double LDPAR2 = REF_MAXSIZE * 0.0025;
+
 /******************************************************************************/
-
-#define CSCAN_STRIPS 26
-
-/**
- * Scan line strip data structure.
- * Each scanline can contain up to CSCAN_STRIPS strips of different source offsets.
- */
-struct CScan {
-    long strips_num;
-    unsigned short strip_len[CSCAN_STRIPS];
-    short strip_w[CSCAN_STRIPS];
-    short strip_h[CSCAN_STRIPS];
-};
-
-/**
- * CFlyeyeRenderer - Internal flyeye rendering system.
- * Manages hexagonal tile generation and scanline-based blitting.
- */
-class CFlyeyeRenderer {
-public:
-    CFlyeyeRenderer();
-    ~CFlyeyeRenderer();
-    
-    void Setup(long width, long height, uint32_t* buffer);
-    void Render(unsigned char *srcbuf, long srcpitch, unsigned char *dstbuf, 
-               long dstpitch, long start_h, long end_h);
-    
-private:
-    class CHex {
-    public:
-        CHex(CFlyeyeRenderer* renderer, long x, long y);
-        void BlitHex();
-        void AddScan(struct CScan *scan, long strip_len, long len_limit, 
-                    long nstrip_w, long nstrip_h);
-        void BlitScan(struct CScan *scan, long h);
-        
-    private:
-        CFlyeyeRenderer* m_renderer;
-        long arrA[6];
-        long arrB[6];
-        long source_strip_w;
-        long source_strip_h;
-    };
-    
-    struct CScan *m_scan_buffer;
-    long m_width;
-    long m_height;
-    long m_center_x;
-    long m_center_y;
-    
-    // Rendering state (set during Render())
-    unsigned char *m_source;
-    long m_source_pitch;
-    unsigned char *m_screen;
-    long m_screen_pitch;
-    
-    friend class CHex;
-};
-
-CFlyeyeRenderer::CFlyeyeRenderer()
-    : m_scan_buffer(NULL)
-    , m_width(0)
-    , m_height(0)
-    , m_center_x(0)
-    , m_center_y(0)
-    , m_source(NULL)
-    , m_source_pitch(0)
-    , m_screen(NULL)
-    , m_screen_pitch(0)
-{
-}
-
-CFlyeyeRenderer::~CFlyeyeRenderer()
-{
-}
-
-void CFlyeyeRenderer::Setup(long width, long height, uint32_t* buffer)
-{
-    m_width = width;
-    m_height = height;
-    m_center_x = width >> 1;
-    m_center_y = height >> 1;
-    m_scan_buffer = (struct CScan*)buffer;
-    
-    // Initialize scan buffer
-    for (long i = 0; i < m_height; i++)
-    {
-        m_scan_buffer[i].strips_num = 0;
-    }
-    
-    // Generate hexagonal tiles
-    for (long y = -12; y <= 12; y++)
-    {
-        for (long x = -12; x <= 12; x++)
-        {
-            CHex hex(this, x, y);
-            hex.BlitHex();
-        }
-    }
-    
-    SYNCDBG(8, "Flyeye setup complete for %ldx%ld", width, height);
-}
-
-void CFlyeyeRenderer::Render(unsigned char *srcbuf, long srcpitch, unsigned char *dstbuf,
-                             long dstpitch, long start_h, long end_h)
-{
-    m_source = srcbuf;
-    m_source_pitch = srcpitch;
-    m_screen = dstbuf;
-    m_screen_pitch = dstpitch;
-    
-    // Draw scanlines
-    for (long h = start_h; h < end_h; h++)
-    {
-        CHex hex(this, 0, 0);  // Temp instance for BlitScan (static-like method)
-        hex.BlitScan(&m_scan_buffer[h], h);
-    }
-}
-
-// CHex implementation
-CFlyeyeRenderer::CHex::CHex(CFlyeyeRenderer* renderer, long x, long y)
-    : m_renderer(renderer)
-{
-    long maxsize;
-    long mwidth;
-    long mheight;
-    long double ldpar1;
-    long double ldpar2;
-    long double varA;
-    long double varB;
-    long double len;
-    
-    if (m_renderer->m_height > m_renderer->m_width)
-        maxsize = m_renderer->m_height;
-    else
-        maxsize = m_renderer->m_width;
-        
-    mwidth = 50 * x;
-    mheight = 60 * y;
-    ldpar1 = (long double)maxsize * 0.0175L;
-    ldpar2 = (long double)maxsize * 0.0025L;
-    
-    if ((x & 1) != 0)
-        mheight += 30;
-        
-    this->arrA[0] = mwidth - 35;
-    this->arrB[0] = mheight + 30;
-    this->arrA[1] = mwidth - 15;
-    this->arrB[1] = mheight;
-    this->arrA[2] = mwidth + 15;
-    this->arrB[2] = mheight;
-    this->arrA[3] = mwidth + 35;
-    this->arrB[3] = mheight + 30;
-    this->arrA[4] = mwidth + 15;
-    this->arrB[4] = mheight + 60;
-    this->arrA[5] = mwidth - 15;
-    this->arrB[5] = mheight + 60;
-    
-    for (long i = 0; i < 6; i++)
-    {
-        varA = this->arrA[i];
-        varB = this->arrB[i];
-        len = sqrt(varA * varA + varB * varB) * 0.0025L + 1.0L;
-        this->arrA[i] = (signed long long)((long double)m_renderer->m_center_x + varA / len * ldpar2);
-        this->arrB[i] = (signed long long)((long double)m_renderer->m_center_y + varB / len * ldpar2);
-    }
-    
-    this->source_strip_w = ((long double)-x * ldpar1);
-    this->source_strip_h = (ldpar1 * (long double)-y);
-}
-
-void CFlyeyeRenderer::CHex::AddScan(struct CScan *scan, long strip_len, long len_limit,
-                                    long nstrip_w, long nstrip_h)
-{
-    long stlen = strip_len;
-    if (strip_len < 0)
-        stlen = 0;
-    if ((stlen >= m_renderer->m_width) || (stlen >= len_limit))
-        return;
-    if (scan->strips_num >= CSCAN_STRIPS)
-        return;
-        
-    long n = 0;
-    long i = 0;
-    // Find index for new strip
-    for (i = 0; ; i++)
-    {
-        if (i >= scan->strips_num)
-        {
-            // Last element - just fill it
-            scan->strip_len[scan->strips_num] = stlen;
-            scan->strip_w[scan->strips_num] = nstrip_w;
-            scan->strip_h[scan->strips_num] = nstrip_h;
-            scan->strips_num++;
-            return;
-        }
-        long clen = scan->strip_len[n];
-        if (stlen == clen)
-        {
-            scan->strip_w[i] = nstrip_w;
-            scan->strip_h[i] = nstrip_h;
-            return;
-        }
-        if (clen > stlen)
-            break;
-        n++;
-    }
-    
-    // Move elements to make space
-    n = scan->strips_num;
-    while (n > (long)i)
-    {
-        scan->strip_len[n] = scan->strip_len[n-1];
-        scan->strip_w[n] = scan->strip_w[n-1];
-        scan->strip_h[n] = scan->strip_h[n-1];
-        n--;
-    }
-    
-    // Insert scan data
-    scan->strip_len[i] = stlen;
-    scan->strip_w[i] = nstrip_w;
-    scan->strip_h[i] = nstrip_h;
-    scan->strips_num++;
-}
-
-void CFlyeyeRenderer::CHex::BlitHex()
-{
-    int min_idx = 0;
-    int counter1, counter2;
-    int first_idx, last_idx;
-    int deltaV1, deltaV2;
-    int posV1, posV2;
-    long scan_num;
-    
-    for (int i = 1; i < 6; i++)
-    {
-        if (this->arrB[i] < this->arrB[min_idx])
-            min_idx = i;
-    }
-    
-    scan_num = this->arrB[min_idx];
-    first_idx = (min_idx + 1) % 6;
-    last_idx = (min_idx + 5) % 6;
-    deltaV1 = 0; deltaV2 = 0;
-    posV1 = 0; posV2 = 0;
-    counter2 = 0;
-    counter1 = 0;
-    
-    while (1)
-    {
-        int i = first_idx;
-        while (counter1 == 0)
-        {
-            first_idx = (first_idx + 5) % 6;
-            if (first_idx == i)
-                return;
-            posV1 = this->arrA[first_idx] << 16;
-            int n = (first_idx + 5) % 6;
-            counter1 = this->arrB[n] - this->arrB[first_idx];
-            if (counter1 > 0) {
-                deltaV1 = ((this->arrA[n] << 16) - posV1) / counter1;
-            }
-        }
-        
-        i = last_idx;
-        while (counter2 == 0)
-        {
-            last_idx = (last_idx + 1) % 6;
-            if (last_idx == i)
-                return;
-            int n = (last_idx + 1) % 6;
-            counter2 = this->arrB[n] - this->arrB[last_idx];
-            posV2 = this->arrA[last_idx] << 16;
-            if (counter2 > 0) {
-                deltaV2 = ((this->arrA[n] << 16) - posV2) / counter2;
-            }
-        }
-        
-        if ((counter1 <= 0) || (counter2 <= 0))
-            return;
-            
-        if ((scan_num >= 0) && (scan_num < m_renderer->m_height))
-        {
-            SYNCDBG(19, "ScanBuffer %ld pos %d,%d from %d,%d", scan_num, posV1, posV2,
-                   (int)this->source_strip_w, (int)this->source_strip_h);
-            AddScan(&m_renderer->m_scan_buffer[scan_num], posV1 >> 16, posV2 >> 16,
-                   this->source_strip_w, this->source_strip_h);
-        }
-        counter1--;
-        counter2--;
-        posV1 += deltaV1;
-        posV2 += deltaV2;
-        scan_num++;
-    }
-}
-
-void CFlyeyeRenderer::CHex::BlitScan(struct CScan *scan, long h)
-{
-    unsigned char *dst;
-    unsigned char *src;
-    long shift_w, shift_h;
-    long w, end_w;
-    
-    SYNCDBG(16, "Starting line %ld", h);
-    for (long i = 0; i < scan->strips_num; i++)
-    {
-        w = scan->strip_len[i];
-        if (i == scan->strips_num - 1)
-            end_w = m_renderer->m_width;
-        else
-            end_w = scan->strip_len[i+1];
-            
-        shift_w = (long)scan->strip_w[i] + w;
-        shift_h = (long)scan->strip_h[i] + h;
-        dst = &m_renderer->m_screen[h * m_renderer->m_screen_pitch + w];
-        src = &m_renderer->m_source[shift_h * m_renderer->m_source_pitch + shift_w];
-        memcpy(dst, src, end_w - w);
-    }
-}
 
 FlyeyeEffect::FlyeyeEffect()
     : LensEffect(LensEffectType::Flyeye, "Flyeye")
     , m_current_lens(-1)
+    , m_lookup_table(nullptr)
+    , m_table_width(0)
+    , m_table_height(0)
 {
 }
 
@@ -361,15 +60,109 @@ FlyeyeEffect::~FlyeyeEffect()
     Cleanup();
 }
 
+void FlyeyeEffect::FreeLookupTable()
+{
+    if (m_lookup_table != nullptr)
+    {
+        free(m_lookup_table);
+        m_lookup_table = nullptr;
+    }
+    m_table_width = 0;
+    m_table_height = 0;
+}
+
+/**
+ * Build pre-computed lookup table for current resolution.
+ * Computes flyeye effect in virtual 640x480 space, maps to actual coords.
+ */
+void FlyeyeEffect::BuildLookupTable(long width, long height)
+{
+    FreeLookupTable();
+    
+    size_t table_size = width * height * sizeof(FlyeyeLookupEntry);
+    m_lookup_table = (FlyeyeLookupEntry*)malloc(table_size);
+    if (m_lookup_table == nullptr)
+    {
+        ERRORLOG("Failed to allocate flyeye lookup table (%" PRIuSIZE " bytes)", SZCAST(table_size));
+        return;
+    }
+    
+    m_table_width = width;
+    m_table_height = height;
+    
+    // Scale factors
+    const unsigned int scale_x = (REF_WIDTH << 16) / width;
+    const unsigned int scale_y = (REF_HEIGHT << 16) / height;
+    const unsigned int inv_scale_x = (width << 16) / REF_WIDTH;
+    const unsigned int inv_scale_y = (height << 16) / REF_HEIGHT;
+    
+    const double ref_center_x = REF_WIDTH * 0.5;
+    const double ref_center_y = REF_HEIGHT * 0.5;
+    
+    FlyeyeLookupEntry* entry = m_lookup_table;
+    
+    for (long y = 0; y < height; y++)
+    {
+        int virtual_y = (y * scale_y) >> 16;
+        
+        for (long x = 0; x < width; x++)
+        {
+            int virtual_x = (x * scale_x) >> 16;
+            
+            // Determine hex cell
+            double rel_x = virtual_x - ref_center_x;
+            double rel_y = virtual_y - ref_center_y;
+            
+            int hex_x = (int)floor(rel_x / HEX_SPACING_X + 0.5);
+            double y_offset = ((hex_x & 1) != 0) ? HEX_ODD_OFFSET_Y : 0.0;
+            int hex_y = (int)floor((rel_y - y_offset) / HEX_SPACING_Y + 0.5);
+            
+            // Clamp hex coordinates
+            if (hex_x < -12) hex_x = -12;
+            if (hex_x > 12) hex_x = 12;
+            if (hex_y < -12) hex_y = -12;
+            if (hex_y > 12) hex_y = 12;
+            
+            // Calculate source offset for this hex cell
+            double source_offset_x = -hex_x * LDPAR1;
+            double source_offset_y = -hex_y * LDPAR1;
+            
+            // Apply radial distortion
+            double len = sqrt(rel_x * rel_x + rel_y * rel_y) * 0.0025 + 1.0;
+            double distorted_x = ref_center_x + (rel_x / len) * LDPAR2;
+            double distorted_y = ref_center_y + (rel_y / len) * LDPAR2;
+            
+            // Calculate source position
+            double src_ref_x = distorted_x + source_offset_x;
+            double src_ref_y = distorted_y + source_offset_y;
+            
+            // Clamp to reference bounds
+            if (src_ref_x < 0) src_ref_x = 0;
+            if (src_ref_x >= REF_WIDTH) src_ref_x = REF_WIDTH - 1;
+            if (src_ref_y < 0) src_ref_y = 0;
+            if (src_ref_y >= REF_HEIGHT) src_ref_y = REF_HEIGHT - 1;
+            
+            // Map to actual resolution
+            long actual_src_x = ((long)(src_ref_x) * inv_scale_x) >> 16;
+            long actual_src_y = ((long)(src_ref_y) * inv_scale_y) >> 16;
+            
+            if (actual_src_x >= width) actual_src_x = width - 1;
+            if (actual_src_y >= height) actual_src_y = height - 1;
+            
+            entry->src_x = (short)actual_src_x;
+            entry->src_y = (short)actual_src_y;
+            entry++;
+        }
+    }
+    
+    SYNCDBG(7, "Built flyeye lookup table %ldx%ld", width, height);
+}
+
 TbBool FlyeyeEffect::Setup(long lens_idx)
 {
     SYNCDBG(8, "Setting up flyeye effect for lens %ld", lens_idx);
     
-    // Create and setup renderer
-    CFlyeyeRenderer* renderer = new CFlyeyeRenderer();
-    renderer->Setup(eye_lens_width, eye_lens_height, eye_lens_memory);
-    
-    m_user_data = renderer;
+    FreeLookupTable();
     m_current_lens = lens_idx;
     
     SYNCDBG(7, "Flyeye effect ready");
@@ -378,34 +171,43 @@ TbBool FlyeyeEffect::Setup(long lens_idx)
 
 void FlyeyeEffect::Cleanup()
 {
-    if (m_current_lens >= 0)
-    {
-        if (m_user_data != NULL)
-        {
-            delete static_cast<CFlyeyeRenderer*>(m_user_data);
-            m_user_data = NULL;
-        }
-        m_current_lens = -1;
-        SYNCDBG(9, "Flyeye effect cleaned up");
-    }
+    FreeLookupTable();
+    m_current_lens = -1;
 }
 
 TbBool FlyeyeEffect::Draw(LensRenderContext* ctx)
 {
-    if (m_current_lens < 0 || m_user_data == NULL)
+    if (m_current_lens < 0)
     {
         return false;
     }
     
-    SYNCDBG(16, "Drawing flyeye effect");
+    // Build lookup table if needed
+    if (m_lookup_table == nullptr ||
+        m_table_width != ctx->width ||
+        m_table_height != ctx->height)
+    {
+        BuildLookupTable(ctx->width, ctx->height);
+        if (m_lookup_table == nullptr)
+        {
+            return false;
+        }
+    }
     
-    CFlyeyeRenderer* renderer = static_cast<CFlyeyeRenderer*>(m_user_data);
-    
-    // Flyeye reads from viewport-aligned source
+    // Fast lookup-based rendering
     unsigned char* viewport_src = ctx->srcbuf + ctx->viewport_x;
+    unsigned char* dst = ctx->dstbuf;
+    FlyeyeLookupEntry* entry = m_lookup_table;
     
-    renderer->Render(viewport_src, ctx->srcpitch, ctx->dstbuf, ctx->dstpitch,
-                    1, ctx->height);
+    for (long y = 0; y < ctx->height; y++)
+    {
+        for (long x = 0; x < ctx->width; x++)
+        {
+            dst[x] = viewport_src[entry->src_y * ctx->srcpitch + entry->src_x];
+            entry++;
+        }
+        dst += ctx->dstpitch;
+    }
     
     ctx->buffer_copied = true;
     return true;

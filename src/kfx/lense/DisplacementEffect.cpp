@@ -8,6 +8,7 @@
  * @par Comment:
  *     Displacement effects warp the image by reading pixels from different
  *     locations, creating wave, ripple, or fisheye-like distortions.
+ *     Resolution-independent via pre-computed lookup tables.
  * @author   Peter Lockett, KeeperFX Team
  * @date     09 Feb 2026
  * @par  Copying and copyrights:
@@ -21,6 +22,7 @@
 #include "DisplacementEffect.h"
 
 #include <math.h>
+#include <stdlib.h>
 #include "../../config_lenses.h"
 #include "../../vidmode.h"
 #include "../../lens_api.h"
@@ -28,143 +30,11 @@
 #include "../../keeperfx.hpp"
 #include "../../post_inc.h"
 
-/**
- * Generate a displacement lookup map that distorts image coordinates.
- * 
- * @param lens_mem Output buffer for displacement map (width*height uint32_t values)
- * @param width Viewport width
- * @param height Viewport height
- * @param pitch Source buffer pitch (typically full screen width)
- * @param algorithm Displacement algorithm to use
- * @param magnitude Strength of the distortion effect
- * @param period Frequency/period parameter (meaning depends on algorithm)
- */
-static void GenerateDisplacementMap(uint32_t *lens_mem, int width, int height, int pitch,
-                                   int algorithm, int magnitude, int period)
-{
-    long w, h;
-    long shift_w, shift_h;
-    uint32_t *mem;
-    double flwidth, flheight;
-    double center_w, center_h;
-    double flpos_w, flpos_h;
-    double flmag;
-    
-    switch (algorithm)
-    {
-    case DisplaceAlgo_Linear:
-        // Simple linear offset - not commonly used
-        mem = lens_mem;
-        for (h = 0; h < height; h++)
-        {
-            for (w = 0; w < width; w++)
-            {
-                *mem = ((h + (height >> 1)) / 2) * pitch + ((w + (width >> 1)) / 2);
-                mem++;
-            }
-        }
-        break;
-        
-    case DisplaceAlgo_Sinusoidal:
-        // Sine wave distortion - creates ripple/wave effects
-        {
-            flmag = magnitude;
-            double flperiod = period;
-            flwidth = width;
-            flheight = height;
-            center_h = flheight * 0.5;
-            center_w = flwidth * 0.5;
-            flpos_h = -center_h;
-            mem = lens_mem;
-            
-            for (h = 0; h < height; h++)
-            {
-                flpos_w = -center_w;
-                for (w = 0; w < width; w++)
-                {
-                    shift_w = (long)(sin(flpos_h / flwidth  * flperiod) * flmag + flpos_w + center_w);
-                    shift_h = (long)(sin(flpos_w / flheight * flperiod) * flmag + flpos_h + center_h);
-                    
-                    // Clamp to valid range
-                    if (shift_w >= width)  shift_w = width - 1;
-                    if (shift_w < 0)       shift_w = 0;
-                    if (shift_h >= height) shift_h = height - 1;
-                    if (shift_h < 0)       shift_h = 0;
-                    
-                    *mem = shift_w + shift_h * pitch;
-                    flpos_w += 1.0;
-                    mem++;
-                }
-                flpos_h += 1.0;
-            }
-        }
-        break;
-        
-    case DisplaceAlgo_Radial:
-        // Radial distortion - creates fisheye or pincushion effects
-        {
-            flmag = magnitude * (double)magnitude;
-            flwidth = width;
-            flheight = height;
-            center_h = flheight * 0.5;
-            center_w = flwidth * 0.5;
-            double fldivs = sqrt(center_h * center_h + center_w * center_w + flmag);
-            flpos_h = -center_h;
-            mem = lens_mem;
-            
-            for (h = 0; h < height; h++)
-            {
-                flpos_w = -center_w;
-                for (w = 0; w < width; w++)
-                {
-                    double fldist = sqrt(flpos_w * flpos_w + flpos_h * flpos_h + flmag) / fldivs;
-                    shift_w = (long)(fldist * flpos_w + center_w);
-                    shift_h = (long)(fldist * flpos_h + center_h);
-                    
-                    // Clamp to valid range
-                    if (shift_w >= width)  shift_w = width - 1;
-                    if ((shift_w < 0) || ((period & 1) == 0)) shift_w = 0;
-                    if (shift_h >= height) shift_h = height - 1;
-                    if ((shift_h < 0) || ((period & 2) == 0)) shift_h = 0;
-                    
-                    *mem = shift_w + shift_h * pitch;
-                    flpos_w += 1.0;
-                    mem++;
-                }
-                flpos_h += 1.0;
-            }
-        }
-        break;
-        
-    default:
-        ERRORLOG("Unknown displacement algorithm %d", algorithm);
-        break;
-    }
-}
+// Reference dimensions for resolution-independent scaling
+static const int REF_WIDTH = 640;
+static const int REF_HEIGHT = 480;
 
-/**
- * Apply displacement effect using pre-generated lookup map.
- */
-static void ApplyDisplacement(unsigned char *dstbuf, unsigned char *srcbuf,
-                             uint32_t *lens_mem, int width, int height,
-                             int dstpitch, int lens_pitch)
-{
-    SYNCDBG(16, "Applying displacement");
-    unsigned char *dst = dstbuf;
-    uint32_t *mem = lens_mem;
-    
-    for (int h = 0; h < height; h++)
-    {
-        for (int w = 0; w < width; w++)
-        {
-            long pos_map = *mem;
-            dst[w] = srcbuf[pos_map];
-            mem++;
-        }
-        dst += dstpitch;
-        mem += (lens_pitch - width);
-    }
-}
+/******************************************************************************/
 
 DisplacementEffect::DisplacementEffect()
     : LensEffect(LensEffectType::Displacement, "Displacement")
@@ -172,6 +42,9 @@ DisplacementEffect::DisplacementEffect()
     , m_algorithm(DisplaceAlgo_Sinusoidal)
     , m_magnitude(0)
     , m_period(0)
+    , m_lookup_table(nullptr)
+    , m_table_width(0)
+    , m_table_height(0)
 {
 }
 
@@ -180,23 +53,136 @@ DisplacementEffect::~DisplacementEffect()
     Cleanup();
 }
 
+void DisplacementEffect::FreeLookupTable()
+{
+    if (m_lookup_table != nullptr)
+    {
+        free(m_lookup_table);
+        m_lookup_table = nullptr;
+    }
+    m_table_width = 0;
+    m_table_height = 0;
+}
+
+/**
+ * Build pre-computed lookup table for current resolution.
+ * Computes displacement in virtual 640x480 space, then maps to actual coords.
+ */
+void DisplacementEffect::BuildLookupTable(long width, long height)
+{
+    // Free existing table if any
+    FreeLookupTable();
+    
+    // Allocate lookup table
+    size_t table_size = width * height * sizeof(DisplaceLookupEntry);
+    m_lookup_table = (DisplaceLookupEntry*)malloc(table_size);
+    if (m_lookup_table == nullptr)
+    {
+        ERRORLOG("Failed to allocate displacement lookup table (%" PRIuSIZE " bytes)", SZCAST(table_size));
+        return;
+    }
+    
+    m_table_width = width;
+    m_table_height = height;
+    
+    // Fixed-point scale factors (16.16 format)
+    const unsigned int scale_x = (REF_WIDTH << 16) / width;
+    const unsigned int scale_y = (REF_HEIGHT << 16) / height;
+    const unsigned int inv_scale_x = (width << 16) / REF_WIDTH;
+    const unsigned int inv_scale_y = (height << 16) / REF_HEIGHT;
+    
+    // Pre-compute constants
+    const double ref_center_x = REF_WIDTH * 0.5;
+    const double ref_center_y = REF_HEIGHT * 0.5;
+    const double flmag = m_magnitude;
+    const double flperiod = m_period;
+    const double flmag_sq = m_magnitude * (double)m_magnitude;
+    const double fldivs = sqrt(ref_center_y * ref_center_y + ref_center_x * ref_center_x + flmag_sq);
+    
+    DisplaceLookupEntry* entry = m_lookup_table;
+    
+    for (long y = 0; y < height; y++)
+    {
+        int virtual_y = (y * scale_y) >> 16;
+        double flpos_y = virtual_y - ref_center_y;
+        
+        for (long x = 0; x < width; x++)
+        {
+            int virtual_x = (x * scale_x) >> 16;
+            double flpos_x = virtual_x - ref_center_x;
+            
+            long src_virtual_x, src_virtual_y;
+            
+            switch (m_algorithm)
+            {
+            case DisplaceAlgo_Linear:
+                src_virtual_x = (virtual_x + (REF_WIDTH >> 1)) / 2;
+                src_virtual_y = (virtual_y + (REF_HEIGHT >> 1)) / 2;
+                break;
+                
+            case DisplaceAlgo_Sinusoidal:
+                src_virtual_x = (long)(sin(flpos_y / REF_WIDTH * flperiod) * flmag + flpos_x + ref_center_x);
+                src_virtual_y = (long)(sin(flpos_x / REF_HEIGHT * flperiod) * flmag + flpos_y + ref_center_y);
+                break;
+                
+            case DisplaceAlgo_Radial:
+                {
+                    double fldist = sqrt(flpos_x * flpos_x + flpos_y * flpos_y + flmag_sq) / fldivs;
+                    src_virtual_x = (long)(fldist * flpos_x + ref_center_x);
+                    src_virtual_y = (long)(fldist * flpos_y + ref_center_y);
+                    
+                    if ((m_period & 1) == 0 && src_virtual_x < 0) src_virtual_x = 0;
+                    if ((m_period & 2) == 0 && src_virtual_y < 0) src_virtual_y = 0;
+                }
+                break;
+                
+            default:
+                src_virtual_x = virtual_x;
+                src_virtual_y = virtual_y;
+                break;
+            }
+            
+            // Clamp to valid virtual range
+            if (src_virtual_x >= REF_WIDTH)  src_virtual_x = REF_WIDTH - 1;
+            if (src_virtual_x < 0)           src_virtual_x = 0;
+            if (src_virtual_y >= REF_HEIGHT) src_virtual_y = REF_HEIGHT - 1;
+            if (src_virtual_y < 0)           src_virtual_y = 0;
+            
+            // Map to actual resolution
+            long actual_src_x = (src_virtual_x * inv_scale_x) >> 16;
+            long actual_src_y = (src_virtual_y * inv_scale_y) >> 16;
+            
+            if (actual_src_x >= width)  actual_src_x = width - 1;
+            if (actual_src_y >= height) actual_src_y = height - 1;
+            
+            entry->src_x = (short)actual_src_x;
+            entry->src_y = (short)actual_src_y;
+            entry++;
+        }
+    }
+    
+    SYNCDBG(7, "Built displacement lookup table %ldx%ld", width, height);
+}
+
 TbBool DisplacementEffect::Setup(long lens_idx)
 {
     SYNCDBG(8, "Setting up displacement effect for lens %ld", lens_idx);
     
     struct LensConfig* cfg = &lenses_conf.lenses[lens_idx];
     
-    // Read displacement parameters from config
     m_algorithm = (DisplacementAlgorithm)cfg->displace_kind;
     m_magnitude = cfg->displace_magnitude;
     m_period = cfg->displace_period;
     
-    // Generate displacement map
-    int disp_pixel_size = lbDisplay.GraphicsScreenHeight / 200;
-    GenerateDisplacementMap(eye_lens_memory,
-                          MyScreenWidth / disp_pixel_size, MyScreenHeight / disp_pixel_size,
-                          lbDisplay.GraphicsScreenWidth,
-                          m_algorithm, m_magnitude, m_period);
+    // Algorithm 3 (compound) is handled by FlyeyeEffect
+    if (m_algorithm == DisplaceAlgo_Compound)
+    {
+        SYNCDBG(7, "Displacement algorithm 3 (compound) handled by FlyeyeEffect");
+        return false;
+    }
+    
+    // Note: Lookup table built on first Draw() when we know the resolution
+    FreeLookupTable();
     
     m_current_lens = lens_idx;
     SYNCDBG(7, "Displacement effect ready (algo=%d, mag=%d, period=%d)",
@@ -206,10 +192,8 @@ TbBool DisplacementEffect::Setup(long lens_idx)
 
 void DisplacementEffect::Cleanup()
 {
-    if (m_current_lens >= 0)
-    {
-        m_current_lens = -1;
-    }
+    FreeLookupTable();
+    m_current_lens = -1;
 }
 
 TbBool DisplacementEffect::Draw(LensRenderContext* ctx)
@@ -219,12 +203,33 @@ TbBool DisplacementEffect::Draw(LensRenderContext* ctx)
         return false;
     }
     
-    // Displacement needs to account for viewport offset in the source buffer
-    uint32_t* viewport_lens_mem = eye_lens_memory + ctx->viewport_x;
+    // Build lookup table if needed (resolution may have changed)
+    if (m_lookup_table == nullptr || 
+        m_table_width != ctx->width || 
+        m_table_height != ctx->height)
+    {
+        BuildLookupTable(ctx->width, ctx->height);
+        if (m_lookup_table == nullptr)
+        {
+            return false;
+        }
+    }
     
-    ApplyDisplacement(ctx->dstbuf, ctx->srcbuf, viewport_lens_mem,
-                     ctx->width, ctx->height, ctx->dstpitch, ctx->srcpitch);
+    // Fast lookup-based rendering
+    unsigned char* viewport_src = ctx->srcbuf + ctx->viewport_x;
+    unsigned char* dst = ctx->dstbuf;
+    DisplaceLookupEntry* entry = m_lookup_table;
     
-    ctx->buffer_copied = true;  // Displacement writes to dstbuf
+    for (long y = 0; y < ctx->height; y++)
+    {
+        for (long x = 0; x < ctx->width; x++)
+        {
+            dst[x] = viewport_src[entry->src_y * ctx->srcpitch + entry->src_x];
+            entry++;
+        }
+        dst += ctx->dstpitch;
+    }
+    
+    ctx->buffer_copied = true;
     return true;
 }

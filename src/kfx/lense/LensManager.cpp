@@ -22,6 +22,7 @@
 
 #include "MistEffect.h"
 #include "DisplacementEffect.h"
+#include "FlyeyeEffect.h"
 #include "OverlayEffect.h"
 #include "PaletteEffect.h"
 #include "LuaLensEffect.h"
@@ -94,6 +95,7 @@ TbBool LensManager::Init()
     // Register all effect implementations
     RegisterEffect(new MistEffect());
     RegisterEffect(new DisplacementEffect());
+    RegisterEffect(new FlyeyeEffect());
     RegisterEffect(new OverlayEffect());
     RegisterEffect(new PaletteEffect());
     
@@ -172,7 +174,8 @@ TbBool LensManager::SetLens(long lens_idx)
                 uses_effect = (cfg->flags & LCF_HasMist) != 0;
                 break;
             case LensEffectType::Displacement:
-                uses_effect = (cfg->flags & LCF_HasDisplace) != 0;
+                // Displacement used for algorithms 0-2, algorithm 3 is handled by Flyeye
+                uses_effect = ((cfg->flags & LCF_HasDisplace) != 0 && cfg->displace_kind != 3);
                 break;
             case LensEffectType::Overlay:
                 uses_effect = (cfg->flags & LCF_HasOverlay) != 0;
@@ -181,8 +184,8 @@ TbBool LensManager::SetLens(long lens_idx)
                 uses_effect = (cfg->flags & LCF_HasPalette) != 0;
                 break;
             case LensEffectType::Flyeye:
-                // Flyeye is used when no other flags are set (default lens mode)
-                uses_effect = (cfg->flags == 0);
+                // Flyeye is used when displacement kind is 3 (compound eye)
+                uses_effect = ((cfg->flags & LCF_HasDisplace) != 0 && cfg->displace_kind == 3);
                 break;
             case LensEffectType::Custom:
                  // Lua/custom effects would need their own detection logic

@@ -249,6 +249,7 @@ obj/config_effects.o \
 obj/LensEffect.o \
 obj/LensManager.o \
 obj/MistEffect.o \
+obj/FlyeyeEffect.o \
 obj/DisplacementEffect.o \
 obj/OverlayEffect.o \
 obj/PaletteEffect.o \
