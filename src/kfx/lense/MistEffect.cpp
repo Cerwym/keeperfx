@@ -125,55 +125,67 @@ void CMistFade::Render(unsigned char *dstbuf, long dstpitch,
         return;
     }
     
+    // Reference dimensions for resolution-independent scaling
+    // The mist pattern will appear identical to 640x480 at any resolution
+    static const int REF_WIDTH = 640;
+    static const int REF_HEIGHT = 480;
+    
+    // Fixed-point scale factors (16.16 format)
+    // Maps screen coordinates to virtual 640x480 space
+    const unsigned int scale_x = (REF_WIDTH << 16) / width;
+    const unsigned int scale_y = (REF_HEIGHT << 16) / height;
+    
+    // Animation offsets (copied to local for performance)
+    const int pos_x = this->position_offset_x;
+    const int pos_y = this->position_offset_y;
+    const int sec_x = this->secondary_offset_x;
+    const int sec_y = this->secondary_offset_y;
+    
     unsigned char *src = srcbuf;
     unsigned char *dst = dstbuf;
-    unsigned long primary_offset_x = this->position_offset_x;
-    unsigned long primary_offset_y = this->position_offset_y;
-    unsigned long local_secondary_offset_x = this->secondary_offset_x;
-    unsigned long local_secondary_offset_y = this->secondary_offset_y;
-    unsigned long lens_div = width / (2 * lens_dim);
-    if (lens_div < 1) lens_div = 1;
     
-    for (long h = height; h > 0; h--)
+    for (long y = 0; y < height; y++)
     {
-        for (long w = width; w > 0; w--)
+        // Virtual Y coordinate in 640x480 space
+        int virtual_y = (y * scale_y) >> 16;
+        
+        // Pre-calculate row-constant texture coordinates
+        int c2_base = (pos_y + virtual_y) & 0xFF;
+        int p1_base = (sec_x + 0x10000 - virtual_y) & 0xFF;
+        
+        for (long x = 0; x < width; x++)
         {
-            long i = lens_data[(local_secondary_offset_y * lens_dim) + local_secondary_offset_x];
-            long k = lens_data[(primary_offset_y * lens_dim) + primary_offset_x];
+            // Virtual X coordinate in 640x480 space
+            int virtual_x = (x * scale_x) >> 16;
+            
+            // Primary layer texture coords: (row=c2, col=p2)
+            // p2 increments with x, c2 increments with y
+            int p2 = (pos_x + virtual_x) & 0xFF;
+            int c2 = c2_base;
+            
+            // Secondary layer texture coords: (row=c1, col=p1)
+            // c1 decrements with x, p1 decrements with y
+            int c1 = (sec_y + 0x10000 - virtual_x) & 0xFF;
+            int p1 = p1_base;
+            
+            // Sample both layers from 256x256 texture
+            long k = lens_data[(c2 << 8) + p2];  // primary
+            long i = lens_data[(c1 << 8) + p1];  // secondary
+            
+            // Combine layers and clamp
             long n = (k + i) >> 3;
-            if (n > 32)
-                n = 32;
-            else if (n < 0)
-                n = 0;
+            if (n > 32) n = 32;
+            else if (n < 0) n = 0;
+            
+            // Apply fade table and write result
             *dst = this->fade_data[(n << 8) + *src];
             src++;
             dst++;
-            
-            if ((w % lens_div) == 0)
-            {
-                local_secondary_offset_y--;
-                local_secondary_offset_y %= lens_dim;
-                primary_offset_x++;
-                primary_offset_x %= lens_dim;
-            }
         }
         
-        // Move buffers to end of this line
+        // Move to next row
         dst += (dstpitch - width);
         src += (srcpitch - width);
-        
-        // Update other counters
-        if ((h % lens_div) == 0)
-        {
-            local_secondary_offset_y += width;
-            local_secondary_offset_y %= lens_dim;
-            primary_offset_x -= width;
-            primary_offset_x %= lens_dim;
-            primary_offset_y++;
-            primary_offset_y %= lens_dim;
-            local_secondary_offset_x--;
-            local_secondary_offset_x %= lens_dim;
-        }
     }
 }
 
