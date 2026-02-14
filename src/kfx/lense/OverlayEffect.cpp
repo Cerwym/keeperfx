@@ -204,6 +204,13 @@ void COverlayRenderer::Render(unsigned char *dstbuf, long dstpitch, unsigned cha
             // Get overlay pixel
             unsigned char overlay_pixel = overlay_row[overlay_x];
             
+            // Palette index 255 is transparent - skip blending
+            if (overlay_pixel == 255)
+            {
+                dst_row[x] = src_pixel;
+                continue;
+            }
+            
             // Alpha blend: result = (overlay * alpha + src * (1 - alpha)) / 256
             unsigned char result = (unsigned char)(
                 (overlay_pixel * alpha_clamped + src_pixel * inv_alpha) >> 8
