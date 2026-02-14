@@ -106,6 +106,7 @@ private:
     void RegisterEffect(LensEffect* effect);
     LensEffect* GetEffect(LensEffectType type);
     void CleanupAllEffects();
+    void FreeAllEffects();
     TbBool AllocateBuffers();
     void FreeBuffers();
     

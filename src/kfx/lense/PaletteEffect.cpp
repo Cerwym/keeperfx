@@ -46,8 +46,8 @@ TbBool PaletteEffect::Setup(long lens_idx)
     struct LensConfig* cfg = &lenses_conf.lenses[lens_idx];
     struct PlayerInfo* player = get_my_player();
     
-    // Set the palette for this lens
-    player->main_palette = cfg->palette;
+    // Set lens_palette - PaletteSetPlayerPalette() will update main_palette and apply
+    // Do NOT set main_palette here, it breaks the condition in PaletteSetPlayerPalette()
     player->lens_palette = cfg->palette;
     
     m_current_lens = lens_idx;

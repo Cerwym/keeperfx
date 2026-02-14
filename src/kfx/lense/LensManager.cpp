@@ -113,8 +113,11 @@ void LensManager::Reset()
 {
     SYNCDBG(7, "Resetting lens manager");
     
-    // Cleanup all effects
+    // Cleanup all effects (releases per-effect resources)
     CleanupAllEffects();
+    
+    // Free effect objects (they will be re-created by Init())
+    FreeAllEffects();
     
     // Free buffers
     FreeBuffers();
@@ -416,6 +419,21 @@ void LensManager::CleanupAllEffects()
             effect->Cleanup();
         }
     }
+}
+
+void LensManager::FreeAllEffects()
+{
+    // Delete all standard effect objects
+    for (LensEffect* effect : m_effects) {
+        delete effect;
+    }
+    m_effects.clear();
+    
+    // Delete all custom lens objects
+    for (const auto& pair : m_custom_lenses) {
+        delete pair.second;
+    }
+    m_custom_lenses.clear();
 }
 
 TbBool LensManager::AllocateBuffers()
