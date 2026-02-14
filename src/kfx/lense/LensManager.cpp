@@ -219,7 +219,7 @@ void LensManager::Draw(unsigned char* srcbuf, unsigned char* dstbuf,
                       long srcpitch, long dstpitch, 
                       long width, long height, long viewport_x)
 {
-    SYNCDBG(0, "LensManager::Draw() called: m_initialized=%d, m_applied_lens=%d, m_active_custom_lens='%s'",
+    SYNCDBG(0, "LensManager::Draw() called: m_initialized=%d, m_applied_lens=%ld, m_active_custom_lens='%s'",
            m_initialized, m_applied_lens, m_active_custom_lens.c_str());
     
     // Setup render context
