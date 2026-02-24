@@ -243,6 +243,7 @@ obj/keeperfx/achievement/achievement_api.o \
 obj/keeperfx/achievement/achievement_tracker.o \
 obj/keeperfx/achievement/achievement_definitions.o \
 obj/keeperfx/achievement/achievement_save.o \
+obj/keeperfx/achievement/gog_galaxy_api.o \
 obj/gui_boxmenu.o \
 obj/gui_draw.o \
 obj/gui_frontbtns.o \

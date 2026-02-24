@@ -130,6 +130,7 @@
 #include "keeperfx/achievement/achievement_api.h"
 #include "keeperfx/achievement/achievement_definitions.h"
 #include "keeperfx/achievement/achievement_tracker.h"
+#include "keeperfx/achievement/gog_galaxy_api.h"
 #include "game_loop.h"
 #include "net_input_lag.h"
 #include "moonphase.h"
@@ -4406,6 +4407,7 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     if (retval == 1)
     {
         steam_api_init();
+        gog_galaxy_init();
         achievements_init();
     }
     if (retval == 1)
@@ -4460,6 +4462,7 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
 
     LbErrorLogClose();
     achievements_shutdown();
+    gog_galaxy_shutdown();
     steam_api_shutdown();
     return 0;
 }

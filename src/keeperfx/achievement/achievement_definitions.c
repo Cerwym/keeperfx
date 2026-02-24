@@ -42,6 +42,8 @@ const struct NamedCommand achievement_commands[] = {
     {"END_ACHIEVEMENT",     2},
     {"NAME_TEXT_ID",        3},
     {"DESC_TEXT_ID",        4},
+    {"NAME",               31},
+    {"DESCRIPTION",        32},
     {"ICON",                5},
     {"HIDDEN",              6},
     {"POINTS",              7},
@@ -259,6 +261,24 @@ int load_achievements_config(const char* fname, struct GameCampaign* camp)
                 case 4: ///< DESC_TEXT_ID
                     while (*pos == ' ' || *pos == '\t') pos++;
                     sscanf(pos, "%d", &ach_def.desc_text_id);
+                    break;
+
+                case 31: ///< NAME (quoted freeform text)
+                    while (*pos == ' ' || *pos == '\t') pos++;
+                    if (*pos == '"') pos++;
+                    i = 0;
+                    while (*pos != '"' && *pos != '\r' && *pos != '\n' && *pos != '\0' && i < ACHIEVEMENT_NAME_LEN - 1)
+                        ach_def.name[i++] = *pos++;
+                    ach_def.name[i] = '\0';
+                    break;
+
+                case 32: ///< DESCRIPTION (quoted freeform text)
+                    while (*pos == ' ' || *pos == '\t') pos++;
+                    if (*pos == '"') pos++;
+                    i = 0;
+                    while (*pos != '"' && *pos != '\r' && *pos != '\n' && *pos != '\0' && i < ACHIEVEMENT_DESC_LEN - 1)
+                        ach_def.description[i++] = *pos++;
+                    ach_def.description[i] = '\0';
                     break;
                     
                 case 7: ///< POINTS

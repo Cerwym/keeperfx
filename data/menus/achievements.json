@@ -59,7 +59,7 @@
       "id_num": 0,
       "btype_value": 0,
       "position": { "x": 82, "y": 138 },
-      "size": { "width": 450, "height": 220 },
+      "size": { "width": 450, "height": 240 },
       "content_value": 26,
       "state": { "enabled": true, "visible": true, "clickable": false },
       "callbacks": {
@@ -87,7 +87,7 @@
       "type": "HoldableBtn",
       "id_num": 0,
       "btype_value": 0,
-      "position": { "x": 532, "y": 345 },
+      "position": { "x": 532, "y": 365 },
       "size": { "width": 26, "height": 14 },
       "content_value": 18,
       "state": { "enabled": true, "visible": true, "clickable": true },
@@ -104,7 +104,7 @@
       "id_num": 0,
       "btype_value": 0,
       "position": { "x": 536, "y": 151 },
-      "size": { "width": 20, "height": 194 },
+      "size": { "width": 20, "height": 214 },
       "content_value": 40,
       "state": { "enabled": true, "visible": true, "clickable": true },
       "callbacks": {
@@ -118,7 +118,7 @@
       "id_num": 0,
       "btype_value": 0,
       "position": { "x": 95, "y": 151 },
-      "size": { "width": 424, "height": 22 },
+      "size": { "width": 424, "height": 42 },
       "content_value": 45,
       "state": { "enabled": true, "visible": true, "clickable": false },
       "callbacks": {
@@ -131,8 +131,8 @@
       "type": "NormalBtn",
       "id_num": 0,
       "btype_value": 0,
-      "position": { "x": 95, "y": 173 },
-      "size": { "width": 424, "height": 22 },
+      "position": { "x": 95, "y": 193 },
+      "size": { "width": 424, "height": 42 },
       "content_value": 46,
       "state": { "enabled": true, "visible": true, "clickable": false },
       "callbacks": {
@@ -145,8 +145,8 @@
       "type": "NormalBtn",
       "id_num": 0,
       "btype_value": 0,
-      "position": { "x": 95, "y": 195 },
-      "size": { "width": 424, "height": 22 },
+      "position": { "x": 95, "y": 235 },
+      "size": { "width": 424, "height": 42 },
       "content_value": 47,
       "state": { "enabled": true, "visible": true, "clickable": false },
       "callbacks": {
@@ -159,8 +159,8 @@
       "type": "NormalBtn",
       "id_num": 0,
       "btype_value": 0,
-      "position": { "x": 95, "y": 217 },
-      "size": { "width": 424, "height": 22 },
+      "position": { "x": 95, "y": 277 },
+      "size": { "width": 424, "height": 42 },
       "content_value": 48,
       "state": { "enabled": true, "visible": true, "clickable": false },
       "callbacks": {
@@ -173,51 +173,9 @@
       "type": "NormalBtn",
       "id_num": 0,
       "btype_value": 0,
-      "position": { "x": 95, "y": 239 },
-      "size": { "width": 424, "height": 22 },
+      "position": { "x": 95, "y": 319 },
+      "size": { "width": 424, "height": 42 },
       "content_value": 49,
-      "state": { "enabled": true, "visible": true, "clickable": false },
-      "callbacks": {
-        "on_draw": "frontend_draw_achievement_row",
-        "on_maintain": "frontend_achievement_maintain"
-      }
-    },
-    {
-      "id": "btn_ach_5",
-      "type": "NormalBtn",
-      "id_num": 0,
-      "btype_value": 0,
-      "position": { "x": 95, "y": 261 },
-      "size": { "width": 424, "height": 22 },
-      "content_value": 50,
-      "state": { "enabled": true, "visible": true, "clickable": false },
-      "callbacks": {
-        "on_draw": "frontend_draw_achievement_row",
-        "on_maintain": "frontend_achievement_maintain"
-      }
-    },
-    {
-      "id": "btn_ach_6",
-      "type": "NormalBtn",
-      "id_num": 0,
-      "btype_value": 0,
-      "position": { "x": 95, "y": 283 },
-      "size": { "width": 424, "height": 22 },
-      "content_value": 51,
-      "state": { "enabled": true, "visible": true, "clickable": false },
-      "callbacks": {
-        "on_draw": "frontend_draw_achievement_row",
-        "on_maintain": "frontend_achievement_maintain"
-      }
-    },
-    {
-      "id": "btn_ach_7",
-      "type": "NormalBtn",
-      "id_num": 0,
-      "btype_value": 0,
-      "position": { "x": 95, "y": 305 },
-      "size": { "width": 424, "height": 22 },
-      "content_value": 52,
       "state": { "enabled": true, "visible": true, "clickable": false },
       "callbacks": {
         "on_draw": "frontend_draw_achievement_row",

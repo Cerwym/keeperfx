@@ -36,6 +36,7 @@
 #include "../../../bflib_sprfnt.h"
 #include "../../../bflib_video.h"
 #include "../../../bflib_vidraw.h"
+#include "../../../vidfade.h"
 #include "../../../kjm_input.h"
 #include "../../../game_legacy.h"
 #include "../../../sprites.h"
@@ -410,7 +411,7 @@ void frontend_draw_global_load_scroll_tab(struct GuiButton *gbtn)
 /* Achievement screen callbacks                                               */
 /******************************************************************************/
 
-#define ACHIEVEMENT_VISIBLE_ROWS 8
+#define ACHIEVEMENT_VISIBLE_ROWS 5
 static long achievement_scroll_offset = 0;
 
 void frontend_draw_achievement_row(struct GuiButton *gbtn)
@@ -423,12 +424,11 @@ void frontend_draw_achievement_row(struct GuiButton *gbtn)
         return;
     struct Achievement *ach = &achievements[i];
 
-    int font_idx = 1;
-    if ((btn_idx > 0) && (frontend_mouse_over_button == btn_idx))
-        font_idx = 2;
+    TbBool is_hidden_locked = (ach->hidden && !ach->unlocked);
 
+    // Resolve display name
     const char *display_name;
-    if (ach->hidden && !ach->unlocked)
+    if (is_hidden_locked)
         display_name = "??? - Hidden Achievement";
     else if (ach->name_text_id > 0)
     {
@@ -439,27 +439,103 @@ void frontend_draw_achievement_row(struct GuiButton *gbtn)
     else
         display_name = ach->name;
 
-    // Draw unlock status indicator on the left
-    LbTextSetFont(frontend_font[2]);
-    int tx_units_per_px = (gbtn->height * 13 / 11) * 16 / LbTextLineHeight();
-    const char *status_text = ach->unlocked ? "[*]" : "[ ]";
-    int status_w = LbTextStringWidth(status_text) * tx_units_per_px / 16;
-    int status_margin = 6;
+    // Resolve description
+    const char *display_desc;
+    if (is_hidden_locked)
+        display_desc = "Unlock this achievement to reveal its details.";
+    else if (ach->desc_text_id > 0)
+    {
+        display_desc = get_string(ach->desc_text_id);
+        if (display_desc == NULL)
+            display_desc = ach->description;
+    }
+    else
+        display_desc = ach->description;
 
-    lbDisplay.DrawFlags = Lb_TEXT_HALIGN_LEFT;
-    int status_h = LbTextLineHeight() * tx_units_per_px / 16;
-    LbTextSetWindow(gbtn->scr_pos_x, gbtn->scr_pos_y, status_w + 4, status_h);
-    LbTextDrawResized(0, 0, tx_units_per_px, status_text);
+    int half_h = gbtn->height / 2;
 
-    // Draw achievement name
-    LbTextSetFont(frontend_font[font_idx]);
-    tx_units_per_px = (gbtn->height * 13 / 11) * 16 / LbTextLineHeight();
+    // Draw trophy icon on the left, vertically centered
+    int icon_area_w = 36;
+    const struct TbSprite *trophy_spr = get_panel_sprite(
+        ach->unlocked ? GPS_message_rpanel_msg_trophy_act : GPS_message_rpanel_msg_trophy_std);
+    if (trophy_spr != NULL && trophy_spr->SWidth > 0)
+    {
+        int icon_scale = (half_h * 16) / trophy_spr->SHeight;
+        if (icon_scale < 8)
+            icon_scale = 8;
+        int icon_w = (trophy_spr->SWidth * icon_scale + 8) / 16;
+        int icon_h = (trophy_spr->SHeight * icon_scale + 8) / 16;
+        int icon_x = gbtn->scr_pos_x + (icon_area_w - icon_w) / 2;
+        int icon_y = gbtn->scr_pos_y + (gbtn->height - icon_h) / 2;
+        LbSpriteDrawResized(icon_x, icon_y, icon_scale, trophy_spr);
+    }
+
+    int text_x = gbtn->scr_pos_x + icon_area_w;
+    int text_w = gbtn->width - icon_area_w;
+
+    // Line 1: achievement name (left) + points (right)
+    int name_font = (ach->unlocked) ? 2 : 1;
+    if ((btn_idx > 0) && (frontend_mouse_over_button == btn_idx))
+        name_font = 2;
+    LbTextSetFont(frontend_font[name_font]);
+    int tx_units_per_px = (half_h * 13 / 11) * 16 / LbTextLineHeight();
     int line_h = LbTextLineHeight() * tx_units_per_px / 16;
-    int name_x = gbtn->scr_pos_x + status_w + status_margin;
-    int name_w = gbtn->width - status_w - status_margin;
 
-    LbTextSetWindow(name_x, gbtn->scr_pos_y, name_w, line_h);
+    // Draw points value right-aligned on line 1
+    int pts_w = 0;
+    if (ach->points > 0)
+    {
+        char pts_buf[32];
+        snprintf(pts_buf, sizeof(pts_buf), "%d pts", ach->points);
+        LbTextSetFont(frontend_font[2]);
+        int pts_upx = (half_h * 13 / 11) * 16 / LbTextLineHeight();
+        pts_w = LbTextStringWidth(pts_buf) * pts_upx / 16;
+        int pts_h = LbTextLineHeight() * pts_upx / 16;
+        int pts_x = text_x + text_w - pts_w - 4;
+        lbDisplay.DrawFlags = Lb_TEXT_HALIGN_LEFT;
+        LbTextSetWindow(pts_x, gbtn->scr_pos_y, pts_w + 4, pts_h);
+        LbTextDrawResized(0, 0, pts_upx, pts_buf);
+    }
+
+    // Draw name left-aligned on line 1
+    LbTextSetFont(frontend_font[name_font]);
+    tx_units_per_px = (half_h * 13 / 11) * 16 / LbTextLineHeight();
+    line_h = LbTextLineHeight() * tx_units_per_px / 16;
+    int name_avail_w = text_w - pts_w - 8;
+    lbDisplay.DrawFlags = Lb_TEXT_HALIGN_LEFT;
+    LbTextSetWindow(text_x, gbtn->scr_pos_y, name_avail_w, line_h);
     LbTextDrawResized(0, 0, tx_units_per_px, display_name);
+
+    // Line 2: description (left) + progress bar (right)
+    int line2_y = gbtn->scr_pos_y + half_h;
+    LbTextSetFont(frontend_font[1]);
+    int desc_upx = (half_h * 13 / 11) * 16 / LbTextLineHeight();
+    int desc_h = LbTextLineHeight() * desc_upx / 16;
+
+    // Draw progress bar if achievement has partial progress
+    int bar_total_w = 0;
+    if (!ach->unlocked && ach->progress > 0.001f)
+    {
+        int bar_w = 80;
+        int bar_h = max(desc_h / 2, 4);
+        int bar_x = text_x + text_w - bar_w - 4;
+        int bar_y = line2_y + (desc_h - bar_h) / 2;
+        int fill_w = (int)(bar_w * ach->progress);
+        if (fill_w < 1 && ach->progress > 0.0f)
+            fill_w = 1;
+        LbDrawBox(bar_x, bar_y, bar_w, bar_h, colours[2][2][2]);
+        LbDrawBox(bar_x, bar_y, fill_w, bar_h, colours[15][10][0]);
+        bar_total_w = bar_w + 8;
+    }
+
+    // Draw description
+    if (display_desc != NULL && display_desc[0] != '\0')
+    {
+        int desc_avail_w = text_w - bar_total_w - 4;
+        lbDisplay.DrawFlags = Lb_TEXT_HALIGN_LEFT;
+        LbTextSetWindow(text_x, line2_y, desc_avail_w, desc_h);
+        LbTextDrawResized(0, 0, desc_upx, display_desc);
+    }
 }
 
 void frontend_achievement_maintain(struct GuiButton *gbtn)
