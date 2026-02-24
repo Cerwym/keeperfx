@@ -2187,6 +2187,19 @@ const struct TbSprite *get_panel_sprite(short sprite_idx)
     return &bad_icon;
 }
 
+const struct TbSprite *get_ui_sprite(const char *bank, short sprite_idx)
+{
+    if (bank == NULL || bank[0] == '\0')
+        return get_frontend_sprite(sprite_idx);
+    if (strcmp(bank, "frontend") == 0)
+        return get_frontend_sprite(sprite_idx);
+    if (strcmp(bank, "button") == 0)
+        return get_button_sprite(sprite_idx);
+    if (strcmp(bank, "panel") == 0)
+        return get_panel_sprite(sprite_idx);
+    return &bad_icon;
+}
+
 int is_custom_icon(short icon_idx)
 {
     icon_idx -= GUI_PANEL_SPRITES_COUNT;

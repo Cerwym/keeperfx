@@ -40,6 +40,7 @@ const struct TbSprite *get_button_sprite(short sprite_idx);
 const struct TbSprite *get_frontend_sprite(short sprite_idx);
 const struct TbSprite *get_new_icon_sprite(short sprite_idx);
 const struct TbSprite *get_panel_sprite(short sprite_idx);
+const struct TbSprite *get_ui_sprite(const char *bank, short sprite_idx);
 int is_custom_icon(short icon_idx);
 
 // Lens overlay data structure
