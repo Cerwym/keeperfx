@@ -52,11 +52,22 @@ int LbFilePosition(TbFileHandle handle)
   return result;
 }
 
+// Cross-platform path handling utilities
+static const char * find_next_separator(const char *path)
+{
+    while (*path != '\0') {
+        if (*path == '/' || *path == '\\')
+            return path;
+        path++;
+    }
+    return NULL;
+}
+
 int create_directory_for_file(const char * fname)
 {
   const int size = strlen(fname) + 1;
   char * tmp = (char *) malloc(size);
-  char * separator = strchr(fname, '/');
+  const char * separator = find_next_separator(fname);
 
   while (separator != NULL) {
     memcpy(tmp, fname, separator - fname);
@@ -73,10 +84,22 @@ int create_directory_for_file(const char * fname)
         return 0;
       }
     }
-    separator = strchr(++separator, '/');
+    separator = find_next_separator(separator + 1);
   }
   free(tmp);
   return 1;
+}
+
+char *path_join(char *dst, int dst_size, const char *dir, const char *fname)
+{
+    if (dir == NULL || dir[0] == '\0') {
+        snprintf(dst, dst_size, "%s", fname ? fname : "");
+    } else if (fname == NULL || fname[0] == '\0') {
+        snprintf(dst, dst_size, "%s", dir);
+    } else {
+        snprintf(dst, dst_size, "%s" FS_SEP_STR "%s", dir, fname);
+    }
+    return dst;
 }
 
 TbFileHandle LbFileOpen(const char *fname, const unsigned char accmode)

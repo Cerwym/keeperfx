@@ -46,6 +46,16 @@ struct TbFileEntry {
 
 /******************************************************************************/
 
+#if defined(unix) && !defined(GO32)
+#define FS_SEP '/'
+#define FS_SEP_STR "/"
+#else
+#define FS_SEP '\\'
+#define FS_SEP_STR "\\"
+#endif
+
+/******************************************************************************/
+
 short LbFileExists(const char *fname);
 int LbFilePosition(TbFileHandle handle);
 TbFileHandle LbFileOpen(const char *fname, unsigned char accmode);
@@ -63,6 +73,8 @@ int LbFileDelete(const char *filename);
 short LbFileFlush(TbFileHandle handle);
 int LbFileMakeFullPath(const short append_cur_dir,
   const char *directory, const char *filename, char *buf, const unsigned long len);
+int create_directory_for_file(const char *fname);
+char *path_join(char *dst, int dst_size, const char *dir, const char *fname);
 
 /******************************************************************************/
 #ifdef __cplusplus
