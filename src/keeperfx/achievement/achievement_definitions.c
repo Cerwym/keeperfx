@@ -590,11 +590,16 @@ TbBool register_achievement_definition(struct AchievementDefinition* achievement
     /// Copy basic properties
     if (achievement_def->name_text_id > 0)
     {
-        /// Use localized string
+        /// Use localized string, fall back to inline name
         const char* str = get_string(achievement_def->name_text_id);
-        if (str != NULL)
+        if (str != NULL && str[0] != '\0')
         {
             strncpy(ach.name, str, ACHIEVEMENT_NAME_LEN - 1);
+            ach.name[ACHIEVEMENT_NAME_LEN - 1] = '\0';
+        }
+        else
+        {
+            strncpy(ach.name, achievement_def->name, ACHIEVEMENT_NAME_LEN - 1);
             ach.name[ACHIEVEMENT_NAME_LEN - 1] = '\0';
         }
     }
@@ -607,9 +612,14 @@ TbBool register_achievement_definition(struct AchievementDefinition* achievement
     if (achievement_def->desc_text_id > 0)
     {
         const char* str = get_string(achievement_def->desc_text_id);
-        if (str != NULL)
+        if (str != NULL && str[0] != '\0')
         {
             strncpy(ach.description, str, ACHIEVEMENT_DESC_LEN - 1);
+            ach.description[ACHIEVEMENT_DESC_LEN - 1] = '\0';
+        }
+        else
+        {
+            strncpy(ach.description, achievement_def->description, ACHIEVEMENT_DESC_LEN - 1);
             ach.description[ACHIEVEMENT_DESC_LEN - 1] = '\0';
         }
     }

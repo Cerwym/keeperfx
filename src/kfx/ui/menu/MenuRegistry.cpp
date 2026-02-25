@@ -178,16 +178,15 @@ void MenuRegistry::Init()
     m_initialized = true;
 
     /* Phase 1: Load main_menu.json and discover all referenced menus */
-    JUSTLOG("MenuRegistry::Init Phase 1: Loading main_menu.json");
+    SYNCDBG(5, "MenuRegistry::Init Phase 1: Loading main_menu.json");
     const char *mainPath = "data/menus/main_menu.json";
     if (LbFileLength(mainPath) > 0)
     {
         if (JsonParser::GetInstance().LoadMenuFromJson(mainPath, &m_mainMenuDef))
         {
             m_mainMenuLoaded = true;
-            JUSTLOG("MenuRegistry::Init: main_menu loaded, discovering references");
             DiscoverReferencedMenus(&m_mainMenuDef);
-            JUSTLOG("MenuRegistry::Init: reference discovery complete, %d menus registered", m_menuCount);
+            SYNCDBG(5, "MenuRegistry::Init: reference discovery complete, %d menus registered", m_menuCount);
         }
         else
         {
@@ -196,7 +195,6 @@ void MenuRegistry::Init()
     }
 
     /* Discover menus referenced by already-registered menus (chains) */
-    JUSTLOG("MenuRegistry::Init: discovering chain references");
     for (int i = 0; i < m_menuCount; i++)
     {
         if (m_registry[i].loaded)
@@ -204,17 +202,14 @@ void MenuRegistry::Init()
     }
 
     /* Load additional menus not reachable via navigate_to chains */
-    JUSTLOG("MenuRegistry::Init: loading additional menus");
-    LoadAndRegister("campaign_hub");
-    LoadAndRegister("global_load");
-    LoadAndRegister("levelpack_menu");
+    // LoadAndRegister("campaign_hub");
+    // LoadAndRegister("global_load");
+    // LoadAndRegister("levelpack_menu");
 
     /* Initialize campaign list visibility for scrollable campaign menus */
-    JUSTLOG("MenuRegistry::Init: loading campaign list");
     frontend_campaign_list_load();
 
     /* Phase 2: Resolve navigate_to references to registry indices */
-    JUSTLOG("MenuRegistry::Init Phase 2: resolving navigate_to");
     if (m_mainMenuLoaded)
         ResolveNavigateTo(&m_mainMenuDef);
 
@@ -225,7 +220,6 @@ void MenuRegistry::Init()
     }
 
     /* Phase 3: Build GuiButtonInit arrays and register with engine */
-    JUSTLOG("MenuRegistry::Init Phase 3: building button arrays");
     if (m_mainMenuLoaded)
     {
         struct GuiButtonInit *buttons = MenuBuilder::BuildButtonInitArray(&m_mainMenuDef);
@@ -233,7 +227,7 @@ void MenuRegistry::Init()
         {
             frontend_main_menu.buttons = buttons;
             m_mainMenuButtons = buttons;
-            JUSTLOG("Loaded JSON menu override: main_menu (%d buttons)", m_mainMenuDef.button_count);
+            SYNCDBG(5, "Loaded JSON menu override: main_menu (%d buttons)", m_mainMenuDef.button_count);
         }
         else
         {
@@ -255,7 +249,6 @@ void MenuRegistry::Init()
             continue;
         }
 
-        JUSTLOG("MenuRegistry::Init: building buttons for \"%s\"", entry->menu_id);
         entry->buttons = MenuBuilder::BuildButtonInitArray(&entry->menu_def);
         if (entry->buttons == NULL)
         {
@@ -266,12 +259,9 @@ void MenuRegistry::Init()
         MenuBuilder::BuildGuiMenu(&entry->menu_def, entry->buttons, &entry->gui_menu);
         entry->gui_menu.ident = gmnu_id;
         menu_list[gmnu_id] = &entry->gui_menu;
-
-        JUSTLOG("Registered JSON menu \"%s\" as GMnu %d (%d buttons)",
-                entry->menu_id, gmnu_id, entry->menu_def.button_count);
     }
 
-    JUSTLOG("MenuRegistry::Init complete: %d menus registered", m_menuCount);
+    SYNCDBG(5, "MenuRegistry::Init complete: %d menus registered", m_menuCount);
 }
 
 void MenuRegistry::Shutdown()

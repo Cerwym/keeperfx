@@ -367,7 +367,7 @@ struct EventTypeInfo event_button_info[] = {
   {0,                                     GUIStr_Empty,                       GUIStr_Empty,                   1200,  50, EvKind_Nothing}, // EvKind_EnemyDoor
   {GPS_message_rpanel_msg_inforb_act,     GUIStr_EventSecretDoorDiscovDesc,   GUIStr_EventSecretDoorDiscovered,300, 200, EvKind_Nothing},
   {GPS_message_rpanel_msg_exclam_act,     GUIStr_EventSecretDoorSpottedDesc,  GUIStr_EventSecretDoorSpotted,   300, 200, EvKind_Nothing},
-  {GPS_message_rpanel_msg_trophy_act,     GUIStr_EventAchievementUnlockedDesc,GUIStr_EventAchievementUnlocked, 2400,   0, EvKind_Nothing},
+  {GPS_symbols_goldpot_sml,               GUIStr_EventAchievementUnlockedDesc,GUIStr_EventAchievementUnlocked, 2400,   0, EvKind_Nothing},
 };
 
 const unsigned long alliance_grid[4][4] = {
@@ -2789,14 +2789,17 @@ FrontendMenuState frontend_setup_state(FrontendMenuState nstate)
           init_json_menus();
           stop_music();
           find_and_set_continue_campaign();
+          // Ensure a campaign is active so achievements are loaded
+          if (!is_campaign_loaded())
+          {
+              change_campaign("");
+          }
           continue_game_option_available = continue_game_available();
           if (!continue_game_option_available)
           {
               char* fname = prepare_campaign_save_path(continue_game_filename);
               LbFileDelete(fname);
           }
-          initialise_load_game_slots();
-          scan_all_campaign_saves();
           turn_on_menu(GMnu_FEMAIN);
           last_mouse_x = GetMouseX();
           last_mouse_y = GetMouseY();
