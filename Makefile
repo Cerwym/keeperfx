@@ -348,6 +348,8 @@ obj/windows.o \
 obj/platform_gl_sdl2.o \
 obj/renderer/RendererManager.o \
 obj/renderer/RendererSoftware.o \
+obj/platform/PlatformManager.o \
+obj/platform/PlatformWindows.o \
 obj/audio/audio_openal.o \
 obj/input/input_sdl.o \
 $(FTEST_OBJS) \
@@ -515,6 +517,7 @@ obj/std/ftests/tests \
 obj/std/renderer obj/hvlog/renderer \
 obj/std/audio obj/hvlog/audio \
 obj/std/input obj/hvlog/input \
+obj/std/platform obj/hvlog/platform \
 obj/tests obj/cu \
 obj/std/centitoml obj/hvlog/centitoml \
 sdl/for_final_package

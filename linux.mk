@@ -25,6 +25,7 @@ src/ariadne_tringls.c \
 src/ariadne_wallhug.c \
 src/bflib_base_tcp.cpp \
 src/bflib_basics.c \
+src/bflib_crash.c \
 src/bflib_coroutine.c \
 src/bflib_client_tcp.cpp \
 src/bflib_cpu.c \
@@ -175,6 +176,8 @@ src/lens_flyeye.cpp \
 src/lens_mist.cpp \
 src/light_data.c \
 src/linux.cpp \
+src/platform/PlatformManager.cpp \
+src/platform/PlatformLinux.cpp \
 src/lua_api.c \
 src/lua_api_player.c \
 src/lua_api_room.c \
