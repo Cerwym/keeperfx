@@ -12,6 +12,12 @@
 #ifdef RENDERER_OPENGL_ENABLED
 #  include "renderer/RendererOpenGL.h"
 #endif
+#ifdef PLATFORM_VITA
+#  include "renderer/RendererVita.h"
+#endif
+#ifdef PLATFORM_3DS
+#  include "renderer/Renderer3DS.h"
+#endif
 
 #include "bflib_basics.h"
 #include "globals.h"
@@ -38,6 +44,16 @@ static IRenderer* create_renderer(RendererType type)
             return new RendererOpenGL();
 #endif
 
+#ifdef PLATFORM_VITA
+        case RENDERER_VITA:
+            return new RendererVita();
+#endif
+
+#ifdef PLATFORM_3DS
+        case RENDERER_3DS:
+            return new Renderer3DS();
+#endif
+
         default:
             return nullptr;
     }
@@ -47,7 +63,11 @@ static IRenderer* create_renderer(RendererType type)
  *  Prefers OpenGL when available, falls back to software. */
 static RendererType resolve_auto()
 {
-#ifdef RENDERER_OPENGL_ENABLED
+#ifdef PLATFORM_VITA
+    return RENDERER_VITA;
+#elif defined(PLATFORM_3DS)
+    return RENDERER_3DS;
+#elif defined(RENDERER_OPENGL_ENABLED)
     return RENDERER_OPENGL;
 #else
     return RENDERER_SOFTWARE;

@@ -32,6 +32,7 @@
 #include "bflib_network.h"
 #include "bflib_network_exchange.h"
 #include "bflib_inputctrl.h"
+#include "input/input_interface.h"
 #include "bflib_sound.h"
 #include "bflib_sndlib.h"
 #include "kjm_input.h"
@@ -407,7 +408,11 @@ short get_speed_control_inputs(void)
  */
 short get_packet_load_game_control_inputs(void)
 {
-  if (lbKeyOn[KC_LALT] && lbKeyOn[KC_X])
+  // Use input interface for keyboard state if available
+  TbBool alt_down = (g_input != NULL) ? g_input->is_key_down(KC_LALT) : lbKeyOn[KC_LALT];
+  TbBool x_down = (g_input != NULL) ? g_input->is_key_down(KC_X) : lbKeyOn[KC_X];
+  
+  if (alt_down && x_down)
   {
     clear_key_pressed(KC_X);
     if ((game.system_flags & GSF_NetworkActive) != 0)

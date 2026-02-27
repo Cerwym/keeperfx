@@ -27,6 +27,8 @@ enum RendererType {
     RENDERER_AUTO     = 0,  /**< Select best available backend at startup */
     RENDERER_SOFTWARE = 1,  /**< CPU software renderer, SDL2 display output */
     RENDERER_OPENGL   = 2,  /**< OpenGL backend — framebuffer blit (Phase 1) */
+    RENDERER_VITA     = 3,  /**< PS Vita — vitaGL over GXM */
+    RENDERER_3DS      = 4,  /**< Nintendo 3DS — citro3d/PICA200 */
 };
 
 /******************************************************************************/

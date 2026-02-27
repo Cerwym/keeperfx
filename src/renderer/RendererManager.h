@@ -25,6 +25,8 @@ typedef int RendererType;
 #  define RENDERER_AUTO     0
 #  define RENDERER_SOFTWARE 1
 #  define RENDERER_OPENGL   2
+#  define RENDERER_VITA     3
+#  define RENDERER_3DS      4
 #endif
 
 #ifdef __cplusplus

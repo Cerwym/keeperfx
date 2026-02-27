@@ -128,6 +128,68 @@
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
+        },
+
+        {
+            "name": "linux-x64-release",
+            "displayName": "Linux x64 Release",
+            "description": "Linux native build",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
+        },
+
+        {
+            "name": "wasm-release",
+            "displayName": "WebAssembly Release",
+            "description": "Emscripten WebAssembly build",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
+        },
+
+        {
+            "name": "3ds-release",
+            "displayName": "3DS Release",
+            "description": "Nintendo 3DS build using devkitARM",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{DEVKITPRO}/cmake/3DS.cmake",
+                "CMAKE_BUILD_TYPE": "Release",
+                "PLATFORM_3DS": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
+        },
+
+        {
+            "name": "vita-release",
+            "displayName": "PS Vita Release",
+            "description": "PlayStation Vita build using VitaSDK",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
+                "CMAKE_BUILD_TYPE": "Release",
+                "PLATFORM_VITA": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
+        },
+
+        {
+            "name": "switch-release",
+            "displayName": "Nintendo Switch Release",
+            "description": "Nintendo Switch build using devkitA64",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{DEVKITPRO}/cmake/Switch.cmake",
+                "CMAKE_BUILD_TYPE": "Release",
+                "PLATFORM_SWITCH": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
         }
     ],
     "buildPresets": [
@@ -230,6 +292,41 @@
             "displayName": "Windows x64 Release",
             "inherits": "StandardLog",
             "configurePreset": "windows-x64-release"
+        },
+
+        {
+            "name": "linux-x64-release",
+            "displayName": "Linux x64 Release",
+            "inherits": "StandardLog",
+            "configurePreset": "linux-x64-release"
+        },
+
+        {
+            "name": "wasm-release",
+            "displayName": "WebAssembly Release Build",
+            "inherits": "StandardLog",
+            "configurePreset": "wasm-release"
+        },
+
+        {
+            "name": "3ds-release",
+            "displayName": "3DS Release Build",
+            "inherits": "StandardLog",
+            "configurePreset": "3ds-release"
+        },
+
+        {
+            "name": "vita-release",
+            "displayName": "PS Vita Release Build",
+            "inherits": "StandardLog",
+            "configurePreset": "vita-release"
+        },
+
+        {
+            "name": "switch-release",
+            "displayName": "Nintendo Switch Release Build",
+            "inherits": "StandardLog",
+            "configurePreset": "switch-release"
         }
     ]
 }

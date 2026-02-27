@@ -348,6 +348,8 @@ obj/windows.o \
 obj/platform_gl_sdl2.o \
 obj/renderer/RendererManager.o \
 obj/renderer/RendererSoftware.o \
+obj/audio/audio_openal.o \
+obj/input/input_sdl.o \
 $(FTEST_OBJS) \
 $(RES)
 
@@ -507,6 +509,8 @@ FOLDERS = bin obj/std obj/hvlog \
 obj/std/ftests \
 obj/std/ftests/tests \
 obj/std/renderer obj/hvlog/renderer \
+obj/std/audio obj/hvlog/audio \
+obj/std/input obj/hvlog/input \
 obj/tests obj/cu \
 obj/std/centitoml obj/hvlog/centitoml \
 sdl/for_final_package

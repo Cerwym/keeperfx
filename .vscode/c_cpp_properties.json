@@ -80,6 +80,64 @@
             "cStandard": "gnu11",
             "cppStandard": "gnu++14",
             "intelliSenseMode": "windows-gcc-x86"
+        },
+        {
+            "name": "PS Vita (vitasdk)",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${env:VITASDK}/arm-vita-eabi/include",
+                "${env:VITASDK}/arm-vita-eabi/include/SDL2"
+            ],
+            "defines": [
+                "PLATFORM_VITA=1",
+                "USE_PRE_FILE=1",
+                "BFDEBUG_LEVEL=0",
+                "__vita__",
+                "SCE_LIBC_USE_STDC"
+            ],
+            "compilerPath": "${env:VITASDK}/bin/arm-vita-eabi-gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-arm"
+        },
+        {
+            "name": "Nintendo 3DS (devkitARM)",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${env:DEVKITPRO}/libctru/include",
+                "${env:DEVKITPRO}/portlibs/3ds/include",
+                "${env:DEVKITARM}/arm-none-eabi/include"
+            ],
+            "defines": [
+                "PLATFORM_3DS=1",
+                "USE_PRE_FILE=1",
+                "BFDEBUG_LEVEL=0",
+                "ARM11",
+                "_3DS"
+            ],
+            "compilerPath": "${env:DEVKITARM}/bin/arm-none-eabi-gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-arm"
+        },
+        {
+            "name": "Nintendo Switch (devkitA64)",
+            "includePath": [
+                "${workspaceFolder}/src",
+                "${env:DEVKITPRO}/libnx/include",
+                "${env:DEVKITPRO}/portlibs/switch/include",
+                "${env:DEVKITA64}/aarch64-none-elf/include"
+            ],
+            "defines": [
+                "PLATFORM_SWITCH=1",
+                "USE_PRE_FILE=1",
+                "BFDEBUG_LEVEL=0",
+                "__SWITCH__"
+            ],
+            "compilerPath": "${env:DEVKITA64}/bin/aarch64-none-elf-gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-arm64"
         }
     ],
     "version": 4
