@@ -9,6 +9,8 @@ STRIP ?= strip
 ECHO ?= echo
 MV ?= mv -f
 
+$(shell $(MKDIR) obj/renderer)
+
 KFX_SOURCES = \
 src/actionpt.c \
 src/api.c \
@@ -261,7 +263,10 @@ src/thing_traps.c \
 src/value_util.c \
 src/vidfade.c \
 src/vidmode_data.cpp \
-src/vidmode.c
+src/vidmode.c \
+src/platform_gl_sdl2.cpp \
+src/renderer/RendererManager.cpp \
+src/renderer/RendererSoftware.cpp
 
 KFX_C_SOURCES = $(filter %.c,$(KFX_SOURCES))
 KFX_CXX_SOURCES = $(filter %.cpp,$(KFX_SOURCES))
@@ -270,6 +275,7 @@ KFX_CXX_OBJECTS = $(patsubst src/%.cpp,obj/%.o,$(KFX_CXX_SOURCES))
 KFX_OBJECTS = $(KFX_C_OBJECTS) $(KFX_CXX_OBJECTS)
 
 KFX_INCLUDES = \
+	-Isrc \
 	-Ideps/centijson/include \
 	-Ideps/centitoml \
 	-Ideps/astronomy/include \
@@ -336,7 +342,7 @@ $(KFX_CXX_OBJECTS): obj/%.o: src/%.cpp src/ver_defs.h | obj
 $(TOML_OBJECTS): obj/centitoml/%.o: deps/centitoml/%.c | obj/centitoml
 	$(CC) $(TOML_CFLAGS) -c $< -o $@
 
-bin obj deps/astronomy deps/centijson obj/centitoml:
+bin obj deps/astronomy deps/centijson obj/centitoml obj/renderer:
 	$(MKDIR) $@
 
 src/actionpt.c: deps/centijson/include/json.h
@@ -365,4 +371,5 @@ src/ver_defs.h: version.mk
 	$(ECHO) "#define VER_STRING  \"$(VER_STRING)\"" >> $@.swp
 	$(ECHO) "#define PACKAGE_SUFFIX  \"$(VER_SUFFIX)\"" >> $@.swp
 	$(ECHO) "#define GIT_REVISION  \"$(shell git describe  --always)\"" >> $@.swp
+	$(ECHO) "#define GIT_BRANCH    \"$(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)\"" >> $@.swp
 	$(MV) $@.swp $@

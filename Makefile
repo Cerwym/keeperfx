@@ -345,6 +345,9 @@ obj/vidmode.o \
 obj/KeeperSpeechImp.o \
 obj/spritesheet.o \
 obj/windows.o \
+obj/platform_gl_sdl2.o \
+obj/renderer/RendererManager.o \
+obj/renderer/RendererSoftware.o \
 $(FTEST_OBJS) \
 $(RES)
 
@@ -383,6 +386,7 @@ LINKLIB = -mwindows \
 	deps/luajit/lib/libluajit.a \
 	-lwinmm -lmingw32 -limagehlp -lws2_32 -ldbghelp -lbcrypt -lole32 -luuid
 INCS = \
+	-I"src" \
 	-I"deps/zlib/include" \
 	-I"deps/spng/include" \
 	-I"sdl/include" \
@@ -502,6 +506,7 @@ heavylog: hvlog-before $(HVLOGBIN) hvlog-after
 FOLDERS = bin obj/std obj/hvlog \
 obj/std/ftests \
 obj/std/ftests/tests \
+obj/std/renderer obj/hvlog/renderer \
 obj/tests obj/cu \
 obj/std/centitoml obj/hvlog/centitoml \
 sdl/for_final_package

@@ -124,6 +124,7 @@
 #include "KeeperSpeech.h"
 #include "config_settings.h"
 #include "config_keeperfx.h"
+#include "renderer/RendererManager.h"
 #include "game_legacy.h"
 #include "room_list.h"
 #include "steam_api.hpp"
@@ -1043,6 +1044,13 @@ short setup_game(void)
   {
       ERRORLOG("Unable to set display mode for legal screen");
       return 0;
+  }
+
+  // Initialise renderer backend (SDL window exists at this point)
+  if (!RendererInit((RendererType)cfg_renderer_type))
+  {
+      ERRORLOG("Failed to initialise renderer; falling back to software");
+      RendererInit(RENDERER_SOFTWARE);
   }
 
   if (flag_is_set(start_params.startup_flags, SFlg_Legal))
@@ -4015,7 +4023,7 @@ short reset_game(void)
     LbMouseSuspend();
     LbIKeyboardClose();
     LbScreenReset(false);
-    LbDataFreeAllV2(game_load_files);
+    RendererShutdown();
     free_gui_strings_data();
     free_level_strings_data();
     FreeAudio();

@@ -25,6 +25,7 @@
 #include "bflib_render.h"
 #include "bflib_sprfnt.h"
 #include "bflib_vidsurface.h"
+#include "renderer/RendererManager.h"
 
 #include "keeperfx.hpp"
 
@@ -113,14 +114,16 @@ TbResult LbScreenLock(void)
     if (!lbScreenInitialised)
         return Lb_FAIL;
 
-    if (SDL_LockSurface(lbDrawSurface) < 0) {
+    int pitch = 0;
+    unsigned char *pixels = RendererLockFramebuffer(&pitch);
+    if (!pixels) {
         lbDisplay.GraphicsWindowPtr = NULL;
         lbDisplay.WScreen = NULL;
         return Lb_FAIL;
     }
 
-    lbDisplay.WScreen = (unsigned char *) lbDrawSurface->pixels;
-    lbDisplay.GraphicsScreenWidth = lbDrawSurface->pitch;
+    lbDisplay.WScreen = pixels;
+    lbDisplay.GraphicsScreenWidth = pitch;
     lbDisplay.GraphicsWindowPtr = &lbDisplay.WScreen[lbDisplay.GraphicsWindowX +
         lbDisplay.GraphicsScreenWidth * lbDisplay.GraphicsWindowY];
     return Lb_SUCCESS;
@@ -133,36 +136,16 @@ TbResult LbScreenUnlock(void)
         return Lb_FAIL;
     lbDisplay.WScreen = NULL;
     lbDisplay.GraphicsWindowPtr = NULL;
-    SDL_UnlockSurface(lbDrawSurface);
+    RendererUnlockFramebuffer();
     return Lb_SUCCESS;
 }
 
 TbResult LbScreenSwap(void)
 {
-    int blresult;
     SYNCDBG(12,"Starting");
     TbResult ret = LbMouseOnBeginSwap();
-    // Put the data from Draw Surface onto Screen Surface
-    if ((ret == Lb_SUCCESS) && (lbHasSecondSurface)) {
-        // Update pointer to window surface on every frame
-        // to avoid problems with alt tab
-        lbScreenSurface = SDL_GetWindowSurface(lbWindow);
-        blresult = SDL_BlitSurface(lbDrawSurface, NULL, lbScreenSurface, NULL);
-        if (blresult < 0) {
-            ERRORLOG("Blit failed: %s",SDL_GetError());
-            ret = Lb_FAIL;
-        }
-    }
-    // Flip the image displayed on Screen Surface
-    if (ret == Lb_SUCCESS) {
-        // calls SDL_UpdateRect for entire screen if not double buffered
-        blresult = SDL_UpdateWindowSurface(lbWindow);
-        if (blresult < 0) {
-            // In some cases this situation seems to be quite common
-            ERRORDBG(11,"Flip failed: %s",SDL_GetError());
-            ret = Lb_FAIL;
-        }
-    }
+    if (ret == Lb_SUCCESS)
+        RendererEndFrame();
     LbMouseOnEndSwap();
     return ret;
 }

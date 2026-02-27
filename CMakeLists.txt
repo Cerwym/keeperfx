@@ -32,6 +32,18 @@ find_package(SDL2_image CONFIG REQUIRED)
 find_package(SDL2_mixer CONFIG REQUIRED)
 find_package(SDL2_net CONFIG REQUIRED)
 
+# Optional: OpenGL renderer backend (requires glad via vcpkg)
+option(KEEPERFX_RENDERER_OPENGL "Enable the OpenGL renderer backend" ON)
+if(KEEPERFX_RENDERER_OPENGL)
+    find_package(glad CONFIG QUIET)
+    if(glad_FOUND)
+        message(STATUS "OpenGL renderer backend enabled (glad found)")
+    else()
+        message(STATUS "OpenGL renderer backend disabled (glad not found; install via vcpkg)")
+        set(KEEPERFX_RENDERER_OPENGL OFF)
+    endif()
+endif()
+
 # Global definitions.
 add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
 
@@ -129,3 +141,11 @@ target_link_libraries(tests
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
 target_link_libraries(tests
     PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+
+# OpenGL renderer backend
+if(KEEPERFX_RENDERER_OPENGL)
+    foreach(target keeperfx keeperfx_hvlog tests)
+        target_compile_definitions(${target} PRIVATE RENDERER_OPENGL_ENABLED=1)
+        target_link_libraries(${target} PRIVATE glad::glad opengl32)
+    endforeach()
+endif()

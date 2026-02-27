@@ -37,6 +37,7 @@ struct SSurface {
 /******************************************************************************/
 extern struct SDL_Surface * lbScreenSurface;
 extern struct SDL_Surface * lbDrawSurface;
+extern volatile TbBool lbHasSecondSurface;
 /******************************************************************************/
 void LbScreenSurfaceInit(struct SSurface *surf);
 TbResult LbScreenSurfaceCreate(struct SSurface *surf, unsigned long w, unsigned long h);
