@@ -449,6 +449,10 @@ CXXFLAGS += -DUSE_PRE_FILE=1
 CFLAGS += -DUSE_PRE_FILE=1
 endif
 
+# Lua is available in all Makefile-based builds (MinGW32 Windows, Linux)
+CXXFLAGS += -DKEEPERFX_LUA_AVAILABLE=1
+CFLAGS += -DKEEPERFX_LUA_AVAILABLE=1
+
 CAMPAIGNS = $(patsubst campgns/%.cfg,%,$(wildcard campgns/*.cfg))
 MAPPACKS = $(patsubst levels/%.cfg,%,$(filter-out %/personal.cfg,$(wildcard levels/*.cfg)))
 LANGS = eng chi cht cze dut fre ger ita jpn kor lat pol rus spa swe

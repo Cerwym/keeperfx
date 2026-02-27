@@ -282,6 +282,8 @@ KFX_INCLUDES = \
 	$(shell pkg-config --cflags-only-I luajit)
 
 KFX_CFLAGS += -g -DDEBUG -DBFDEBUG_LEVEL=0 -O3 -march=x86-64 $(KFX_INCLUDES) -Wall -Wextra -Werror -Wno-unused-parameter -Wno-absolute-value -Wno-unknown-pragmas -Wno-format-truncation -Wno-sign-compare
+KFX_CFLAGS += -DKEEPERFX_LUA_AVAILABLE=1
+KFX_CXXFLAGS += -DKEEPERFX_LUA_AVAILABLE=1
 KFX_CXXFLAGS += -g -DDEBUG -DBFDEBUG_LEVEL=0 -O3 -march=x86-64 $(KFX_INCLUDES) -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unknown-pragmas -Wno-format-truncation -Wno-sign-compare
 
 KFX_LDFLAGS += \
