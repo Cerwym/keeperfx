@@ -30,7 +30,6 @@
 #include "keeperfx.hpp"
 
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_syswm.h>
 #include <math.h>
 #include "post_inc.h"
 
@@ -409,9 +408,11 @@ static TbBool LbHwCheckIsModeAvailable(TbScreenMode mode, unsigned short display
         {
             return false; // all available fullscreen modes are too small for the desired mode to fit
         }
-        if ((desired.w != closest.w) && (desired.h != closest.h))
+        // Accept the mode if the physical display can contain it, even if not an exact match
+        // (the renderer will scale the logical framebuffer up to fill the physical display).
+        if (closest.w < desired.w || closest.h < desired.h)
         {
-            return false; // desired fullscreen mode is not available (but a "close" match is)
+            return false; // physical display is smaller than requested mode
         }
     }
     // desired screen mode must be valid if we get here
@@ -517,6 +518,10 @@ TbResult LbScreenSetup(TbScreenMode mode, TbScreenCoord width, TbScreenCoord hei
     if (lbHasSecondSurface) {
         SDL_FreeSurface(lbDrawSurface);
     }
+    if (lbScaleSurface != NULL) {
+        SDL_FreeSurface(lbScaleSurface);
+        lbScaleSurface = NULL;
+    }
     lbDrawSurface = NULL;
     lbScreenInitialised = false;
 
@@ -582,8 +587,11 @@ TbResult LbScreenSetup(TbScreenMode mode, TbScreenCoord width, TbScreenCoord hei
         return Lb_FAIL;
     }
 
-    // Create secondary surface if necessary, that is if BPP != lbEngineBPP.
-    if (mdinfo->BitsPerPixel != lbEngineBPP)
+    // Create secondary surface if necessary: BPP mismatch, or physical window is larger than
+    // the logical game resolution (fixed-display platforms like Vita where 640x480 maps to 960x544).
+    if (mdinfo->BitsPerPixel != lbEngineBPP
+        || lbScreenSurface->w != (int)mdinfo->Width
+        || lbScreenSurface->h != (int)mdinfo->Height)
     {
         lbDrawSurface = SDL_CreateRGBSurface(0, mdinfo->Width, mdinfo->Height, lbEngineBPP, 0, 0, 0, 0);
         if (lbDrawSurface == NULL) {
@@ -592,6 +600,17 @@ TbResult LbScreenSetup(TbScreenMode mode, TbScreenCoord width, TbScreenCoord hei
             return Lb_FAIL;
         }
         lbHasSecondSurface = true;
+        // If the draw surface and window surface have different BitsPerPixel, SDL_BlitScaled
+        // (which requires matching BPP) can't scale directly. Create an intermediate surface in
+        // the window's pixel format so we can convert format first, then scale.
+        if (lbDrawSurface->format->BitsPerPixel != lbScreenSurface->format->BitsPerPixel)
+        {
+            lbScaleSurface = SDL_CreateRGBSurfaceWithFormat(0, mdinfo->Width, mdinfo->Height,
+                lbScreenSurface->format->BitsPerPixel, lbScreenSurface->format->format);
+            if (lbScaleSurface == NULL) {
+                WARNLOG("Can't create scale surface for mode %d (%s): %s — falling back to direct blit", (int)mode, mdinfo->Desc, SDL_GetError());
+            }
+        }
     }
 
     lbDisplay.DrawFlags = 0;
@@ -764,6 +783,10 @@ TbResult LbScreenReset(TbBool exiting_application)
     LbMouseChangeSprite(NULL);
     if (lbHasSecondSurface) {
         SDL_FreeSurface(lbDrawSurface);
+    }
+    if (lbScaleSurface != NULL) {
+        SDL_FreeSurface(lbScaleSurface);
+        lbScaleSurface = NULL;
     }
     //do not free screen surface, it is freed automatically on SDL_Quit or next call to set video mode
     lbHasSecondSurface = false;

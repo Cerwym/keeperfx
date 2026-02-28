@@ -46,10 +46,29 @@ void RendererSoftware::EndFrame()
     {
         // Refresh the window surface pointer each frame (guards against alt-tab).
         lbScreenSurface = SDL_GetWindowSurface(lbWindow);
-        if (SDL_BlitSurface(lbDrawSurface, NULL, lbScreenSurface, NULL) < 0)
+        SDL_Rect dst = { 0, 0, lbScreenSurface->w, lbScreenSurface->h };
+        if (lbScaleSurface != NULL)
         {
-            ERRORLOG("RendererSoftware::EndFrame blit failed: %s", SDL_GetError());
-            return;
+            // Two-step: convert format (e.g. 8bpp palette → window BPP) at game resolution,
+            // then scale to the physical window surface. SDL_BlitScaled requires matching BPP.
+            if (SDL_BlitSurface(lbDrawSurface, NULL, lbScaleSurface, NULL) < 0)
+            {
+                ERRORLOG("RendererSoftware::EndFrame format-convert blit failed: %s", SDL_GetError());
+                return;
+            }
+            if (SDL_BlitScaled(lbScaleSurface, NULL, lbScreenSurface, &dst) < 0)
+            {
+                ERRORLOG("RendererSoftware::EndFrame scale blit failed: %s", SDL_GetError());
+                return;
+            }
+        }
+        else
+        {
+            if (SDL_BlitScaled(lbDrawSurface, NULL, lbScreenSurface, &dst) < 0)
+            {
+                ERRORLOG("RendererSoftware::EndFrame blit failed: %s", SDL_GetError());
+                return;
+            }
         }
     }
     if (SDL_UpdateWindowSurface(lbWindow) < 0)

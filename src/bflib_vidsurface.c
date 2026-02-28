@@ -36,6 +36,9 @@ SDL_Surface * lbScreenSurface;
 /** Internal drawing surface structure.
  *  Sometimes may be same as screen surface. */
 SDL_Surface * lbDrawSurface;
+/** Intermediate surface used when the draw surface needs format conversion before
+ *  being scaled up to the physical window surface (e.g. 8bpp→16bpp on Vita). */
+SDL_Surface * lbScaleSurface;
 
 /******************************************************************************/
 void LbScreenSurfaceInit(struct SSurface *surf)
