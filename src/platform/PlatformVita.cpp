@@ -19,9 +19,11 @@
 #ifdef PLATFORM_VITA
 
 /* Link-time heap and stack declarations required by vitasdk.
- * These are read by the linker/loader before main() runs. */
-int _newlib_heap_size_user  = 256 * 1024 * 1024; // 256 MB — sound banks + game data
-int sceUserMainThreadStackSize = 8 * 1024 * 1024; // 8 MB — deep game call stacks
+ * These are read by the linker/loader before main() runs.
+ * Total must stay well under the 256 MB per-process limit; the runtime,
+ * SDL2 and thread stacks consume the remainder (~40-50 MB in practice). */
+int _newlib_heap_size_user  = 192 * 1024 * 1024; // 192 MB — sound banks + game data
+int sceUserMainThreadStackSize = 4 * 1024 * 1024; // 4 MB — main thread stack
 
 // TbFileFind is defined here; it is an opaque type to all callers.
 struct TbFileFind {
