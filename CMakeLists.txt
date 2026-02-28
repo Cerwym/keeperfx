@@ -87,11 +87,18 @@ add_compile_definitions(_CRT_NONSTDC_NO_WARNINGS _CRT_SECURE_NO_WARNINGS)
 file(GLOB_RECURSE KEEPERFX_SOURCES_C "src/*.c")
 file(GLOB_RECURSE KEEPERFX_SOURCES_CXX "src/*.cpp")
 
-# On homebrew platforms, exclude desktop-only source files
+# Exclude stub files from the glob — they are added back explicitly when needed
+list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_cpu_stub\\.c$")
+list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_network_stub\\.c$")
+
+# Networking: disable for homebrew platforms by default; can also be disabled on desktop.
+option(KEEPERFX_NETWORKING "Build with multiplayer networking support" ON)
 if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/audio/audio_openal\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/input/input_sdl\\.c$")
-    # Exclude network modules that depend on SDL_net (not available on homebrew)
+    set(KEEPERFX_NETWORKING OFF CACHE BOOL "Networking disabled on homebrew" FORCE)
+endif()
+
+if(NOT KEEPERFX_NETWORKING)
+    # Exclude real networking source files
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/api\\.c$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_tcpsp\\.c$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_base_tcp\\.c$")
@@ -109,6 +116,23 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/net_redundant_packets\\.c$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/net_checksums\\.c$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/net_game\\.c$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_enet\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_base_tcp\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_client_tcp\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_server_tcp\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/net_portforward\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/net_resync\\.cpp$")
+    # Add the networking stub that provides no-op implementations
+    list(APPEND KEEPERFX_SOURCES_C "src/bflib_network_stub.c")
+endif()
+
+# On homebrew platforms, exclude desktop-only source files
+if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/audio/audio_openal\\.c$")
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/input/input_sdl\\.c$")
+    # On non-x86 platforms, replace bflib_cpu.c with the portable stub
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_cpu\\.c$")
+    list(APPEND KEEPERFX_SOURCES_C "src/bflib_cpu_stub.c")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_fmvids\\.c$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/KeeperSpeechImp\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/steam_api\\.c$")
@@ -126,15 +150,9 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
     endif()
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/scrcapt\\.c$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_sndlib\\.cpp$")
-    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_enet\\.cpp$")
-    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_base_tcp\\.cpp$")
-    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_client_tcp\\.cpp$")
-    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_server_tcp\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_fmvids\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/cdrom\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/linux\\.cpp$")
-    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/net_portforward\\.cpp$")
-    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/net_resync\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/steam_api\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/renderer/RendererOpenGL\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform_gl_sdl2\\.cpp$")
@@ -307,6 +325,10 @@ if(PLATFORM_VITA)
     vita_create_vpk(keeperfx.vpk ${VITA_TITLEID} keeperfx.self
         VERSION ${VITA_VERSION}
         NAME    ${VITA_APP_NAME}
+        FILE ${CMAKE_SOURCE_DIR}/vita/sce_sys/icon0.png                          sce_sys/icon0.png
+        FILE ${CMAKE_SOURCE_DIR}/vita/sce_sys/livearea/contents/bg.png           sce_sys/livearea/contents/bg.png
+        FILE ${CMAKE_SOURCE_DIR}/vita/sce_sys/livearea/contents/startup.png      sce_sys/livearea/contents/startup.png
+        FILE ${CMAKE_SOURCE_DIR}/vita/sce_sys/livearea/contents/template.xml     sce_sys/livearea/contents/template.xml
     )
 elseif(PLATFORM_3DS)
     target_link_libraries(keeperfx PRIVATE citro3d ctru)

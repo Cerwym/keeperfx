@@ -4363,12 +4363,15 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     short retval;
     retval=0;
 
+    // Give the platform the raw argv so desktop builds can compute the data path
+    // (must be before LbErrorLogSetup so GetDataPath() works on all platforms).
+    PlatformManager_SetArgv(argc, argv);
+
     // Determine correct log file based on command line flags
     const char* selected_log_file_name = determine_log_filename(argc, argv);
-    LbErrorLogSetup("/", selected_log_file_name, 5);
-
-    // Give the platform the raw argv so desktop builds can compute the data path.
-    PlatformManager_SetArgv(argc, argv);
+    LbErrorLogSetup(PlatformManager_GetDataPath(), selected_log_file_name, 5);
+    SDL_Log("KeeperFX: LbBullfrogMain started, log at %s/%s",
+        PlatformManager_GetDataPath(), selected_log_file_name);
 
     retval = process_command_line(argc,argv);
     if (retval < 1)
@@ -4378,8 +4381,11 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     }
 
     retval = true;
+    SDL_Log("KeeperFX: LbTimerInit...");
     retval &= (LbTimerInit() != Lb_FAIL);
+    SDL_Log("KeeperFX: LbScreenInitialize... (retval so far=%d)", retval);
     retval &= (LbScreenInitialize() != Lb_FAIL);
+    SDL_Log("KeeperFX: screen init done retval=%d", retval);
     LbSetTitle(PROGRAM_NAME);
     LbSetIcon(1);
     LbScreenSetDoubleBuffering(true);
@@ -4391,13 +4397,16 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
 
     if (!retval)
     {
+        SDL_Log("KeeperFX: Basic engine initialization failed");
         static const char *msg_text="Basic engine initialization failed.\n";
         error_dialog_fatal(__func__, 1, msg_text);
         LbErrorLogClose();
         return 0;
     }
 
+    SDL_Log("KeeperFX: setup_game...");
     retval = setup_game();
+    SDL_Log("KeeperFX: setup_game returned %d", retval);
     if (retval == 1)
     {
         steam_api_init();
