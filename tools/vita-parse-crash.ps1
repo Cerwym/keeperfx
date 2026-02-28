@@ -78,7 +78,8 @@ New-Item -ItemType Directory -Force -Path $DumpDir | Out-Null
 $LocalDump = Join-Path $DumpDir $selected.Filename
 
 Write-Host "Downloading..." -ForegroundColor Cyan
-wsl bash -c "curl --disable-epsv -s 'ftp://$VitaFTP/ux0:/data/$($selected.Filename)' -o '/mnt/c/Users/peter/source/repos/keeperfx.worktrees/renderer-abstraction/out/vita-dumps/$($selected.Filename)'"
+$WslDumpDir = $DumpDir -replace '\\','/' -replace 'C:','/mnt/c'
+wsl bash -c "curl --disable-epsv -s 'ftp://$VitaFTP/ux0:/data/$($selected.Filename)' -o '$WslDumpDir/$($selected.Filename)'"
 Write-Host "Saved to: $LocalDump" -ForegroundColor Green
 
 # --- Ensure WSL tooling is ready ---
@@ -106,12 +107,23 @@ fi
 '@
 
 Write-Host "`nChecking WSL tooling..." -ForegroundColor Cyan
-$SetupScript | wsl bash
+# Write to temp file to avoid CRLF and $ expansion issues
+$TmpSetup = Join-Path $RepoRoot "out\vita-dumps\_setup.sh"
+[System.IO.File]::WriteAllText($TmpSetup, $SetupScript.Replace("`r`n", "`n"))
+$WslSetup = $TmpSetup -replace '\\','/' -replace 'C:','/mnt/c'
+wsl bash "$WslSetup"
+Remove-Item $TmpSetup -ErrorAction SilentlyContinue
 
 # --- Run vita-parse-core ---
 $WslDump = $LocalDump -replace '\\','/' -replace 'C:','/mnt/c'
 $WslElf  = $ElfFile   -replace '\\','/' -replace 'C:','/mnt/c'
 
+$ParseScript = "#!/bin/bash`nsource ~/venv-vita/bin/activate`nexport PATH=/usr/local/vitasdk/bin:`$PATH`npython3 ~/vita-parse-core/main.py '$WslDump' '$WslElf' 2>&1`n"
+$TmpParse = Join-Path $RepoRoot "out\vita-dumps\_parse.sh"
+[System.IO.File]::WriteAllText($TmpParse, $ParseScript)
+$WslParse = $TmpParse -replace '\\','/' -replace 'C:','/mnt/c'
+
 Write-Host "`n=== vita-parse-core output ===" -ForegroundColor Yellow
-wsl bash -c "source ~/venv-vita/bin/activate && export PATH=/usr/local/vitasdk/bin:`$PATH && python3 ~/vita-parse-core/main.py '$WslDump' '$WslElf' 2>&1"
+wsl bash "$WslParse"
 Write-Host "==============================" -ForegroundColor Yellow
+Remove-Item $TmpParse -ErrorAction SilentlyContinue
