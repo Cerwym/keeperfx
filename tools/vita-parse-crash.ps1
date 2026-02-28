@@ -140,14 +140,12 @@ $offsets = $output |
 if ($offsets) {
     Write-Host "`n=== Symbolicated call stack ===" -ForegroundColor Yellow
 
-    # Build a bash script that runs addr2line on all offsets at once
-    $elfBase = "0x81000000"
-    $addrList = ($offsets | ForEach-Object { "$(printf '0x%x' $(($elfBase + $_)))" }) -join ' '
-    # Use printf in bash to compute hex addition cleanly
+    # Build addr2line bash script — compute hex addresses in PowerShell
+    $elfBase = 0x81000000
     $lines = @("#!/bin/bash", "export PATH=/usr/local/vitasdk/bin:`$PATH")
     foreach ($off in $offsets) {
-        $lines += "addr=\$(printf '0x%x' \$(( $elfBase + $off )))"
-        $lines += "result=\$(arm-vita-eabi-addr2line -e '$WslElf' -fCa `$addr 2>&1)"
+        $addr = "0x{0:x}" -f ($elfBase + [Convert]::ToInt64($off, 16))
+        $lines += "result=\$(arm-vita-eabi-addr2line -e '$WslElf' -fCa $addr 2>&1)"
         $lines += "echo `"  keeperfx@1+$off  =>  `$result`""
     }
     $a2lScript = $lines -join "`n"
