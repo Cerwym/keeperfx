@@ -41,7 +41,11 @@
 #define ORIGINAL_FILENAME INTERNAL_NAME".exe"
 #define PRODUCT_NAME PROGRAM_FULL_NAME
 #define PRODUCT_VERSION    VER_STRING
-#define DEFAULT_LOG_FILENAME INTERNAL_NAME"-" GIT_BRANCH ".log"
+#ifdef PLATFORM_VITA
+#define DEFAULT_LOG_FILENAME INTERNAL_NAME ".log"
+#else
+#define DEFAULT_LOG_FILENAME INTERNAL_NAME "-" GIT_BRANCH ".log"
+#endif
 
 #endif /*KEEPERFX_VERSION_H*/
 /******************************************************************************/
