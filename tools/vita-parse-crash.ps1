@@ -124,6 +124,13 @@ $TmpParse = Join-Path $RepoRoot "out\vita-dumps\_parse.sh"
 $WslParse = $TmpParse -replace '\\','/' -replace 'C:','/mnt/c'
 
 Write-Host "`n=== vita-parse-core output ===" -ForegroundColor Yellow
-wsl bash "$WslParse"
+$output = wsl bash "$WslParse"
+$output
 Write-Host "==============================" -ForegroundColor Yellow
 Remove-Item $TmpParse -ErrorAction SilentlyContinue
+
+# --- Save output next to where the script was invoked ---
+$BaseName = [System.IO.Path]::GetFileNameWithoutExtension($selected.Filename)
+$OutFile = Join-Path (Get-Location) "$BaseName.txt"
+$output | Set-Content -Path $OutFile -Encoding UTF8
+Write-Host "`nSaved: $OutFile" -ForegroundColor Green
