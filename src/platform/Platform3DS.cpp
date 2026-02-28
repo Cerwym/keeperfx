@@ -10,13 +10,16 @@ const void* Platform3DS::GetImageBase() const    { return nullptr; }
 const char* Platform3DS::GetWineVersion() const  { return nullptr; }
 const char* Platform3DS::GetWineHost() const     { return nullptr; }
 
-void Platform3DS::InstallExceptionHandler()  {}
 void Platform3DS::ErrorParachuteInstall()    {}
 void Platform3DS::ErrorParachuteUpdate()     {}
 
 TbFileFind* Platform3DS::FileFindFirst(const char*, TbFileEntry*) { return nullptr; }
 int32_t     Platform3DS::FileFindNext(TbFileFind*, TbFileEntry*)  { return -1; }
 void        Platform3DS::FileFindEnd(TbFileFind*)                  {}
+
+TbBool Platform3DS::FileExists(const char*) const                      { return 0; }
+int    Platform3DS::MakeDirectory(const char*)                         { return -1; }
+int    Platform3DS::GetCurrentDirectory(char* buf, unsigned long len)  { if (buf && len) buf[0] = '\0'; return -1; }
 
 void   Platform3DS::SetRedbookVolume(SoundVolume) {}
 TbBool Platform3DS::PlayRedbookTrack(int)         { return false; }

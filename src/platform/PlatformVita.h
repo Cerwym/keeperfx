@@ -11,13 +11,16 @@ public:
     const char* GetWineVersion() const override;
     const char* GetWineHost() const override;
 
-    void InstallExceptionHandler() override;
     void ErrorParachuteInstall() override;
     void ErrorParachuteUpdate() override;
 
     TbFileFind* FileFindFirst(const char* filespec, TbFileEntry* entry) override;
     int32_t     FileFindNext(TbFileFind* handle, TbFileEntry* entry) override;
     void        FileFindEnd(TbFileFind* handle) override;
+
+    TbBool FileExists(const char* path) const override;
+    int    MakeDirectory(const char* path) override;
+    int    GetCurrentDirectory(char* buf, unsigned long buflen) override;
 
     void        SetArgv(int argc, char** argv) override;
     const char* GetDataPath() const override;
@@ -28,6 +31,8 @@ public:
     void   PauseRedbookTrack() override;
     void   ResumeRedbookTrack() override;
     void   StopRedbookTrack() override;
+
+    void LogWrite(const char* message) override;
 };
 
 #endif // PLATFORM_VITA_H

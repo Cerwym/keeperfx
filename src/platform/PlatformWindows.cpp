@@ -2,9 +2,18 @@
 #include "platform/PlatformWindows.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <excpt.h>
+#include <imagehlp.h>
+#include <dbghelp.h>
+#include <psapi.h>
+#include <direct.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include <errno.h>
+#include "bflib_crash.h"
+#include "bflib_video.h"
 #include "post_inc.h"
 
 // TbFileFind is defined here; it is an opaque type to all callers.
@@ -71,19 +80,189 @@ const char* PlatformWindows::GetWineHost() const
 
 // ----- Crash / error parachute -----
 
-void PlatformWindows::InstallExceptionHandler()
+static void
+_backtrace(int depth, LPCONTEXT context)
 {
-    // Exception handler is registered in WinMain via AddVectoredExceptionHandler.
+    int64_t keeperFxBaseAddr = 0x00000000;
+    char mapFileLine[512];
+
+    #if (BFDEBUG_LEVEL > 7)
+        FILE *mapFile = fopen("keeperfx_hvlog.map", "r");
+    #else
+        FILE *mapFile = fopen("keeperfx.map", "r");
+    #endif
+
+    if (mapFile)
+    {
+        while (fgets(mapFileLine, sizeof(mapFileLine), mapFile) != NULL)
+        {
+            if (sscanf(mapFileLine, " %*x __image_base__ = %llx", &keeperFxBaseAddr) == 1)
+                break;
+        }
+        memset(mapFileLine, 0, sizeof(mapFileLine));
+        fseek(mapFile, 0, SEEK_SET);
+        if (keeperFxBaseAddr == 0x00000000)
+            fclose(mapFile);
+    }
+
+    STACKFRAME frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.AddrPC.Offset    = context->Eip;
+    frame.AddrPC.Mode      = AddrModeFlat;
+    frame.AddrStack.Offset = context->Esp;
+    frame.AddrStack.Mode   = AddrModeFlat;
+    frame.AddrFrame.Offset = context->Ebp;
+    frame.AddrFrame.Mode   = AddrModeFlat;
+
+    HANDLE process = GetCurrentProcess();
+    HANDLE thread  = GetCurrentThread();
+
+    while (StackWalk(IMAGE_FILE_MACHINE_I386, process, thread, &frame, context, 0,
+                     SymFunctionTableAccess, SymGetModuleBase, 0))
+    {
+        --depth;
+        if (depth < 0) break;
+
+        DWORD module_base = SymGetModuleBase(process, frame.AddrPC.Offset);
+        const char *module_name = "[unknown module]";
+        char module_name_raw[MAX_PATH];
+        if (module_base && GetModuleFileNameA((HINSTANCE)module_base, module_name_raw, MAX_PATH))
+        {
+            module_name = strrchr(module_name_raw, '\\');
+            if (module_name) module_name++;
+            else             module_name = module_name_raw;
+        }
+
+        if (strncmp(module_name, "keeperfx", strlen("keeperfx")) == 0 && mapFile)
+        {
+            int64_t checkAddr = frame.AddrPC.Offset - module_base + keeperFxBaseAddr;
+            bool addrFound = false;
+            int64_t prevAddr = 0;
+            char prevName[512];
+            prevName[0] = 0;
+
+            while (fgets(mapFileLine, sizeof(mapFileLine), mapFile) != NULL)
+            {
+                int64_t addr;
+                char name[512];
+                name[0] = 0;
+                if (sscanf(mapFileLine, "%llx %[^\t\n]", &addr, name) == 2 ||
+                    sscanf(mapFileLine, " .text %llx %[^\t\n]", &addr, name) == 2)
+                {
+                    if (checkAddr > prevAddr && checkAddr < addr)
+                    {
+                        int64_t displacement = checkAddr - prevAddr;
+                        char *splitPos = strchr(prevName, ' ');
+                        if (strncmp(prevName, "0x", 2) == 0 && splitPos != NULL)
+                        {
+                            memmove(prevName, splitPos + 1, strlen(splitPos));
+                            char *lastSlash = strrchr(prevName, '/');
+                            if (lastSlash) memmove(prevName, lastSlash + 1, strlen(lastSlash + 1) + 1);
+                            memmove(prevName + 3, prevName, strlen(prevName) + 1);
+                            memcpy(prevName, "-> ", 3);
+                        }
+                        LbJustLog("[#%-2d] %-12s : %-36s [0x%I64x+0x%I64x]\t map lookup for: %04x:%08x, base: %08x\n",
+                                  depth, module_name, prevName, prevAddr, displacement,
+                                  (uint16_t)context->SegCs, (uint32_t)frame.AddrPC.Offset, (uint32_t)module_base);
+                        addrFound = true;
+                        break;
+                    }
+                }
+                prevAddr = addr;
+                strcpy(prevName, name);
+            }
+            fseek(mapFile, 0, SEEK_SET);
+            memset(mapFileLine, 0, sizeof(mapFileLine));
+            if (addrFound) continue;
+        }
+
+        char symbol_info[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
+        PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)symbol_info;
+        pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        pSymbol->MaxNameLen   = MAX_SYM_NAME;
+        uint64_t sfaDisplacement;
+        if (SymFromAddr(process, frame.AddrPC.Offset, &sfaDisplacement, pSymbol))
+        {
+            LbJustLog("[#%-2d] %-12s : %-36s [%04x:%08x+0x%I64x, base %08x]\t symbol lookup\n",
+                      depth, module_name, pSymbol->Name,
+                      (uint16_t)context->SegCs, (uint32_t)frame.AddrPC.Offset,
+                      sfaDisplacement, (uint32_t)module_base);
+        }
+        else
+        {
+            LbJustLog("[#%-2d] %-12s : at %04x:%08x, base %08x\n",
+                      depth, module_name, (uint16_t)context->SegCs,
+                      (uint32_t)frame.AddrPC.Offset, (uint32_t)module_base);
+        }
+    }
+    if (mapFile) fclose(mapFile);
+}
+
+static LONG CALLBACK ctrl_handler_w32(LPEXCEPTION_POINTERS info)
+{
+    switch (info->ExceptionRecord->ExceptionCode) {
+    case EXCEPTION_ACCESS_VIOLATION:
+        switch (info->ExceptionRecord->ExceptionInformation[0]) {
+        case 0: LbErrorLog("Attempt to read from inaccessible memory address.\n"); break;
+        case 1: LbErrorLog("Attempt to write to inaccessible memory address.\n"); break;
+        case 8: LbErrorLog("User-mode data execution prevention (DEP) violation.\n"); break;
+        default: LbErrorLog("Memory access violation, code %d.\n", (int)info->ExceptionRecord->ExceptionInformation[0]); break;
+        }
+        break;
+    case EXCEPTION_INT_DIVIDE_BY_ZERO:
+        LbErrorLog("Attempt of integer division by zero.\n");
+        break;
+    default:
+        LbErrorLog("Failure code %lx received.\n", info->ExceptionRecord->ExceptionCode);
+        break;
+    }
+    if (SymInitialize(GetCurrentProcess(), 0, TRUE))
+    {
+        _backtrace(16, info->ContextRecord);
+        SymCleanup(GetCurrentProcess());
+    }
+    else
+    {
+        LbErrorLog("Failed to init symbol context\n");
+    }
+    LbScreenReset(true);
+    LbErrorLogClose();
+    return EXCEPTION_EXECUTE_HANDLER;
 }
 
 void PlatformWindows::ErrorParachuteInstall()
 {
-    // TODO: implement Windows crash logging
+    signal(SIGBREAK, ctrl_handler);
+    SetUnhandledExceptionFilter(ctrl_handler_w32);
 }
 
 void PlatformWindows::ErrorParachuteUpdate()
 {
-    // TODO: implement Windows crash logging
+    SetUnhandledExceptionFilter(ctrl_handler_w32);
+}
+
+// ----- File system helpers -----
+
+TbBool PlatformWindows::FileExists(const char* path) const
+{
+    return _access(path, 0) == 0;
+}
+
+int PlatformWindows::MakeDirectory(const char* path)
+{
+    if (_mkdir(path) == 0) return 0;
+    return (errno == EEXIST) ? 0 : -1;
+}
+
+// GetCurrentDirectory is a Windows API macro (→ GetCurrentDirectoryA/W); undef before method def.
+#undef GetCurrentDirectory
+int PlatformWindows::GetCurrentDirectory(char* buf, unsigned long buflen)
+{
+    if (_getcwd(buf, (int)buflen) == NULL) return -1;
+    if (buf[1] == ':') memmove(buf, buf + 2, strlen(buf) - 1);
+    int len = strlen(buf);
+    if (len > 1 && buf[len - 2] == '\\') buf[len - 2] = '\0';
+    return 1;
 }
 
 // ----- File enumeration -----

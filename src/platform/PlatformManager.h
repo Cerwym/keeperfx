@@ -1,7 +1,8 @@
 #ifndef PLATFORM_MANAGER_H
 #define PLATFORM_MANAGER_H
 
-#include "IPlatform.h"
+#ifdef __cplusplus
+#  include "IPlatform.h"
 
 /** Singleton owner and accessor for the active IPlatform implementation.
  *
@@ -17,5 +18,25 @@ public:
 private:
     static IPlatform* s_instance;
 };
+#endif /* __cplusplus */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** C-callable wrappers — safe to include and call from C translation units. */
+const char* PlatformManager_GetDataPath(void);
+const char* PlatformManager_GetSavePath(void);
+void        PlatformManager_SetArgv(int argc, char** argv);
+void        PlatformManager_ErrorParachuteInstall(void);
+void        PlatformManager_ErrorParachuteUpdate(void);
+TbBool      PlatformManager_FileExists(const char* path);
+int         PlatformManager_MakeDirectory(const char* path);
+int         PlatformManager_GetCurrentDirectory(char* buf, unsigned long buflen);
+void        PlatformManager_LogWrite(const char* message);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // PLATFORM_MANAGER_H

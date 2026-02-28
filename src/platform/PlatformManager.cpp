@@ -46,7 +46,9 @@ extern "C" const char* get_wine_host()
 
 extern "C" void install_exception_handler()
 {
-    PlatformManager::Get()->InstallExceptionHandler();
+    // Kept for backward compatibility — Vita's pre-SDL crash trap setup.
+    // Platforms that need early crash trapping (before LbErrorParachuteInstall)
+    // implement this via their own startup code.
 }
 
 extern "C" TbFileFind* LbFileFindFirst(const char* filespec, TbFileEntry* fe)
@@ -64,14 +66,45 @@ extern "C" void LbFileFindEnd(TbFileFind* ff)
     PlatformManager::Get()->FileFindEnd(ff);
 }
 
-extern "C" const char* PlatformManager_GetDataPath()
+extern "C" void PlatformManager_ErrorParachuteInstall()
 {
-    return PlatformManager::Get()->GetDataPath();
+    PlatformManager::Get()->ErrorParachuteInstall();
+}
+
+extern "C" void PlatformManager_ErrorParachuteUpdate()
+{
+    PlatformManager::Get()->ErrorParachuteUpdate();
+}
+
+extern "C" TbBool PlatformManager_FileExists(const char* path)
+{
+    return PlatformManager::Get()->FileExists(path);
+}
+
+extern "C" int PlatformManager_MakeDirectory(const char* path)
+{
+    return PlatformManager::Get()->MakeDirectory(path);
+}
+
+extern "C" int PlatformManager_GetCurrentDirectory(char* buf, unsigned long buflen)
+{
+    return PlatformManager::Get()->GetCurrentDirectory(buf, buflen);
+}
+
+extern "C" void PlatformManager_LogWrite(const char* message)
+{
+    IPlatform* p = PlatformManager::Get();
+    if (p) p->LogWrite(message);
 }
 
 extern "C" const char* PlatformManager_GetSavePath()
 {
     return PlatformManager::Get()->GetSavePath();
+}
+
+extern "C" const char* PlatformManager_GetDataPath()
+{
+    return PlatformManager::Get()->GetDataPath();
 }
 
 extern "C" void PlatformManager_SetArgv(int argc, char** argv)

@@ -2,12 +2,15 @@
 #include "platform/PlatformVita.h"
 #ifdef PLATFORM_VITA
 #include <psp2/io/dirent.h>
+#include <psp2/io/stat.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/clib.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include "bflib_crash.h"
 #endif
 #include "post_inc.h"
 
@@ -55,20 +58,41 @@ static void vita_crash_handler(int sig)
     sceKernelExitProcess(1);
 }
 
-void PlatformVita::InstallExceptionHandler()
+void PlatformVita::ErrorParachuteInstall()
 {
+    signal(SIGHUP,  ctrl_handler);
+    signal(SIGQUIT, ctrl_handler);
+    // Override crash signals with the Vita handler that writes crash.log + exits
     signal(SIGSEGV, vita_crash_handler);
     signal(SIGABRT, vita_crash_handler);
     signal(SIGFPE,  vita_crash_handler);
     signal(SIGILL,  vita_crash_handler);
 }
 
-void PlatformVita::ErrorParachuteInstall()
+void PlatformVita::ErrorParachuteUpdate()
 {
 }
 
-void PlatformVita::ErrorParachuteUpdate()
+// ----- File system helpers -----
+
+TbBool PlatformVita::FileExists(const char* path) const
 {
+    SceIoStat stat;
+    return sceIoGetstat(path, &stat) >= 0;
+}
+
+int PlatformVita::MakeDirectory(const char* path)
+{
+    int ret = sceIoMkdir(path, 0777);
+    if (ret >= 0 || ret == (int)0x80010011 /* SCE_ERROR_ERRNO_EEXIST */) return 0;
+    return -1;
+}
+
+int PlatformVita::GetCurrentDirectory(char* buf, unsigned long buflen)
+{
+    // On Vita CWD is app0: (read-only); return the data path instead
+    snprintf(buf, buflen, "%s", GetDataPath());
+    return 1;
 }
 
 // ----- File enumeration helpers -----
@@ -187,6 +211,11 @@ TbBool PlatformVita::PlayRedbookTrack(int) { return false; }
 void PlatformVita::PauseRedbookTrack() {}
 void PlatformVita::ResumeRedbookTrack() {}
 void PlatformVita::StopRedbookTrack() {}
+
+void PlatformVita::LogWrite(const char* message)
+{
+    sceClibPrintf("KeeperFX: %s", message);
+}
 
 // ----- Path provider -----
 

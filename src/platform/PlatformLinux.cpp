@@ -7,8 +7,11 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <fnmatch.h>
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include "bflib_crash.h"
 #include "post_inc.h"
 
 // TbFileFind is defined here; it is an opaque type to all callers.
@@ -44,19 +47,35 @@ const char* PlatformLinux::GetWineHost() const
 
 // ----- Crash / error parachute -----
 
-void PlatformLinux::InstallExceptionHandler()
-{
-    // TODO: install signal handler
-}
-
 void PlatformLinux::ErrorParachuteInstall()
 {
-    // TODO: implement backtrace logging on crash
+    signal(SIGHUP,  ctrl_handler);
+    signal(SIGQUIT, ctrl_handler);
 }
 
 void PlatformLinux::ErrorParachuteUpdate()
 {
-    // TODO: implement backtrace logging on crash
+}
+
+// ----- File system helpers -----
+
+TbBool PlatformLinux::FileExists(const char* path) const
+{
+    return access(path, F_OK) == 0;
+}
+
+int PlatformLinux::MakeDirectory(const char* path)
+{
+    if (mkdir(path, 0755) == 0) return 0;
+    return (errno == EEXIST) ? 0 : -1;
+}
+
+int PlatformLinux::GetCurrentDirectory(char* buf, unsigned long buflen)
+{
+    if (getcwd(buf, buflen) == NULL) return -1;
+    int len = strlen(buf);
+    if (len > 1 && buf[len - 2] == '\\') buf[len - 2] = '\0';
+    return 1;
 }
 
 // ----- File enumeration -----

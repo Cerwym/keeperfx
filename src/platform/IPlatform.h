@@ -23,14 +23,28 @@ public:
     virtual const char* GetWineHost() const = 0;
 
     // ----- Crash / error parachute -----
-    virtual void InstallExceptionHandler() = 0;
+    /** Install platform-specific crash handlers (SEH on Windows, extra POSIX
+     *  signals on Linux/Vita).  Called from LbErrorParachuteInstall() after
+     *  the ANSI signal set has been registered. */
     virtual void ErrorParachuteInstall() = 0;
+    /** Re-arm the exception filter after any SDL/third-party library resets it. */
     virtual void ErrorParachuteUpdate() = 0;
 
     // ----- File enumeration -----
     virtual TbFileFind* FileFindFirst(const char* filespec, TbFileEntry* entry) = 0;
     virtual int32_t     FileFindNext(TbFileFind* handle, TbFileEntry* entry) = 0;
     virtual void        FileFindEnd(TbFileFind* handle) = 0;
+
+    // ----- File system helpers -----
+    /** Returns true if the file or directory at `path` exists and is accessible. */
+    virtual TbBool FileExists(const char* path) const = 0;
+    /** Creates a single directory component.  Returns 0 on success, -1 on failure
+     *  (EEXIST is NOT treated as failure). */
+    virtual int MakeDirectory(const char* path) = 0;
+    /** Fills `buf` with the current working directory.  Returns 1 on success,
+     *  -1 on failure.  Strips a leading drive letter on platforms that use one
+     *  (Windows/Vita ux0: style). */
+    virtual int GetCurrentDirectory(char* buf, unsigned long buflen) = 0;
 
     // ----- Path provider -----
     /** Called once at startup with the raw argc/argv before any path queries.
@@ -57,6 +71,12 @@ public:
     virtual void   PauseRedbookTrack() = 0;
     virtual void   ResumeRedbookTrack() = 0;
     virtual void   StopRedbookTrack() = 0;
+
+    // ----- Log output routing -----
+    /** Called for every formatted log line (prefix already prepended).
+     *  The default is a no-op — override to mirror output to a platform
+     *  debug channel (e.g. sceClibPrintf on Vita, debugnet on 3DS). */
+    virtual void LogWrite(const char* /*message*/) {}
 };
 
 #endif // IPLATFORM_H
