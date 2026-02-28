@@ -29,6 +29,7 @@
 
 #include "bflib_datetm.h"
 #include "bflib_fileio.h"
+#include "platform/PlatformManager.h"
 #include "post_inc.h"
 
 
@@ -308,21 +309,24 @@ int LbErrorLogSetup(const char *directory, const char *filename, TbBool flag)
     filename = "error.log";
   }
   char log_filename[DISKPATH_SIZE];
-  int result;
-  if ( LbFileMakeFullPath(true, directory, filename, log_filename, DISKPATH_SIZE) != 1 ) {
-    return -1;
+  if (directory != NULL && directory[0] != '\0') {
+    snprintf(log_filename, sizeof(log_filename), "%s/%s", directory, filename);
+  } else {
+    snprintf(log_filename, sizeof(log_filename), "%s", filename);
   }
   ulong flags = (flag == 0) + 1;
   flags |= LbLog_TimeInHeader | LbLog_DateInHeader | 0x04;
-  if ( LbLogSetup(&error_log, log_filename, flags) == 1 )
-  {
-    error_log_initialised = 1;
-    result = 1;
-  } else
-  {
-    result = -1;
-  }
-  return result;
+  if ( LbLogSetup(&error_log, log_filename, flags) != 1 )
+    return -1;
+
+  // Eagerly create the file and verify write access before returning success.
+  FILE *f = fopen(log_filename, "w");
+  if (f == NULL)
+    return -1;
+  fclose(f);
+
+  error_log_initialised = 1;
+  return 1;
 }
 
 int LbErrorLogClose(void)
@@ -466,7 +470,19 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
   // Write formatted message to the array
   write_log_to_array_for_live_viewing(fmt_str, arg, log->prefix);
 
-  vfprintf(file, fmt_str, arg);
+  // Format the line into a buffer so we can write to the file and also
+  // route to the platform's secondary log channel (e.g. sceClibPrintf on Vita).
+  char linebuf[2048];
+  vsnprintf(linebuf, sizeof(linebuf), fmt_str, arg);
+  fputs(linebuf, file);
+  if (log->prefix[0] != '\0') {
+      // Build prefixed message for platform routing
+      char fullbuf[2048];
+      snprintf(fullbuf, sizeof(fullbuf), "%s%s", log->prefix, linebuf);
+      PlatformManager_LogWrite(fullbuf);
+  } else {
+      PlatformManager_LogWrite(linebuf);
+  }
   log->position = ftell(file);
   // fclose is slow and automatically happens on normal program exit.
   // Opening/closing every time we log something hits performance hard.
@@ -503,7 +519,7 @@ int LbLogSetup(struct TbLog *log, const char *filename, ulong flags)
   if (strlen(filename) > DISKPATH_SIZE || strlen(filename) == 0) {
     return -1;
   }
-  snprintf(log->filename, DISKPATH_SIZE, "%s", filename);
+  snprintf(log->filename, DISKPATH_SIZE, "%.*s", DISKPATH_SIZE - 1, filename);
   log->flags = flags;
   log->Initialised = true;
   log->position = 0;
@@ -542,7 +558,7 @@ void make_uppercase(char * string) {
 int natoi(const char * str, int len) {
   int value = -1;
   for (int i = 0; i < len; ++i) {
-    if (!isdigit(str[i])) {
+    if (!isdigit((unsigned char)str[i])) {
       return value;
     } else if (value < 0) {
       value = 0;
