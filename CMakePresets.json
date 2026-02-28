@@ -180,6 +180,19 @@
         },
 
         {
+            "name": "vita-reldebug",
+            "displayName": "PS Vita RelWithDebInfo",
+            "description": "PlayStation Vita build with debug symbols for crash analysis",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "PLATFORM_VITA": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
+        },
+
+        {
             "name": "switch-release",
             "displayName": "Nintendo Switch Release",
             "description": "Nintendo Switch build using devkitA64",
@@ -320,6 +333,13 @@
             "displayName": "PS Vita Release Build",
             "inherits": "StandardLog",
             "configurePreset": "vita-release"
+        },
+
+        {
+            "name": "vita-reldebug",
+            "displayName": "PS Vita RelWithDebInfo Build",
+            "inherits": "StandardLog",
+            "configurePreset": "vita-reldebug"
         },
 
         {
