@@ -33,6 +33,9 @@ public:
     void   StopRedbookTrack() override;
 
     void LogWrite(const char* message) override;
+
+    void SystemInit() override;
+    void FrameTick() override;
 };
 
 #endif // PLATFORM_VITA_H

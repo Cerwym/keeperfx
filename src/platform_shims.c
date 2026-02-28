@@ -40,12 +40,14 @@ TbBool play_streamed_sample(const char *fname, SoundVolume vol) { (void)fname; (
 void set_streamed_sample_volume(SoundVolume vol) { (void)vol; }
 void stop_streamed_samples(void) {}
 
-/* bflib_sndlib.cpp stubs */
+/* bflib_sndlib.cpp stubs (3DS/Switch only — Vita provides real impls in audio_vita.c) */
+#ifndef PLATFORM_VITA
 void FreeAudio(void) {}
 TbBool play_music(const char *fname) { (void)fname; return 0; }
 TbBool play_music_track(int t) { (void)t; return 0; }
 void resume_music(void) {}
 void stop_music(void) {}
+#endif /* !PLATFORM_VITA */
 
 /* steam_api.cpp stubs — steam_api.hpp uses extern "C" so define in C */
 int steam_api_init(void) { return 0; }
@@ -62,7 +64,8 @@ short calculate_moon_phase(short do_calculate, short add_to_log) { (void)do_calc
 AudioInterface* g_audio = NULL;
 InputInterface* g_input = NULL;
 
-/* bflib_sndlib.cpp — additional sound engine stubs */
+/* bflib_sndlib.cpp — additional sound engine stubs (3DS/Switch only) */
+#ifndef PLATFORM_VITA
 void SetSoundMasterVolume(SoundVolume v) { (void)v; }
 TbBool GetSoundInstalled(void) { return 0; }
 void MonitorStreamedSoundTrack(void) {}
@@ -81,9 +84,12 @@ void pause_music(void) {}
 SoundMilesID play_sample(SoundEmitterID e, SoundSmplTblID t, SoundVolume v, SoundPan p, SoundPitch pi, char rep, unsigned char ctype, SoundBankID b) { (void)e; (void)t; (void)v; (void)p; (void)pi; (void)rep; (void)ctype; (void)b; return 0; }
 void stop_sample(SoundEmitterID e, SoundSmplTblID t, SoundBankID b) { (void)e; (void)t; (void)b; }
 SoundSFXID get_sample_sfxid(SoundSmplTblID t, SoundBankID b) { (void)t; (void)b; return 0; }
+#endif /* !PLATFORM_VITA */
 
-/* bflib_fmvids.cpp — video playback stub */
+/* bflib_fmvids.cpp — video playback stub (Vita uses real bflib_fmvids.cpp with FFmpeg-vita) */
+#ifndef PLATFORM_VITA
 TbBool play_smk(const char *filename, int flags) { (void)filename; (void)flags; return 0; }
+#endif
 
 /* scrcapt.c — screenshot / movie stubs */
 unsigned char screenshot_format = 1;
@@ -119,7 +125,9 @@ void input_sdl_initialize(void) {}
 void audio_openal_initialize(void) {}
 
 /* bflib_sndlib.cpp — missing volume getter */
+#ifndef PLATFORM_VITA
 SoundVolume GetCurrentSoundMasterVolume(void) { return 0; }
+#endif
 
 /* custom_sprites.c — sprite system init */
 void init_custom_sprites(LevelNumber level_no) { (void)level_no; }

@@ -173,6 +173,13 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
     list(APPEND KEEPERFX_SOURCES_C "src/platform_shims.c")
 endif()
 
+# On Vita, FMV support is provided by FFmpeg-vita — re-add bflib_fmvids.cpp that was excluded
+# in the general homebrew block above.  The find_library calls and target_link_libraries for
+# the FFmpeg libraries live in the PLATFORM_VITA external-libraries block further below.
+if(PLATFORM_VITA)
+    list(APPEND KEEPERFX_SOURCES_CXX "src/bflib_fmvids.cpp")
+endif()
+
 # Global definitions for all targets.
 add_compile_definitions("DEBUG=$<IF:$<CONFIG:Debug>,1,0>")
 add_compile_definitions("SPNG_STATIC=1")
@@ -293,6 +300,28 @@ if(PLATFORM_VITA)
     endif()
     target_link_libraries(keeperfx PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub)
     target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub)
+    # libvorbisfile — floating-point OGG decoder for music playback.
+    # Install via: sudo bash -c 'VITASDK=/usr/local/vitasdk /usr/local/vitasdk/bin/vdpm libvorbis libogg'
+    find_library(VORBISFILE_LIB vorbisfile HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    find_library(VORBIS_LIB     vorbis     HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    find_library(OGG_LIB        ogg        HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    if(VORBISFILE_LIB AND VORBIS_LIB AND OGG_LIB)
+        message(STATUS "libvorbisfile found: ${VORBISFILE_LIB}")
+        add_compile_definitions(VITA_HAVE_VORBIS=1)
+        target_link_libraries(keeperfx       PRIVATE ${VORBISFILE_LIB} ${VORBIS_LIB} ${OGG_LIB})
+        target_link_libraries(keeperfx_hvlog PRIVATE ${VORBISFILE_LIB} ${VORBIS_LIB} ${OGG_LIB})
+    else()
+        message(STATUS "libvorbisfile not found — OGG music disabled. Install via: sudo bash -c 'VITASDK=/usr/local/vitasdk /usr/local/vitasdk/bin/vdpm libvorbis libogg'")
+    endif()
+    # FFmpeg-vita (fish47/FFmpeg-vita) — hardware-accelerated H264/AAC/MP3 via SCE APIs.
+    # Install: build from source per https://github.com/fish47/FFmpeg-vita
+    find_library(AVFORMAT_LIB  avformat    HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
+    find_library(AVCODEC_LIB   avcodec     HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
+    find_library(AVUTIL_LIB    avutil      HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
+    find_library(SWRESAMPLE_LIB swresample HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
+    message(STATUS "FFmpeg-vita found: ${AVFORMAT_LIB}")
+    target_link_libraries(keeperfx        PRIVATE ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB})
+    target_link_libraries(keeperfx_hvlog  PRIVATE ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB})
     target_link_libraries(keeperfx PRIVATE centijson_static centitoml)
     target_link_libraries(keeperfx_hvlog PRIVATE centijson_static centitoml)
     # LuaJIT for the Vita — cross-compiled via SonicMastr/LuaJIT-Vita fork.

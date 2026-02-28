@@ -5,6 +5,8 @@
 #include <psp2/io/stat.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/clib.h>
+#include <psp2/power.h>
+#include <psp2/kernel/threadmgr.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +17,11 @@
 #include "post_inc.h"
 
 #ifdef PLATFORM_VITA
+
+/* Link-time heap and stack declarations required by vitasdk.
+ * These are read by the linker/loader before main() runs. */
+int _newlib_heap_size_user  = 256 * 1024 * 1024; // 256 MB — sound banks + game data
+int sceUserMainThreadStackSize = 8 * 1024 * 1024; // 8 MB — deep game call stacks
 
 // TbFileFind is defined here; it is an opaque type to all callers.
 struct TbFileFind {
@@ -215,6 +222,25 @@ void PlatformVita::StopRedbookTrack() {}
 void PlatformVita::LogWrite(const char* message)
 {
     sceClibPrintf("KeeperFX: %s", message);
+}
+
+// ----- Hardware / OS initialisation -----
+
+void PlatformVita::SystemInit()
+{
+    // Maximise CPU/GPU clocks — default is throttled; same settings as vitaQuakeII.
+    scePowerSetArmClockFrequency(444);
+    scePowerSetBusClockFrequency(222);
+    scePowerSetGpuClockFrequency(222);
+    scePowerSetGpuXbarClockFrequency(166);
+    // Disable VFP/FPU exception traps on the main thread; without this, any
+    // denormal or other edge-case float operation in the game code will trap.
+    sceKernelChangeThreadVfpException(0x0800009FU, 0x0);
+}
+
+void PlatformVita::FrameTick()
+{
+    sceKernelPowerTick(0); // prevent screen blanking
 }
 
 // ----- Path provider -----

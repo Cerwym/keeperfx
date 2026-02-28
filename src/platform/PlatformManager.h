@@ -34,6 +34,9 @@ TbBool      PlatformManager_FileExists(const char* path);
 int         PlatformManager_MakeDirectory(const char* path);
 int         PlatformManager_GetCurrentDirectory(char* buf, unsigned long buflen);
 void        PlatformManager_LogWrite(const char* message);
+/** Called once per frame to allow the platform to perform per-frame housekeeping
+ *  (e.g. prevent screen blanking on Vita via sceKernelPowerTick). */
+void        PlatformManager_FrameTick(void);
 
 #ifdef __cplusplus
 }

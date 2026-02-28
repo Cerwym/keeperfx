@@ -77,6 +77,17 @@ public:
      *  The default is a no-op — override to mirror output to a platform
      *  debug channel (e.g. sceClibPrintf on Vita, debugnet on 3DS). */
     virtual void LogWrite(const char* /*message*/) {}
+
+    // ----- Hardware / OS initialisation -----
+    /** Called once at the very start of main(), before any other subsystem
+     *  is brought up.  Implementations use this for hardware-level setup:
+     *  clock maximisation, FPU exception masking, etc.  Default is a no-op. */
+    virtual void SystemInit() {}
+
+    /** Called once per rendered frame.  Implementations may use this to
+     *  prevent the system from blanking the screen (e.g. sceKernelPowerTick
+     *  on Vita).  Default is a no-op. */
+    virtual void FrameTick() {}
 };
 
 #endif // IPLATFORM_H

@@ -112,3 +112,8 @@ extern "C" void PlatformManager_SetArgv(int argc, char** argv)
     PlatformManager::Get()->SetArgv(argc, argv);
 }
 
+extern "C" void PlatformManager_FrameTick()
+{
+    IPlatform* p = PlatformManager::Get();
+    if (p) p->FrameTick();
+}

@@ -34,6 +34,7 @@ static void sdl_log_callback(void* /*userdata*/, int /*category*/, SDL_LogPriori
 int main(int argc, char* argv[]) {
 #if defined(PLATFORM_VITA)
     PlatformManager::Set(new PlatformVita());
+    PlatformManager::Get()->SystemInit();
     LbErrorLogSetup(PlatformManager_GetDataPath(), "keeperfx.log", 5);
     // Set the working directory to the data path so relative paths (e.g. "data/creature.tab")
     // resolve against ux0:data/keeperfx/ rather than the app bundle.
