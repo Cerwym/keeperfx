@@ -34,10 +34,21 @@ namespace {
 
 struct Message;
 
-std::deque<std::unique_ptr<Message>> g_message_queue;
-std::map<SoundSmplTblID, long> g_recent_samples;
-std::map<std::string, long> g_recent_filenames;
-std::unique_ptr<Message> g_current_message;
+// Raw pointers to avoid running C++ constructors before main() (fatal on Vita).
+// Initialized on first use via ensure_initialized().
+static std::deque<std::unique_ptr<Message>>* g_message_queue = nullptr;
+static std::map<SoundSmplTblID, long>*       g_recent_samples = nullptr;
+static std::map<std::string, long>*          g_recent_filenames = nullptr;
+static std::unique_ptr<Message>*             g_current_message = nullptr;
+
+static void ensure_initialized()
+{
+    if (g_message_queue) return;
+    g_message_queue    = new std::deque<std::unique_ptr<Message>>();
+    g_recent_samples   = new std::map<SoundSmplTblID, long>();
+    g_recent_filenames = new std::map<std::string, long>();
+    g_current_message  = new std::unique_ptr<Message>(nullptr);
+}
 
 #define MAX_QUEUED_MESSAGES 4
 
@@ -76,7 +87,7 @@ struct DefaultMessage : Message {
 	void play() const noexcept override
 	{
 		play_speech_sample(sample_id);
-		g_recent_samples[sample_id] = game.play_gameturn + duration;
+		(*g_recent_samples)[sample_id] = game.play_gameturn + duration;
 	}
 };
 
@@ -97,45 +108,45 @@ struct CustomMessage : Message {
 	void play() const noexcept override
 	{
 		play_streamed_sample(fname.c_str(), settings.mentor_volume);
-		g_recent_filenames[fname] = game.play_gameturn + duration;
+		(*g_recent_filenames)[fname] = game.play_gameturn + duration;
 	}
 };
 
 bool already_in_queue(const Message & msg)
 {
-	return std::any_of(g_message_queue.begin(), g_message_queue.end(), [&] (const auto & elem) {
+	return std::any_of(g_message_queue->begin(), g_message_queue->end(), [&] (const auto & elem) {
 		return elem->is(msg);
 	});
 }
 
 bool push_queue(std::unique_ptr<Message> msg)
 {
-	if (g_message_queue.size() >= MAX_QUEUED_MESSAGES) {
+	if (g_message_queue->size() >= MAX_QUEUED_MESSAGES) {
 		SYNCDBG(8, "message queue full");
 		return false;
-	} else if (g_current_message && g_current_message->is(*msg)) {
+	} else if (*g_current_message && (*g_current_message)->is(*msg)) {
 		SYNCDBG(8, "message currently playing");
 		return true;
 	} else if (already_in_queue(*msg)) {
 		SYNCDBG(8, "message already in queue");
 		return false;
 	}
-	g_message_queue.emplace_back(std::move(msg));
+	g_message_queue->emplace_back(std::move(msg));
 	SYNCDBG(8,"Playing queued");
 	return true;
 }
 
 std::unique_ptr<Message> pop_queue()
 {
-	auto msg = std::move(g_message_queue.front());
-	g_message_queue.pop_front();
+	auto msg = std::move(g_message_queue->front());
+	g_message_queue->pop_front();
 	return msg;
 }
 
 bool played_recently(SoundSmplTblID sample_id)
 {
-	const auto it = g_recent_samples.find(sample_id);
-	if (it != g_recent_samples.end()) {
+	const auto it = g_recent_samples->find(sample_id);
+	if (it != g_recent_samples->end()) {
 		return it->second >= game.play_gameturn;
 	}
 	return false;
@@ -143,8 +154,8 @@ bool played_recently(SoundSmplTblID sample_id)
 
 bool played_recently(const char * fname)
 {
-	const auto it = g_recent_filenames.find(fname);
-	if (it != g_recent_filenames.end()) {
+	const auto it = g_recent_filenames->find(fname);
+	if (it != g_recent_filenames->end()) {
 		return it->second >= game.play_gameturn;
 	}
 	return false;
@@ -162,6 +173,7 @@ bool played_recently(const char * fname)
 extern "C" TbBool output_message(SoundSmplTblID sample_id, long duration)
 {
 	try {
+		ensure_initialized();
 		SYNCDBG(8, "Sample ID %d, duration %ld", sample_id, duration);
 		if ((sample_id < 0) || (sample_id >= SMsg_MAX)) {
 			SYNCDBG(8, "Sample ID (%d) invalid, skipping", sample_id);
@@ -174,8 +186,8 @@ extern "C" TbBool output_message(SoundSmplTblID sample_id, long duration)
 		if (speech_sample_playing()) {
 			return push_queue(std::move(msg));
 		}
-		g_current_message = std::move(msg);
-		g_current_message->play();
+		*g_current_message = std::move(msg);
+		(*g_current_message)->play();
 		return true;
 	} catch (const std::exception & e) {
 		ERRORLOG("%s", e.what());
@@ -193,6 +205,7 @@ extern "C" TbBool output_message(SoundSmplTblID sample_id, long duration)
 extern "C" TbBool output_custom_message(const char * fname, long duration)
 {
 	try {
+		ensure_initialized();
 		SYNCDBG(8, "Filename %s, duration %ld", fname, duration);
 		if (strlen(fname) == 0) {
 			SYNCDBG(8, "Filename invalid, skipping");
@@ -205,8 +218,8 @@ extern "C" TbBool output_custom_message(const char * fname, long duration)
 		if (speech_sample_playing()) {
 			return push_queue(std::move(msg));
 		}
-		g_current_message = std::move(msg);
-		g_current_message->play();
+		*g_current_message = std::move(msg);
+		(*g_current_message)->play();
 		return true;
 	} catch (const std::exception & e) {
 		ERRORLOG("%s", e.what());
@@ -228,6 +241,7 @@ extern "C" TbBool output_message_far_from_thing(
 	long duration
 ) {
 	try {
+		ensure_initialized();
 		SYNCDBG(8, "Sample ID %d, duration %ld", sample_id, duration);
 		if ((sample_id < 0) || (sample_id >= SMsg_MAX)) {
 			SYNCDBG(8, "Sample ID (%d) invalid, skipping", sample_id);
@@ -251,8 +265,8 @@ extern "C" TbBool output_message_far_from_thing(
 		if (speech_sample_playing()) {
 			return push_queue(std::move(msg));
 		}
-		g_current_message = std::move(msg);
-		g_current_message->play();
+		*g_current_message = std::move(msg);
+		(*g_current_message)->play();
 		return true;
 	} catch (const std::exception & e) {
 		ERRORLOG("%s", e.what());
@@ -263,16 +277,17 @@ extern "C" TbBool output_message_far_from_thing(
 extern "C" void process_messages()
 {
 	try {
+		ensure_initialized();
 		SYNCDBG(17, "Starting");
 		if (speech_sample_playing()) {
 			// If already playing, just wait for next time
-		} else if (g_message_queue.empty()) {
+		} else if (g_message_queue->empty()) {
 			// If no messages are in queue, don't play anything
-			g_current_message = nullptr;
+			g_current_message->reset();
 		} else {
 			// Otherwise remove next message from queue and play it
-			g_current_message = pop_queue();
-			g_current_message->play();
+			*g_current_message = pop_queue();
+			(*g_current_message)->play();
 		}
 		SYNCDBG(17, "Finished");
 	} catch (const std::exception & e) {
@@ -282,10 +297,11 @@ extern "C" void process_messages()
 
 extern "C" void clear_messages()
 {
-	g_message_queue.clear();
-	g_current_message = nullptr;
-	g_recent_samples.clear();
-	g_recent_filenames.clear();
+	ensure_initialized();
+	g_message_queue->clear();
+	g_current_message->reset();
+	g_recent_samples->clear();
+	g_recent_filenames->clear();
 }
 
 extern "C" TbBool output_room_message(
