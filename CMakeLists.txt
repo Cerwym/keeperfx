@@ -289,18 +289,33 @@ if(PLATFORM_VITA)
     find_package(SDL2 REQUIRED)
     target_link_libraries(keeperfx PRIVATE SDL2::SDL2)
     target_link_libraries(keeperfx_hvlog PRIVATE SDL2::SDL2)
-    # vitaGL is optional — install via vdpm when ready
-    find_library(VITAGL_LIB vitaGL HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
-    if(VITAGL_LIB)
+    # vitaGL is required for the palette shader renderer
+    find_library(VITAGL_LIB    vitaGL    HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    find_library(VITASHARK_LIB vitashark HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    find_library(MATHNEON_LIB  mathneon  HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    if(VITAGL_LIB AND VITASHARK_LIB AND MATHNEON_LIB)
         message(STATUS "vitaGL found: ${VITAGL_LIB}")
-        target_link_libraries(keeperfx PRIVATE ${VITAGL_LIB})
-        target_link_libraries(keeperfx_hvlog PRIVATE ${VITAGL_LIB})
+        message(STATUS "vitashark found: ${VITASHARK_LIB}")
+        message(STATUS "mathneon found: ${MATHNEON_LIB}")
+        add_compile_definitions(VITA_HAVE_VITAGL=1)
+        target_link_libraries(keeperfx       PRIVATE ${VITAGL_LIB} ${VITASHARK_LIB} ${MATHNEON_LIB})
+        target_link_libraries(keeperfx_hvlog PRIVATE ${VITAGL_LIB} ${VITASHARK_LIB} ${MATHNEON_LIB})
     else()
-        message(STATUS "vitaGL not found — GPU renderer will be a no-op stub. Install via: sudo -E /tmp/vdpm/vdpm vitaGL")
+        message(STATUS "vitaGL/vitashark/mathneon not found — GPU palette shader disabled.")
+        message(STATUS "  Install: sudo bash -c 'VITASDK=/usr/local/vitasdk /usr/local/vitasdk/bin/vdpm vitaGL vitashark'")
+        message(STATUS "  Build mathneon from source: https://github.com/Rinnegatamante/math-neon")
     endif()
-    target_link_libraries(keeperfx PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub)
-    target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub)
-    # libvorbisfile — floating-point OGG decoder for music playback.
+    # vitaGL dependency stubs — SceKernelDmacMgr for sceDmacMemcpy (used by vitaGL internally).
+    # SceShaccCgExt_stub: no-op shim for sceShaccCgExt{Enable,Disable}Extensions (vitashark dep).
+    # If libSceShaccCgExt_stub.a is missing: arm-vita-eabi-gcc-ar rcs .../libSceShaccCgExt_stub.a stub.o
+    find_library(SCESHACCCGEXT_STUB SceShaccCgExt_stub HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    target_link_libraries(keeperfx       PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub)
+    target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub)
+    if(SCESHACCCGEXT_STUB)
+        target_link_libraries(keeperfx       PRIVATE ${SCESHACCCGEXT_STUB})
+        target_link_libraries(keeperfx_hvlog PRIVATE ${SCESHACCCGEXT_STUB})
+    endif()
+    # libvorbisfile— floating-point OGG decoder for music playback.
     # Install via: sudo bash -c 'VITASDK=/usr/local/vitasdk /usr/local/vitasdk/bin/vdpm libvorbis libogg'
     find_library(VORBISFILE_LIB vorbisfile HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
     find_library(VORBIS_LIB     vorbis     HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
@@ -315,13 +330,19 @@ if(PLATFORM_VITA)
     endif()
     # FFmpeg-vita (fish47/FFmpeg-vita) — hardware-accelerated H264/AAC/MP3 via SCE APIs.
     # Install: build from source per https://github.com/fish47/FFmpeg-vita
+    # FFmpeg has internal circular deps between libavcodec/avutil; --start-group resolves them.
+    # pthread is included in the group since avcodec uses it.
+    # SceAudiodec_stub: required by FFmpeg-vita's Vita HW audio decoder.
     find_library(AVFORMAT_LIB  avformat    HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     find_library(AVCODEC_LIB   avcodec     HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     find_library(AVUTIL_LIB    avutil      HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     find_library(SWRESAMPLE_LIB swresample HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     message(STATUS "FFmpeg-vita found: ${AVFORMAT_LIB}")
-    target_link_libraries(keeperfx        PRIVATE ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB})
-    target_link_libraries(keeperfx_hvlog  PRIVATE ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB})
+    # libffmpeg_vita_stubs: no-op stubs for symbols missing from fish47/FFmpeg-vita build.
+    # Currently provides: ff_ac3_find_syncword (AC3 sync detection; returning -1 disables AC3 FMV audio).
+    find_library(FFMPEG_VITA_STUBS ffmpeg_vita_stubs HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    target_link_libraries(keeperfx       PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ${FFMPEG_VITA_STUBS} -Wl,--end-group)
+    target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ${FFMPEG_VITA_STUBS} -Wl,--end-group)
     target_link_libraries(keeperfx PRIVATE centijson_static centitoml)
     target_link_libraries(keeperfx_hvlog PRIVATE centijson_static centitoml)
     # LuaJIT for the Vita — cross-compiled via SonicMastr/LuaJIT-Vita fork.

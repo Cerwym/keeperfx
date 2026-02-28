@@ -240,7 +240,7 @@ void PlatformVita::SystemInit()
 
 void PlatformVita::FrameTick()
 {
-    sceKernelPowerTick(0); // prevent screen blanking
+    sceKernelPowerTick(SCE_KERNEL_POWER_TICK_DEFAULT); // prevent screen blanking
 }
 
 // ----- Path provider -----
