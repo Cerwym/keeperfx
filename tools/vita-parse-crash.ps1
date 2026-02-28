@@ -129,8 +129,39 @@ $output
 Write-Host "==============================" -ForegroundColor Yellow
 Remove-Item $TmpParse -ErrorAction SilentlyContinue
 
+# --- Symbolicate stack: resolve keeperfx@1 offsets via addr2line ---
+# Extract all unique "keeperfx@1 + 0xXXXXXX" offsets from the output
+$offsets = $output |
+    Select-String 'keeperfx@1 \+ (0x[0-9a-f]+)' -AllMatches |
+    ForEach-Object { $_.Matches } |
+    ForEach-Object { $_.Groups[1].Value } |
+    Sort-Object -Unique
+
+if ($offsets) {
+    Write-Host "`n=== Symbolicated call stack ===" -ForegroundColor Yellow
+
+    # Build a bash script that runs addr2line on all offsets at once
+    $elfBase = "0x81000000"
+    $addrList = ($offsets | ForEach-Object { "$(printf '0x%x' $(($elfBase + $_)))" }) -join ' '
+    # Use printf in bash to compute hex addition cleanly
+    $lines = @("#!/bin/bash", "export PATH=/usr/local/vitasdk/bin:`$PATH")
+    foreach ($off in $offsets) {
+        $lines += "addr=\$(printf '0x%x' \$(( $elfBase + $off )))"
+        $lines += "result=\$(arm-vita-eabi-addr2line -e '$WslElf' -fCa `$addr 2>&1)"
+        $lines += "echo `"  keeperfx@1+$off  =>  `$result`""
+    }
+    $a2lScript = $lines -join "`n"
+    $TmpA2l = Join-Path $RepoRoot "out\vita-dumps\_a2l.sh"
+    [System.IO.File]::WriteAllText($TmpA2l, $a2lScript)
+    $WslA2l = $TmpA2l -replace '\\','/' -replace 'C:','/mnt/c'
+    $symOutput = wsl bash "$WslA2l"
+    $symOutput
+    Remove-Item $TmpA2l -ErrorAction SilentlyContinue
+    Write-Host "================================" -ForegroundColor Yellow
+}
+
 # --- Save output next to where the script was invoked ---
 $BaseName = [System.IO.Path]::GetFileNameWithoutExtension($selected.Filename)
 $OutFile = Join-Path (Get-Location) "$BaseName.txt"
-$output | Set-Content -Path $OutFile -Encoding UTF8
+($output + @("", "=== Symbolicated call stack ===") + $symOutput) | Set-Content -Path $OutFile -Encoding UTF8
 Write-Host "`nSaved: $OutFile" -ForegroundColor Green
