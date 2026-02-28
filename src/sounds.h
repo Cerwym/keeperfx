@@ -23,7 +23,9 @@
 #include "bflib_sound.h"
 #include "globals.h"
 
+#ifdef SDL_MIXER_AVAILABLE
 #include <SDL2/SDL_mixer.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {

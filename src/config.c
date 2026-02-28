@@ -94,13 +94,13 @@ TbBool parameter_is_number(const char* parstr) {
     }
 
     // Check if the first character is a valid start for a number
-    if (!(parstr[0] == '-' || isdigit(parstr[0]))) {
+    if (!(parstr[0] == '-' || isdigit((unsigned char)parstr[0]))) {
         return false;
     }
 
     // Check the remaining characters
     for (int i = 1; i < len; ++i) {
-        if (!isdigit(parstr[i])) {
+        if (!isdigit((unsigned char)parstr[i])) {
             return false;
         }
     }
@@ -232,10 +232,10 @@ TbBool conf_get_block_name(const char * buf, int32_t * pos, long buflen, const c
   while (true) {
     if (*pos >= buflen) {
       return false;
-    } else if (isalpha(buf[*pos])) {
+    } else if (isalpha((unsigned char)buf[*pos])) {
       (*pos)++;
       continue;
-    } else if (isdigit(buf[*pos])) {
+    } else if (isdigit((unsigned char)buf[*pos])) {
       (*pos)++;
       continue;
     } else {

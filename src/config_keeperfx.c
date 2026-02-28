@@ -38,6 +38,7 @@
 #include "vidmode.h"
 #include "moonphase.h"
 #include "renderer/RendererManager.h"
+#include "platform/PlatformManager.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus
@@ -383,6 +384,15 @@ static void load_file_configuration(const char *fname, const char *sname, const 
             break;
           }
           prepare_diskpath(install_info.inst_path,sizeof(install_info.inst_path));
+          // If the path is relative, resolve it against keeper_runtime_directory.
+          // This makes INSTALL_PATH=./ work on platforms where CWD != data dir.
+          if (install_info.inst_path[0] != '/' && strchr(install_info.inst_path, ':') == NULL) {
+              char resolved[304];
+              snprintf(resolved, sizeof(resolved), "%s/%s", keeper_runtime_directory, install_info.inst_path);
+              prepare_diskpath(resolved, sizeof(resolved));
+              strncpy(install_info.inst_path, resolved, sizeof(install_info.inst_path)-1);
+              install_info.inst_path[sizeof(install_info.inst_path)-1] = '\0';
+          }
           break;
       case 2: // INSTALL_TYPE
           // This command is just skipped...
@@ -992,7 +1002,8 @@ short load_configuration(void)
   // Preparing config file name and checking the file
   strcpy(install_info.inst_path,"");
   // Set default runtime directory and load the config file
-  strcpy(keeper_runtime_directory,".");
+  strncpy(keeper_runtime_directory, PlatformManager_GetDataPath(), sizeof(keeper_runtime_directory)-1);
+  keeper_runtime_directory[sizeof(keeper_runtime_directory)-1] = '\0';
   // Config file variables
   const char* sname; // Filename
   const char* fname; // Filepath

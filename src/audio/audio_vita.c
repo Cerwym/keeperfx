@@ -61,6 +61,7 @@ static bool s_initialized = false;
 /******************************************************************************/
 // Helper functions
 
+static int find_free_channel(void) __attribute__((unused));
 static int find_free_channel(void)
 {
     for (int i = 0; i < MAX_AUDIO_CHANNELS; i++) {
@@ -87,6 +88,7 @@ static float calculate_3d_pan(long x, long y, long z)
     return fminf(1.0f, fmaxf(-1.0f, pan));
 }
 
+static void apply_volume_and_pan(int16_t* buffer, int samples, float volume, float pan) __attribute__((unused));
 static void apply_volume_and_pan(int16_t* buffer, int samples, float volume, float pan)
 {
     for (int i = 0; i < samples; i++) {
@@ -273,3 +275,9 @@ void audio_vita_initialize(void)
 #endif
 
 #endif // PLATFORM_VITA
+
+// Stubs for SDL audio functions excluded on Vita (from bflib_sndlib.cpp)
+#ifdef PLATFORM_VITA
+int InitialiseSDLAudio(void) { return 1; }
+void ShutDownSDLAudio(void) {}
+#endif

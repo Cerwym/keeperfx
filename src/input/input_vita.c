@@ -42,8 +42,8 @@ static const struct {
     { SCE_CTRL_CIRCLE,   KC_ESCAPE },      // Circle = Escape
     { SCE_CTRL_SQUARE,   KC_SPACE },       // Square = Space
     { SCE_CTRL_TRIANGLE, KC_TAB },         // Triangle = Tab
-    { SCE_CTRL_L,        KC_LSHIFT },      // L trigger = Left Shift
-    { SCE_CTRL_R,        KC_LCONTROL },    // R trigger = Left Control
+    { SCE_CTRL_L1,       KC_LSHIFT },      // L trigger = Left Shift
+    { SCE_CTRL_R1,       KC_LCONTROL },    // R trigger = Left Control
     { SCE_CTRL_START,    KC_ESCAPE },      // Start = Escape
     { SCE_CTRL_SELECT,   KC_M },           // Select = M (map)
     { SCE_CTRL_UP,       KC_UP },          // D-pad Up

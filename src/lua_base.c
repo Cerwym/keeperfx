@@ -279,8 +279,9 @@ void cleanup_serialized_data() {
 
 void generate_lua_types_file()
 {
-    const char *filename = "native_types.lua";
-    FILE *out = fopen(filename, "w");
+    char filepath[DISKPATH_SIZE];
+    snprintf(filepath, sizeof(filepath), "%s/native_types.lua", keeper_runtime_directory);
+    FILE *out = fopen(filepath, "w");
     if (!out) {
         perror("Failed to open output file");
         return;
