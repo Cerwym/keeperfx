@@ -31,6 +31,7 @@
 
 #include <SDL2/SDL.h>
 #include <math.h>
+#include "platform/PlatformManager.h"
 #include "post_inc.h"
 
 #define SCREEN_MODES_COUNT 40
@@ -142,6 +143,7 @@ TbResult LbScreenUnlock(void)
 TbResult LbScreenSwap(void)
 {
     SYNCDBG(12,"Starting");
+    PlatformManager_FrameTick();
     TbResult ret = LbMouseOnBeginSwap();
     if (ret == Lb_SUCCESS)
         RendererEndFrame();
@@ -581,37 +583,17 @@ TbResult LbScreenSetup(TbScreenMode mode, TbScreenCoord width, TbScreenCoord hei
         ERRORLOG("SDL_CreateWindow failed for mode %d (%s): %s", (int)mode, mdinfo->Desc, SDL_GetError());
         return Lb_FAIL;
     }
-    lbScreenSurface = lbDrawSurface = SDL_GetWindowSurface( lbWindow );
-    if (lbScreenSurface == NULL) {
-        ERRORLOG("Failed to initialize mode %d (%s): %s", (int)mode, mdinfo->Desc, SDL_GetError());
+    // Always create the game draw surface as a standalone off-screen buffer.
+    // The active renderer's Init() is responsible for connecting it to the display
+    // (either via SDL_GetWindowSurface for software, or SDL_CreateRenderer for hardware).
+    // This keeps SDL's surface and renderer APIs from conflicting on the same window.
+    lbDrawSurface = SDL_CreateRGBSurface(0, mdinfo->Width, mdinfo->Height, lbEngineBPP, 0, 0, 0, 0);
+    if (lbDrawSurface == NULL) {
+        ERRORLOG("Failed to create draw surface for mode %d (%s): %s", (int)mode, mdinfo->Desc, SDL_GetError());
         return Lb_FAIL;
     }
-
-    // Create secondary surface if necessary: BPP mismatch, or physical window is larger than
-    // the logical game resolution (fixed-display platforms like Vita where 640x480 maps to 960x544).
-    if (mdinfo->BitsPerPixel != lbEngineBPP
-        || lbScreenSurface->w != (int)mdinfo->Width
-        || lbScreenSurface->h != (int)mdinfo->Height)
-    {
-        lbDrawSurface = SDL_CreateRGBSurface(0, mdinfo->Width, mdinfo->Height, lbEngineBPP, 0, 0, 0, 0);
-        if (lbDrawSurface == NULL) {
-            ERRORLOG("Can't create secondary surface for mode %d (%s): %s", (int)mode, mdinfo->Desc, SDL_GetError());
-            LbScreenReset(false);
-            return Lb_FAIL;
-        }
-        lbHasSecondSurface = true;
-        // If the draw surface and window surface have different BitsPerPixel, SDL_BlitScaled
-        // (which requires matching BPP) can't scale directly. Create an intermediate surface in
-        // the window's pixel format so we can convert format first, then scale.
-        if (lbDrawSurface->format->BitsPerPixel != lbScreenSurface->format->BitsPerPixel)
-        {
-            lbScaleSurface = SDL_CreateRGBSurfaceWithFormat(0, mdinfo->Width, mdinfo->Height,
-                lbScreenSurface->format->BitsPerPixel, lbScreenSurface->format->format);
-            if (lbScaleSurface == NULL) {
-                WARNLOG("Can't create scale surface for mode %d (%s): %s — falling back to direct blit", (int)mode, mdinfo->Desc, SDL_GetError());
-            }
-        }
-    }
+    lbHasSecondSurface = true;
+    lbScreenSurface = lbDrawSurface; // placeholder; renderer Init() sets the real screen surface
 
     lbDisplay.DrawFlags = 0;
     lbDisplay.DrawColour = 0;
@@ -626,7 +608,7 @@ TbResult LbScreenSetup(TbScreenMode mode, TbScreenCoord width, TbScreenCoord hei
     lbDisplay.WScreen = NULL;
     lbDisplay.GraphicsWindowPtr = NULL;
     lbScreenInitialised = true;
-    SYNCLOG("Mode %dx%dx%d setup succeeded",(int)lbScreenSurface->w,(int)lbScreenSurface->h,(int)lbScreenSurface->format->BitsPerPixel);
+    SYNCLOG("Mode %dx%dx%d setup succeeded",(int)mdinfo->Width,(int)mdinfo->Height,(int)mdinfo->BitsPerPixel);
     if (palette != NULL)
     {
         LbPaletteSet(palette);

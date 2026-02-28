@@ -49,10 +49,9 @@ private:
     bool          m_initialized = false;
     struct SDL_Renderer* m_renderer  = nullptr;
     struct SDL_Texture*  m_texture   = nullptr;
-    uint8_t*      m_framebuffer = nullptr;   /**< 8-bit indexed game buffer */
-    uint8_t*      m_rgbaBuffer  = nullptr;   /**< RGBA staging buffer for upload */
+    uint8_t*      m_rgbaBuffer  = nullptr;   /**< RGBA staging buffer for texture upload */
 
-    void ExpandPalette();   /**< Convert 8-bit indexed → RGBA using lbPalette */
+    void ExpandPaletteFrom(const uint8_t* src);   /**< Convert 8-bit indexed → RGBA using lbPalette */
 };
 
 #endif // PLATFORM_VITA

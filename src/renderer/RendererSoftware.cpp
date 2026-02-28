@@ -22,14 +22,39 @@
 
 bool RendererSoftware::Init()
 {
-    // SDL2 and the draw surface are already set up by LbScreenSetup().
-    // Nothing extra to initialise for the software backend.
+    // Obtain the window surface. This must happen here (not in LbScreenSetup) so
+    // that SDL_GetWindowSurface and SDL_CreateRenderer are never both called on the
+    // same window — mixing them causes a GXM crash on Vita.
+    lbScreenSurface = SDL_GetWindowSurface(lbWindow);
+    if (!lbScreenSurface) {
+        ERRORLOG("RendererSoftware: SDL_GetWindowSurface failed: %s", SDL_GetError());
+        return false;
+    }
+
+    // If the draw surface (8bpp game buffer) and window surface have different
+    // BitsPerPixel, SDL_BlitScaled requires matching BPP. Create an intermediate
+    // surface in the window's pixel format: convert format first, then scale.
+    if (lbDrawSurface->format->BitsPerPixel != lbScreenSurface->format->BitsPerPixel)
+    {
+        lbScaleSurface = SDL_CreateRGBSurfaceWithFormat(0,
+            lbDrawSurface->w, lbDrawSurface->h,
+            lbScreenSurface->format->BitsPerPixel, lbScreenSurface->format->format);
+        if (!lbScaleSurface) {
+            WARNLOG("RendererSoftware: can't create scale surface: %s — direct blit will be attempted", SDL_GetError());
+        }
+    }
+
     return true;
 }
 
 void RendererSoftware::Shutdown()
 {
-    // SDL cleanup is handled by LbScreenReset() / SDL_Quit().
+    if (lbScaleSurface) {
+        SDL_FreeSurface(lbScaleSurface);
+        lbScaleSurface = NULL;
+    }
+    // lbScreenSurface is owned by SDL (window surface); do not free it.
+    lbScreenSurface = NULL;
 }
 
 bool RendererSoftware::BeginFrame()
@@ -39,38 +64,42 @@ bool RendererSoftware::BeginFrame()
 
 void RendererSoftware::EndFrame()
 {
-    // Replicate the blit+present part of the original LbScreenSwap():
-    // 1. If we have a secondary draw surface, blit it onto the window surface.
-    // 2. Update the window surface to display it on screen.
-    if (lbHasSecondSurface)
+    // Refresh the window surface pointer each frame (guards against window resize / alt-tab).
+    lbScreenSurface = SDL_GetWindowSurface(lbWindow);
+    SDL_Rect dst = { 0, 0, lbScreenSurface->w, lbScreenSurface->h };
+
+    if (lbScaleSurface != NULL)
     {
-        // Refresh the window surface pointer each frame (guards against alt-tab).
-        lbScreenSurface = SDL_GetWindowSurface(lbWindow);
-        SDL_Rect dst = { 0, 0, lbScreenSurface->w, lbScreenSurface->h };
-        if (lbScaleSurface != NULL)
+        // Two-step: convert format (e.g. 8bpp palette → window BPP) at game resolution,
+        // then scale to the physical window surface. SDL_BlitScaled requires matching BPP.
+        if (SDL_BlitSurface(lbDrawSurface, NULL, lbScaleSurface, NULL) < 0)
         {
-            // Two-step: convert format (e.g. 8bpp palette → window BPP) at game resolution,
-            // then scale to the physical window surface. SDL_BlitScaled requires matching BPP.
-            if (SDL_BlitSurface(lbDrawSurface, NULL, lbScaleSurface, NULL) < 0)
-            {
-                ERRORLOG("RendererSoftware::EndFrame format-convert blit failed: %s", SDL_GetError());
-                return;
-            }
-            if (SDL_BlitScaled(lbScaleSurface, NULL, lbScreenSurface, &dst) < 0)
-            {
-                ERRORLOG("RendererSoftware::EndFrame scale blit failed: %s", SDL_GetError());
-                return;
-            }
+            ERRORLOG("RendererSoftware::EndFrame format-convert blit failed: %s", SDL_GetError());
+            return;
         }
-        else
+        if (SDL_BlitScaled(lbScaleSurface, NULL, lbScreenSurface, &dst) < 0)
         {
-            if (SDL_BlitScaled(lbDrawSurface, NULL, lbScreenSurface, &dst) < 0)
-            {
-                ERRORLOG("RendererSoftware::EndFrame blit failed: %s", SDL_GetError());
-                return;
-            }
+            ERRORLOG("RendererSoftware::EndFrame scale blit failed: %s", SDL_GetError());
+            return;
         }
     }
+    else if (lbDrawSurface->w != lbScreenSurface->w || lbDrawSurface->h != lbScreenSurface->h)
+    {
+        if (SDL_BlitScaled(lbDrawSurface, NULL, lbScreenSurface, &dst) < 0)
+        {
+            ERRORLOG("RendererSoftware::EndFrame blit failed: %s", SDL_GetError());
+            return;
+        }
+    }
+    else
+    {
+        if (SDL_BlitSurface(lbDrawSurface, NULL, lbScreenSurface, NULL) < 0)
+        {
+            ERRORLOG("RendererSoftware::EndFrame blit failed: %s", SDL_GetError());
+            return;
+        }
+    }
+
     if (SDL_UpdateWindowSurface(lbWindow) < 0)
     {
         ERRORDBG(11, "RendererSoftware::EndFrame flip failed: %s", SDL_GetError());
