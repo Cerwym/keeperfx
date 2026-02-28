@@ -16,17 +16,11 @@
 #include <stdint.h>
 #include "api.h"
 #include "sounds.h"
-#include "net_input_lag.h"
 #include "bflib_sndlib.h"
 #include "bflib_sound.h"
 #include "bflib_fmvids.h"
-#include "bflib_coroutine.h"
 #include "globals.h"
 #include "moonphase.h"
-#include "net_resync.h"
-#include "net_game.h"
-#include "bflib_network.h"
-#include "bflib_network_exchange.h"
 #include "custom_sprites.h"
 #include "creature_graphics.h"
 #include "engine_render.h"
@@ -34,11 +28,6 @@
 #include "scrcapt.h"
 #include "audio/audio_interface.h"
 #include "input/input_interface.h"
-#include "bflib_enet.h"
-#include "net_checksums.h"
-#include "net_redundant_packets.h"
-#include "net_received_packets.h"
-#include "packets.h"
 
 /* api.c stubs (SDL_net removed) */
 int api_init_server(void) { return 0; }
@@ -58,23 +47,11 @@ TbBool play_music_track(int t) { (void)t; return 0; }
 void resume_music(void) {}
 void stop_music(void) {}
 
-/* net_input_lag.c stubs (networking removed) */
-void clear_input_lag_queue(void) {}
-
-/* net_resync / globals: networking multiplayer logging flag */
-TbBool detailed_multiplayer_logging = 0;
-
 /* steam_api.cpp stubs — steam_api.hpp uses extern "C" so define in C */
 int steam_api_init(void) { return 0; }
 void steam_api_shutdown(void) {}
 
-/* net_resync.cpp stubs — called from main_game.c, game networking removed */
-TbBool LbNetwork_Resync(void *data_buffer, size_t buffer_length) { (void)data_buffer; (void)buffer_length; return 0; }
-void LbNetwork_TimesyncBarrier(void) {}
-void animate_resync_progress_bar(int current_phase, int total_phases) { (void)current_phase; (void)total_phases; }
-void resync_game(void) {}
-
-/* moonphase.c stubs — astronomy library not available on homebrew */
+/* moonphase.c stubs— astronomy library not available on homebrew */
 short is_full_moon = 0;
 short is_near_full_moon = 0;
 short is_new_moon = 0;
@@ -137,33 +114,6 @@ short get_anim_id(const char *name, struct ObjectConfigStats *objst) { (void)nam
 const struct LensOverlayData *get_lens_overlay_data(const char *name) { (void)name; return NULL; }
 const struct LensMistData *get_lens_mist_data(const char *name) { (void)name; return NULL; }
 
-/* net_game.c — multiplayer session data (UI still compiled, network disabled) */
-long net_number_of_sessions = 0;
-struct TbNetworkSessionNameEntry *net_session[32] = { NULL };
-long net_session_index_active = -1;
-char net_service[16][NET_SERVICE_LEN];
-char net_player_name[20] = { 0 };
-
-/* bflib_network.cpp — LbNetwork API stubs */
-void    LbNetwork_SetServerPort(int port) { (void)port; }
-void    LbNetwork_InitSessionsFromCmdLine(const char *str) { (void)str; }
-TbError LbNetwork_Init(unsigned long srvcindex, unsigned long maxplayrs, struct TbNetworkPlayerInfo *locplayr, struct ServiceInitData *init_data) { (void)srvcindex; (void)maxplayrs; (void)locplayr; (void)init_data; return Lb_FAIL; }
-TbError LbNetwork_Join(struct TbNetworkSessionNameEntry *nsname, char *playr_name, int32_t *playr_num, void *optns) { (void)nsname; (void)playr_name; (void)playr_num; (void)optns; return Lb_FAIL; }
-TbError LbNetwork_Create(char *nsname_str, char *plyr_name, uint32_t *plyr_num, void *optns) { (void)nsname_str; (void)plyr_name; (void)plyr_num; (void)optns; return Lb_FAIL; }
-TbError LbNetwork_EnableNewPlayers(TbBool allow) { (void)allow; return Lb_FAIL; }
-TbError LbNetwork_EnumerateServices(TbNetworkCallbackFunc callback, void *user_data) { (void)callback; (void)user_data; return Lb_FAIL; }
-TbError LbNetwork_EnumeratePlayers(struct TbNetworkSessionNameEntry *sesn, TbNetworkCallbackFunc callback, void *user_data) { (void)sesn; (void)callback; (void)user_data; return Lb_FAIL; }
-TbError LbNetwork_EnumerateSessions(TbNetworkCallbackFunc callback, void *ptr) { (void)callback; (void)ptr; return Lb_FAIL; }
-TbError LbNetwork_Stop(void) { return Lb_FAIL; }
-void    LbNetwork_UpdateInputLagIfHost(void) {}
-
-/* bflib_network_exchange.cpp — packet exchange stubs */
-TbError LbNetwork_Exchange(enum NetMessageType msg_type, void *send_buf, void *server_buf, size_t buf_size) { (void)msg_type; (void)send_buf; (void)server_buf; (void)buf_size; return Lb_FAIL; }
-TbError LbNetwork_ExchangeLogin(char *plyr_name) { (void)plyr_name; return Lb_FAIL; }
-void    LbNetwork_WaitForMissingPackets(void *server_buf, size_t client_frame_size) { (void)server_buf; (void)client_frame_size; }
-void    LbNetwork_SendChatMessageImmediate(int player_id, const char *message) { (void)player_id; (void)message; }
-void    LbNetwork_BroadcastUnpauseTimesync(void) {}
-
 /* input_sdl.c / audio_openal.c — init functions */
 void input_sdl_initialize(void) {}
 void audio_openal_initialize(void) {}
@@ -171,55 +121,11 @@ void audio_openal_initialize(void) {}
 /* bflib_sndlib.cpp — missing volume getter */
 SoundVolume GetCurrentSoundMasterVolume(void) { return 0; }
 
-/* bflib_enet.cpp — network stats (enet excluded, stubs return zero) */
-unsigned long GetPing(int id) { (void)id; return 0; }
-unsigned long GetPingVariance(int id) { (void)id; return 0; }
-unsigned int  GetPacketLoss(int id) { (void)id; return 0; }
-unsigned int  GetClientDataInTransit(void) { return 0; }
-unsigned int  GetIncomingPacketQueueSize(void) { return 0; }
-unsigned int  GetClientPacketsLost(void) { return 0; }
-unsigned int  GetClientOutgoingDataTotal(void) { return 0; }
-unsigned int  GetClientIncomingDataTotal(void) { return 0; }
-unsigned int  GetClientReliableCommandsInFlight(void) { return 0; }
-
-/* net_game.c — additional multiplayer globals and helpers */
-struct TbNetworkPlayerName net_player[NET_PLAYERS_COUNT];
-struct ConfigInfo net_config_info;
-struct TbNetworkPlayerInfo net_player_info[NET_PLAYERS_COUNT];
-
-TbBool network_player_active(int plyr_idx) { (void)plyr_idx; return 0; }
-const char *network_player_name(int plyr_idx) { (void)plyr_idx; return ""; }
-void sync_various_data(void) {}
-unsigned long get_host_player_id(void) { return 0; }
-short setup_network_service(int srvidx) { (void)srvidx; return 0; }
-int   setup_old_network_service(void) { return 0; }
-void  init_players_network_game(CoroutineLoop *context) { (void)context; }
-void  setup_count_players(void) {}
-long  network_session_join(void) { return 0; }
-
 /* custom_sprites.c — sprite system init */
 void init_custom_sprites(LevelNumber level_no) { (void)level_no; }
 int  is_custom_icon(short icon_idx) { (void)icon_idx; return 0; }
 
-/* net_input_lag.c — missing lag queue accessors */
-struct Packet* get_local_input_lag_packet_for_turn(GameTurn target_turn) { (void)target_turn; return NULL; }
-void  store_local_packet_in_input_lag_queue(PlayerNumber my_packet_num) { (void)my_packet_num; }
-TbBool input_lag_skips_initial_processing(void) { return 0; }
-unsigned short calculate_skip_input(void) { return 0; }
-
-/* net_checksums.c — checksum verification stubs */
-void  update_turn_checksums(void) {}
-short checksums_different(void) { return 0; }
-
-/* net_redundant_packets.c — packet bundling stubs */
-void initialize_redundant_packets(void) {}
-void unbundle_packets(const char *bundled_buffer, PlayerNumber source_player) { (void)bundled_buffer; (void)source_player; }
-
-/* net_received_packets.c — received packet tracking stubs */
-void initialize_packet_tracking(void) {}
-const struct Packet* get_received_packets_for_turn(GameTurn turn) { (void)turn; return NULL; }
-
-/* Lua stubs — only needed on platforms where LuaJIT is not available (3DS, Switch).
+/* Lua stubs— only needed on platforms where LuaJIT is not available (3DS, Switch).
  * On Vita, LuaJIT-Vita (SonicMastr fork) is used and lua source files are compiled normally.
  * On 3DS/Switch, build LuaJIT 2.1 with LUAJIT_DISABLE_JIT for devkitARM/devkitA64 to lift these. */
 #ifndef KEEPERFX_LUA_AVAILABLE

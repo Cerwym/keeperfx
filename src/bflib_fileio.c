@@ -33,6 +33,7 @@
 
 #include "bflib_basics.h"
 #include "bflib_datetm.h"
+#include "platform/PlatformManager.h"
 
 #include "post_inc.h"
 
@@ -43,7 +44,7 @@ void convert_find_info(struct TbFileFind *ffind);
 
 short LbFileExists(const char *fname)
 {
-  return access(fname,F_OK) == 0;
+  return PlatformManager_FileExists(fname);
 }
 
 int LbFilePosition(TbFileHandle handle)
@@ -61,13 +62,7 @@ int create_directory_for_file(const char * fname)
   while (separator != NULL) {
     memcpy(tmp, fname, separator - fname);
     tmp[separator - fname] = 0;
-#if defined _WIN32
-    if (mkdir(tmp) != 0) {
-#elif defined (__linux__)
-    if (mkdir(tmp, 0755) != 0) {
-#else
-#error Unsupported platform
-#endif
+    if (PlatformManager_MakeDirectory(tmp) != 0) {
       if (errno != EEXIST) {
         free(tmp);
         return 0;
@@ -254,8 +249,7 @@ int LbFileDelete(const char *filename)
 
 int LbDirectoryCurrent(char *buf, unsigned long buflen)
 {
-//  if ( GetCurrentDirectoryA(buflen, buf) )
-  if ( getcwd(buf,buflen) != NULL )
+  if ( PlatformManager_GetCurrentDirectory(buf, buflen) >= 0 )
   {
     if ( buf[1] == ':' )
       strcpy(buf, buf+2);

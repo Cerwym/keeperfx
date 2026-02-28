@@ -71,10 +71,10 @@ extern "C" {
 
 // Basic Definitions
 
-#if (defined(unix) && !defined(GO32)) || defined(__psp2__) || defined(__3DS__) || defined(__SWITCH__)
-#define SEPARATOR "/"
-#else
+#ifdef _WIN32
 #define SEPARATOR "\\"
+#else
+#define SEPARATOR "/"
 #endif
 
 #ifndef __cplusplus

@@ -128,7 +128,8 @@ TbError ProcessMessage(NetUserId source, void* server_buf, size_t frame_size) {
             netstate.sp->drop_user(source);
             return Lb_OK;
         }
-        snprintf(netstate.users[source].name, sizeof(netstate.users[source].name), "%s", ptr);
+        strncpy(netstate.users[source].name, ptr, sizeof(netstate.users[source].name) - 1);
+        netstate.users[source].name[sizeof(netstate.users[source].name) - 1] = '\0';
         if (!isalnum(netstate.users[source].name[0])) {
             NETDBG(6, "Connected peer had bad name starting with %c", netstate.users[source].name[0]);
             netstate.sp->drop_user(source);
