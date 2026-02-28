@@ -123,7 +123,10 @@ bool RendererVita::Init()
     // only; SDL does NOT init GXM on Vita until SDL_CreateRenderer is called).
     // We never call SDL_CreateRenderer, so this is the first and only GXM init.
     // 0x800000 (8 MB) vertex/fragment pool; no MSAA at 960×544.
-    vglInitExtended(0, 960, 544, 0x800000, SCE_GXM_MULTISAMPLE_NONE);
+    if (!vglInitExtended(0, 960, 544, 0x800000, SCE_GXM_MULTISAMPLE_NONE)) {
+        ERRORLOG("RendererVita: vglInitExtended failed — falling back is not possible");
+        return false;
+    }
 
     // Index texture: 640×480 GL_LUMINANCE — stores raw 8-bit palette indices.
     glGenTextures(1, &m_index_tex);
