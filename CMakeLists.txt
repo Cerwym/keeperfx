@@ -112,16 +112,18 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_fmvids\\.c$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/KeeperSpeechImp\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/steam_api\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_api.*\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_base\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_cfg_funcs\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_params\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_triggers\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_utils\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/console_cmd\\.c$")
-    # game_saves.c, lvl_script_commands.c, main_game.c: re-included once lua_base.h guard in place
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/custom_sprites\\.c$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/moonphase\\.c$")
+    # Lua: available on Vita via SonicMastr/LuaJIT-Vita (vdpm). Not yet available on 3DS/Switch.
+    if(NOT PLATFORM_VITA)
+        list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_api.*\\.c$")
+        list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_base\\.c$")
+        list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_cfg_funcs\\.c$")
+        list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_params\\.c$")
+        list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_triggers\\.c$")
+        list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/lua_utils\\.c$")
+        list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/console_cmd\\.c$")
+    endif()
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/scrcapt\\.c$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_sndlib\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/bflib_enet\\.cpp$")
@@ -158,6 +160,10 @@ add_compile_definitions("DEBUG=$<IF:$<CONFIG:Debug>,1,0>")
 add_compile_definitions("SPNG_STATIC=1")
 if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
     add_compile_definitions("SDL_MIXER_AVAILABLE=1")
+endif()
+# LuaJIT is available on Vita (SonicMastr/LuaJIT-Vita, installed via vdpm).
+# 3DS and Switch do not have a LuaJIT port yet.
+if(NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
     add_compile_definitions("KEEPERFX_LUA_AVAILABLE=1")
 endif()
 
@@ -271,6 +277,25 @@ if(PLATFORM_VITA)
     target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub ScePower_stub SceAudio_stub)
     target_link_libraries(keeperfx PRIVATE centijson_static centitoml)
     target_link_libraries(keeperfx_hvlog PRIVATE centijson_static centitoml)
+    # LuaJIT for the Vita — cross-compiled via SonicMastr/LuaJIT-Vita fork.
+    # Install prerequisites: vdpm luajit taihen vita-rss-libdl
+    #
+    # WHY taihen is required at runtime:
+    #   LuaJIT's JIT compiler must allocate read-write-execute memory pages.  The
+    #   Vita OS normally disallows user code from creating executable mappings.
+    #   taiHEN is a kernel plugin (part of HENkaku / any homebrew-enabled Vita) that
+    #   patches those restrictions.  Any Vita running homebrew already has taiHEN
+    #   loaded (it is a prerequisite of every homebrew launcher), so end users do not
+    #   need to install anything extra.  The taihen_stub.a at link time simply
+    #   generates the SVC stubs to call into the kernel plugin at runtime.
+    #   vita-rss-libdl provides the dlopen/dlsym shim that LuaJIT uses for C FFI.
+    find_library(LUAJIT_LIB luajit-5.1 HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
+    find_path(LUAJIT_INCLUDE luajit.h HINTS "$ENV{VITASDK}/arm-vita-eabi/include/luajit-2.1" REQUIRED)
+    message(STATUS "LuaJIT found: ${LUAJIT_LIB}")
+    target_include_directories(keeperfx PRIVATE ${LUAJIT_INCLUDE})
+    target_include_directories(keeperfx_hvlog PRIVATE ${LUAJIT_INCLUDE})
+    target_link_libraries(keeperfx PRIVATE -Wl,--start-group ${LUAJIT_LIB} taihen_stub taihenModuleUtils_stub SceSblSsMgr_stub dl -Wl,--end-group)
+    target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${LUAJIT_LIB} taihen_stub taihenModuleUtils_stub SceSblSsMgr_stub dl -Wl,--end-group)
 elseif(PLATFORM_3DS)
     target_link_libraries(keeperfx PRIVATE citro3d ctru)
     target_link_libraries(keeperfx_hvlog PRIVATE citro3d ctru)

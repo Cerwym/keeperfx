@@ -22,10 +22,6 @@
 #include "bflib_fmvids.h"
 #include "bflib_coroutine.h"
 #include "globals.h"
-#include "lua_base.h"
-#include "lua_triggers.h"
-#include "config.h"
-#include "lua_cfg_funcs.h"
 #include "moonphase.h"
 #include "net_resync.h"
 #include "net_game.h"
@@ -39,7 +35,6 @@
 #include "audio/audio_interface.h"
 #include "input/input_interface.h"
 #include "bflib_enet.h"
-#include "console_cmd.h"
 #include "net_checksums.h"
 #include "net_redundant_packets.h"
 #include "net_received_packets.h"
@@ -78,32 +73,6 @@ TbBool LbNetwork_Resync(void *data_buffer, size_t buffer_length) { (void)data_bu
 void LbNetwork_TimesyncBarrier(void) {}
 void animate_resync_progress_bar(int current_phase, int total_phases) { (void)current_phase; (void)total_phases; }
 void resync_game(void) {}
-
-/* lua_base.c stubs — LuaJIT not available on homebrew platforms */
-TbBool open_lua_script(LevelNumber lvnum) { (void)lvnum; return 0; }
-void close_lua_script(void) {}
-const char* get_lua_serialized_data(size_t *len) { if (len) *len = 0; return NULL; }
-void set_lua_serialized_data(const char* data, size_t len) { (void)data; (void)len; }
-TbBool execute_lua_code_from_console(const char* code) { (void)code; return 0; }
-TbBool execute_lua_code_from_script(const char* code) { (void)code; return 0; }
-const char* lua_get_serialised_data(size_t *len) { if (len) *len = 0; return NULL; }
-void lua_set_serialised_data(const char *data, size_t len) { (void)data; (void)len; }
-void cleanup_serialized_data(void) {}
-void lua_set_random_seed(unsigned int seed) { (void)seed; }
-void generate_lua_types_file(void) {}
-
-/* lua_triggers.c stubs — Lua event hooks become no-ops on homebrew */
-void lua_on_chatmsg(PlayerNumber plyr_idx, char *msg) { (void)plyr_idx; (void)msg; }
-void lua_on_game_start(void) {}
-void lua_on_game_tick(void) {}
-void lua_on_power_cast(PlayerNumber plyr_idx, PowerKind pwkind, unsigned short splevel, MapSubtlCoord stl_x, MapSubtlCoord stl_y, struct Thing *thing) { (void)plyr_idx; (void)pwkind; (void)splevel; (void)stl_x; (void)stl_y; (void)thing; }
-void lua_on_special_box_activate(PlayerNumber plyr_idx, struct Thing *cratetng) { (void)plyr_idx; (void)cratetng; }
-void lua_on_dungeon_destroyed(PlayerNumber plyr_idx) { (void)plyr_idx; }
-void lua_on_creature_death(struct Thing *crtng) { (void)crtng; }
-void lua_on_creature_rebirth(struct Thing *crtng) { (void)crtng; }
-void lua_on_trap_placed(struct Thing *traptng) { (void)traptng; }
-void lua_on_apply_damage_to_thing(struct Thing *thing, HitPoints dmg, PlayerNumber dealing_plyr_idx) { (void)thing; (void)dmg; (void)dealing_plyr_idx; }
-void lua_on_level_up(struct Thing *thing) { (void)thing; }
 
 /* moonphase.c stubs — astronomy library not available on homebrew */
 short is_full_moon = 0;
@@ -168,14 +137,6 @@ short get_anim_id(const char *name, struct ObjectConfigStats *objst) { (void)nam
 const struct LensOverlayData *get_lens_overlay_data(const char *name) { (void)name; return NULL; }
 const struct LensMistData *get_lens_mist_data(const char *name) { (void)name; return NULL; }
 
-/* lua_cfg_funcs.c — Lua-driven creature-state / update functions */
-short luafunc_crstate_func(FuncIdx func_idx, struct Thing *thing) { (void)func_idx; (void)thing; return 0; }
-short luafunc_thing_update_func(FuncIdx func_idx, struct Thing *thing) { (void)func_idx; (void)thing; return 0; }
-TbResult luafunc_magic_use_power(FuncIdx func_idx, PlayerNumber plyr_idx, PowerKind pwkind,
-    unsigned short splevel, MapSubtlCoord stl_x, MapSubtlCoord stl_y, struct Thing *thing, unsigned long allow_flags)
-    { (void)func_idx; (void)plyr_idx; (void)pwkind; (void)splevel; (void)stl_x; (void)stl_y; (void)thing; (void)allow_flags; return Lb_FAIL; }
-FuncIdx get_function_idx(const char *func_name, const struct NamedCommand *Cfuncs) { (void)func_name; (void)Cfuncs; return 0; }
-
 /* net_game.c — multiplayer session data (UI still compiled, network disabled) */
 long net_number_of_sessions = 0;
 struct TbNetworkSessionNameEntry *net_session[32] = { NULL };
@@ -221,10 +182,6 @@ unsigned int  GetClientOutgoingDataTotal(void) { return 0; }
 unsigned int  GetClientIncomingDataTotal(void) { return 0; }
 unsigned int  GetClientReliableCommandsInFlight(void) { return 0; }
 
-/* console_cmd.c — developer console (Lua excluded) */
-void   cmd_auto_completion(PlayerNumber plyr_idx, char *cmd_str, size_t cmd_size) { (void)plyr_idx; (void)cmd_str; (void)cmd_size; }
-TbBool cmd_exec(PlayerNumber plyr_idx, char *msg) { (void)plyr_idx; (void)msg; return 0; }
-
 /* net_game.c — additional multiplayer globals and helpers */
 struct TbNetworkPlayerName net_player[NET_PLAYERS_COUNT];
 struct ConfigInfo net_config_info;
@@ -261,6 +218,51 @@ void unbundle_packets(const char *bundled_buffer, PlayerNumber source_player) { 
 /* net_received_packets.c — received packet tracking stubs */
 void initialize_packet_tracking(void) {}
 const struct Packet* get_received_packets_for_turn(GameTurn turn) { (void)turn; return NULL; }
+
+/* Lua stubs — only needed on platforms where LuaJIT is not available (3DS, Switch).
+ * On Vita, LuaJIT-Vita (SonicMastr fork) is used and lua source files are compiled normally.
+ * On 3DS/Switch, build LuaJIT 2.1 with LUAJIT_DISABLE_JIT for devkitARM/devkitA64 to lift these. */
+#ifndef KEEPERFX_LUA_AVAILABLE
+#include "config.h"
+#include "lua_base.h"
+#include "lua_triggers.h"
+#include "lua_cfg_funcs.h"
+#include "console_cmd.h"
+
+TbBool open_lua_script(LevelNumber lvnum) { (void)lvnum; return 0; }
+void close_lua_script(void) {}
+const char* get_lua_serialized_data(size_t *len) { if (len) *len = 0; return NULL; }
+void set_lua_serialized_data(const char* data, size_t len) { (void)data; (void)len; }
+TbBool execute_lua_code_from_console(const char* code) { (void)code; return 0; }
+TbBool execute_lua_code_from_script(const char* code) { (void)code; return 0; }
+const char* lua_get_serialised_data(size_t *len) { if (len) *len = 0; return NULL; }
+void lua_set_serialised_data(const char *data, size_t len) { (void)data; (void)len; }
+void cleanup_serialized_data(void) {}
+void lua_set_random_seed(unsigned int seed) { (void)seed; }
+void generate_lua_types_file(void) {}
+
+void lua_on_chatmsg(PlayerNumber plyr_idx, char *msg) { (void)plyr_idx; (void)msg; }
+void lua_on_game_start(void) {}
+void lua_on_game_tick(void) {}
+void lua_on_power_cast(PlayerNumber plyr_idx, PowerKind pwkind, unsigned short splevel, MapSubtlCoord stl_x, MapSubtlCoord stl_y, struct Thing *thing) { (void)plyr_idx; (void)pwkind; (void)splevel; (void)stl_x; (void)stl_y; (void)thing; }
+void lua_on_special_box_activate(PlayerNumber plyr_idx, struct Thing *cratetng) { (void)plyr_idx; (void)cratetng; }
+void lua_on_dungeon_destroyed(PlayerNumber plyr_idx) { (void)plyr_idx; }
+void lua_on_creature_death(struct Thing *crtng) { (void)crtng; }
+void lua_on_creature_rebirth(struct Thing *crtng) { (void)crtng; }
+void lua_on_trap_placed(struct Thing *traptng) { (void)traptng; }
+void lua_on_apply_damage_to_thing(struct Thing *thing, HitPoints dmg, PlayerNumber dealing_plyr_idx) { (void)thing; (void)dmg; (void)dealing_plyr_idx; }
+void lua_on_level_up(struct Thing *thing) { (void)thing; }
+
+short luafunc_crstate_func(FuncIdx func_idx, struct Thing *thing) { (void)func_idx; (void)thing; return 0; }
+short luafunc_thing_update_func(FuncIdx func_idx, struct Thing *thing) { (void)func_idx; (void)thing; return 0; }
+TbResult luafunc_magic_use_power(FuncIdx func_idx, PlayerNumber plyr_idx, PowerKind pwkind,
+    unsigned short splevel, MapSubtlCoord stl_x, MapSubtlCoord stl_y, struct Thing *thing, unsigned long allow_flags)
+    { (void)func_idx; (void)plyr_idx; (void)pwkind; (void)splevel; (void)stl_x; (void)stl_y; (void)thing; (void)allow_flags; return Lb_FAIL; }
+FuncIdx get_function_idx(const char *func_name, const struct NamedCommand *Cfuncs) { (void)func_name; (void)Cfuncs; return 0; }
+
+void cmd_auto_completion(PlayerNumber plyr_idx, char *cmd_str, size_t cmd_size) { (void)plyr_idx; (void)cmd_str; (void)cmd_size; }
+TbBool cmd_exec(PlayerNumber plyr_idx, char *msg) { (void)plyr_idx; (void)msg; return 0; }
+#endif // !KEEPERFX_LUA_AVAILABLE
 
 #endif // PLATFORM_VITA || PLATFORM_3DS || PLATFORM_SWITCH
 
