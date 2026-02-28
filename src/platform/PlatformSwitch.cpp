@@ -23,3 +23,7 @@ TbBool PlatformSwitch::PlayRedbookTrack(int)         { return false; }
 void   PlatformSwitch::PauseRedbookTrack()           {}
 void   PlatformSwitch::ResumeRedbookTrack()          {}
 void   PlatformSwitch::StopRedbookTrack()            {}
+
+void        PlatformSwitch::SetArgv(int, char**) {}
+const char* PlatformSwitch::GetDataPath() const  { return "sdmc:/keeperfx"; }
+const char* PlatformSwitch::GetSavePath() const  { return "sdmc:/keeperfx/save"; }

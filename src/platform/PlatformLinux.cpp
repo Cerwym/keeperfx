@@ -7,6 +7,8 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <fnmatch.h>
+#include <stdio.h>
+#include <string.h>
 #include "post_inc.h"
 
 // TbFileFind is defined here; it is an opaque type to all callers.
@@ -139,6 +141,26 @@ void PlatformLinux::FileFindEnd(TbFileFind* ff)
     }
     delete ff;
 }
+
+// ----- Path provider -----
+
+void PlatformLinux::SetArgv(int argc, char** argv)
+{
+    if (argc < 1 || !argv || !argv[0] || argv[0][0] == '\0') {
+        return;
+    }
+    snprintf(data_path_, sizeof(data_path_), "%s", argv[0]);
+    char* end = strrchr(data_path_, '/');
+    if (end) {
+        *end = '\0';
+    } else {
+        snprintf(data_path_, sizeof(data_path_), ".");
+    }
+    snprintf(save_path_, sizeof(save_path_), "%s", data_path_);
+}
+
+const char* PlatformLinux::GetDataPath() const { return data_path_; }
+const char* PlatformLinux::GetSavePath() const { return save_path_; }
 
 // ----- CDROM / Redbook audio -----
 

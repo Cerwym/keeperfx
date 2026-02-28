@@ -19,6 +19,10 @@ public:
     int32_t     FileFindNext(TbFileFind* handle, TbFileEntry* entry) override;
     void        FileFindEnd(TbFileFind* handle) override;
 
+    void        SetArgv(int argc, char** argv) override;
+    const char* GetDataPath() const override;
+    const char* GetSavePath() const override;
+
     void   SetRedbookVolume(SoundVolume vol) override;
     TbBool PlayRedbookTrack(int track) override;
     void   PauseRedbookTrack() override;

@@ -13,6 +13,19 @@ const void * get_image_base(void);
 const char * get_wine_version(void);
 const char * get_wine_host(void);
 
+/** Returns the root directory where game data files are located.
+ *  Desktop: directory of the executable.  Vita: "ux0:data/keeperfx".
+ *  Do not free the returned pointer. */
+const char * PlatformManager_GetDataPath(void);
+
+/** Returns the directory where save files should be written.
+ *  Do not free the returned pointer. */
+const char * PlatformManager_GetSavePath(void);
+
+/** Must be called once with argc/argv before any path queries.
+ *  Desktop platforms use argv[0] to find the executable directory. */
+void PlatformManager_SetArgv(int argc, char** argv);
+
 /******************************************************************************/
 /* OpenGL context management (implemented per-platform for the GL backend)    */
 /******************************************************************************/

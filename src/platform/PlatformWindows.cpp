@@ -145,6 +145,28 @@ void PlatformWindows::FileFindEnd(TbFileFind* ffind)
     }
 }
 
+// ----- Path provider -----
+
+void PlatformWindows::SetArgv(int argc, char** argv)
+{
+    if (argc < 1 || !argv || !argv[0] || argv[0][0] == '\0') {
+        return;
+    }
+    snprintf(data_path_, sizeof(data_path_), "%s", argv[0]);
+    // Strip filename component, keeping the directory.
+    char* end = strrchr(data_path_, '\\');
+    if (!end) end = strrchr(data_path_, '/');
+    if (end) {
+        *end = '\0';
+    } else {
+        snprintf(data_path_, sizeof(data_path_), ".");
+    }
+    snprintf(save_path_, sizeof(save_path_), "%s", data_path_);
+}
+
+const char* PlatformWindows::GetDataPath() const { return data_path_; }
+const char* PlatformWindows::GetSavePath() const { return save_path_; }
+
 // ----- CDROM / Redbook audio -----
 
 void PlatformWindows::SetRedbookVolume(SoundVolume)

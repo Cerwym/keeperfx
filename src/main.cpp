@@ -4032,16 +4032,8 @@ short reset_game(void)
 
 short process_command_line(unsigned short argc, char *argv[])
 {
-  char fullpath[CMDLN_MAXLEN+1];
-  snprintf(fullpath, CMDLN_MAXLEN, "%s", argv[0]);
-  snprintf(keeper_runtime_directory, sizeof(keeper_runtime_directory), "%s", fullpath);
-  char *endpos = strrchr( keeper_runtime_directory, '\\');
-  if (endpos==NULL)
-      endpos=strrchr( keeper_runtime_directory, '/');
-  if (endpos!=NULL)
-      *endpos='\0';
-  else
-      strcpy(keeper_runtime_directory, ".");
+  snprintf(keeper_runtime_directory, sizeof(keeper_runtime_directory),
+           "%s", PlatformManager_GetDataPath());
 
   AssignCpuKeepers = 0;
   SoundDisabled = 0;
@@ -4374,6 +4366,9 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     // Determine correct log file based on command line flags
     const char* selected_log_file_name = determine_log_filename(argc, argv);
     LbErrorLogSetup("/", selected_log_file_name, 5);
+
+    // Give the platform the raw argv so desktop builds can compute the data path.
+    PlatformManager_SetArgv(argc, argv);
 
     retval = process_command_line(argc,argv);
     if (retval < 1)

@@ -85,12 +85,6 @@ static bool vita_name_matches_pattern(const char* name, const char* pattern)
     return *p == '\0' && *n == '\0';
 }
 
-static const char* vita_basename(const char* filespec)
-{
-    const char* slash = strrchr(filespec, '/');
-    return slash ? slash + 1 : filespec;
-}
-
 static bool vita_find_next_entry(TbFileFind* ff, TbFileEntry* fe)
 {
     SceIoDirent de;
@@ -174,5 +168,11 @@ TbBool PlatformVita::PlayRedbookTrack(int) { return false; }
 void PlatformVita::PauseRedbookTrack() {}
 void PlatformVita::ResumeRedbookTrack() {}
 void PlatformVita::StopRedbookTrack() {}
+
+// ----- Path provider -----
+
+void        PlatformVita::SetArgv(int, char**) {} // argv[0] unused on Vita
+const char* PlatformVita::GetDataPath() const { return "ux0:data/keeperfx"; }
+const char* PlatformVita::GetSavePath() const { return "ux0:data/keeperfx/save"; }
 
 #endif // PLATFORM_VITA

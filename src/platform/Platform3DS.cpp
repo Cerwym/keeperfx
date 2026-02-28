@@ -23,3 +23,7 @@ TbBool Platform3DS::PlayRedbookTrack(int)         { return false; }
 void   Platform3DS::PauseRedbookTrack()           {}
 void   Platform3DS::ResumeRedbookTrack()          {}
 void   Platform3DS::StopRedbookTrack()            {}
+
+void        Platform3DS::SetArgv(int, char**) {}
+const char* Platform3DS::GetDataPath() const  { return "sdmc:/keeperfx"; }
+const char* Platform3DS::GetSavePath() const  { return "sdmc:/keeperfx/save"; }

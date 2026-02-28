@@ -32,6 +32,25 @@ public:
     virtual int32_t     FileFindNext(TbFileFind* handle, TbFileEntry* entry) = 0;
     virtual void        FileFindEnd(TbFileFind* handle) = 0;
 
+    // ----- Path provider -----
+    /** Called once at startup with the raw argc/argv before any path queries.
+     *  Desktop platforms extract the executable directory from argv[0] here.
+     *  Homebrew platforms can ignore this. */
+    virtual void        SetArgv(int argc, char** argv) = 0;
+
+    /** Root directory where game data files live.
+     *  Desktop: directory containing the executable (argv[0]-relative).
+     *  Vita:    "ux0:data/keeperfx"
+     *  3DS:     "sdmc:/keeperfx"
+     *  Switch:  "sdmc:/keeperfx"
+     *  Returned pointer is valid for the lifetime of the platform object. */
+    virtual const char* GetDataPath() const = 0;
+
+    /** Directory where save files are written.
+     *  Desktop: <data_path>/save
+     *  Homebrew: same convention under the data path. */
+    virtual const char* GetSavePath() const = 0;
+
     // ----- CDROM / Redbook audio -----
     virtual void   SetRedbookVolume(SoundVolume vol) = 0;
     virtual TbBool PlayRedbookTrack(int track) = 0;

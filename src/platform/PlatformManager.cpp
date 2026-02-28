@@ -64,3 +64,18 @@ extern "C" void LbFileFindEnd(TbFileFind* ff)
     PlatformManager::Get()->FileFindEnd(ff);
 }
 
+extern "C" const char* PlatformManager_GetDataPath()
+{
+    return PlatformManager::Get()->GetDataPath();
+}
+
+extern "C" const char* PlatformManager_GetSavePath()
+{
+    return PlatformManager::Get()->GetSavePath();
+}
+
+extern "C" void PlatformManager_SetArgv(int argc, char** argv)
+{
+    PlatformManager::Get()->SetArgv(argc, argv);
+}
+
