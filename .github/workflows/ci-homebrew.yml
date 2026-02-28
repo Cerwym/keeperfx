@@ -41,6 +41,49 @@ jobs:
       - name: Mark git directory as safe
         run: git config --global --add safe.directory '*'
 
+      # PS Vita: fish47/FFmpeg-vita provides hardware-accelerated SCE decoders
+      # (aac_vita, mp3_vita, h264_vita) needed for audio/video on real hardware.
+      # Cached by a version tag — bump 'v1' here to force a rebuild.
+      - name: Cache FFmpeg-vita
+        if: matrix.preset == 'vita-release'
+        id: cache-ffmpeg-vita
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/vitasdk/arm-vita-eabi/lib/libavformat.a
+            /usr/local/vitasdk/arm-vita-eabi/lib/libavcodec.a
+            /usr/local/vitasdk/arm-vita-eabi/lib/libavutil.a
+            /usr/local/vitasdk/arm-vita-eabi/lib/libswresample.a
+            /usr/local/vitasdk/arm-vita-eabi/include/libavformat
+            /usr/local/vitasdk/arm-vita-eabi/include/libavcodec
+            /usr/local/vitasdk/arm-vita-eabi/include/libavutil
+            /usr/local/vitasdk/arm-vita-eabi/include/libswresample
+          key: ffmpeg-vita-fish47-v1
+
+      - name: Build FFmpeg-vita
+        if: matrix.preset == 'vita-release' && steps.cache-ffmpeg-vita.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/fish47/FFmpeg-vita.git /tmp/FFmpeg-vita
+          cd /tmp/FFmpeg-vita
+          ./configure \
+            --target-os=vita \
+            --enable-vita \
+            --disable-shared \
+            --disable-programs \
+            --disable-doc \
+            --disable-debug \
+            --enable-static \
+            --enable-small \
+            --prefix=$VITASDK/arm-vita-eabi \
+            --disable-everything \
+            --enable-decoder=aac_vita,mp3_vita,aac,adpcm_ima_qt,alac,flac,mp3,opus,pcm_s16le,pcm_s24le,pcm_s32le,vorbis \
+            --enable-demuxer=aac,mp3,mp4,m4a,matroska,flac,ogg,opus,wav \
+            --enable-muxer=null \
+            --enable-parser=aac,mpegaudio,vorbis,opus \
+            --enable-protocol=file
+          make -j$(nproc)
+          make install
+
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest
 
