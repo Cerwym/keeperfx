@@ -145,7 +145,7 @@ if ($offsets) {
     $lines = @("#!/bin/bash", "export PATH=/usr/local/vitasdk/bin:`$PATH")
     foreach ($off in $offsets) {
         $addr = "0x{0:x}" -f ($elfBase + [Convert]::ToInt64($off, 16))
-        $lines += "result=\$(arm-vita-eabi-addr2line -e '$WslElf' -fCa $addr 2>&1)"
+        $lines += "result=`$(arm-vita-eabi-addr2line -e '$WslElf' -fCa $addr 2>&1)"
         $lines += "echo `"  keeperfx@1+$off  =>  `$result`""
     }
     $a2lScript = $lines -join "`n"
