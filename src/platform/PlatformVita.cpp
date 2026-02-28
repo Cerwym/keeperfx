@@ -20,10 +20,19 @@
 
 /* Link-time heap and stack declarations required by vitasdk.
  * These are read by the linker/loader before main() runs.
- * Total must stay well under the 256 MB per-process limit; the runtime,
- * SDL2 and thread stacks consume the remainder (~40-50 MB in practice). */
-int _newlib_heap_size_user  = 192 * 1024 * 1024; // 192 MB — sound banks + game data
-int sceUserMainThreadStackSize = 4 * 1024 * 1024; // 4 MB — main thread stack
+ *
+ * Memory budget (256 MB process limit on HENkaku):
+ *   Code (.text):    ~4 MB
+ *   Data + BSS:    ~114 MB  (struct Game=51 MB, block_mem=34 MB, poly_pool=16 MB, ...)
+ *   Main stack:      4 MB
+ *   Heap (below):   96 MB
+ *   Total:        ~218 MB  (leaves ~38 MB headroom for kernel/system allocations)
+ *
+ * 96 MB heap is sufficient for SDL2, LuaJIT GC, and runtime C++ objects.
+ * All large game data structures (Game, block_mem, poly_pool) are static BSS,
+ * so they do not consume heap space at runtime. */
+int _newlib_heap_size_user  = 96 * 1024 * 1024; // 96 MB heap
+int sceUserMainThreadStackSize = 4 * 1024 * 1024; // 4 MB main thread stack
 
 // TbFileFind is defined here; it is an opaque type to all callers.
 struct TbFileFind {
