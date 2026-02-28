@@ -80,7 +80,8 @@ jobs:
             --enable-demuxer=aac,mp3,mp4,m4a,matroska,flac,ogg,opus,wav \
             --enable-muxer=null \
             --enable-parser=aac,mpegaudio,vorbis,opus \
-            --enable-protocol=file
+            --enable-protocol=file \
+            --disable-network
           make -j$(nproc)
           make install
 
