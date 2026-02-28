@@ -15,6 +15,11 @@
 int main(int argc, char* argv[]) {
 #if defined(PLATFORM_VITA)
     PlatformManager::Set(new PlatformVita());
+    PlatformManager::Get()->InstallExceptionHandler();
+    extern "C" void input_vita_initialize(void);
+    extern "C" void audio_vita_initialize(void);
+    input_vita_initialize();
+    audio_vita_initialize();
 #elif defined(PLATFORM_3DS)
     PlatformManager::Set(new Platform3DS());
 #elif defined(PLATFORM_SWITCH)

@@ -273,8 +273,8 @@ if(PLATFORM_VITA)
     else()
         message(STATUS "vitaGL not found — GPU renderer will be a no-op stub. Install via: sudo -E /tmp/vdpm/vdpm vitaGL")
     endif()
-    target_link_libraries(keeperfx PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub ScePower_stub SceAudio_stub)
-    target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub ScePower_stub SceAudio_stub)
+    target_link_libraries(keeperfx PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub)
+    target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub)
     target_link_libraries(keeperfx PRIVATE centijson_static centitoml)
     target_link_libraries(keeperfx_hvlog PRIVATE centijson_static centitoml)
     # LuaJIT for the Vita — cross-compiled via SonicMastr/LuaJIT-Vita fork.
@@ -296,6 +296,18 @@ if(PLATFORM_VITA)
     target_include_directories(keeperfx_hvlog PRIVATE ${LUAJIT_INCLUDE})
     target_link_libraries(keeperfx PRIVATE -Wl,--start-group ${LUAJIT_LIB} taihen_stub taihenModuleUtils_stub SceSblSsMgr_stub dl -Wl,--end-group)
     target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${LUAJIT_LIB} taihen_stub taihenModuleUtils_stub SceSblSsMgr_stub dl -Wl,--end-group)
+
+    # VPK packaging — requires: cmake --build --target keeperfx.vpk
+    include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
+    set(VITA_APP_NAME "KeeperFX")
+    set(VITA_TITLEID  "KFXV00001")
+    set(VITA_VERSION  "01.00")
+    # UNSAFE needed because LuaJIT requires taiHEN RWX memory (standard on HENkaku consoles)
+    vita_create_self(keeperfx.self keeperfx UNSAFE)
+    vita_create_vpk(keeperfx.vpk ${VITA_TITLEID} keeperfx.self
+        VERSION ${VITA_VERSION}
+        NAME    ${VITA_APP_NAME}
+    )
 elseif(PLATFORM_3DS)
     target_link_libraries(keeperfx PRIVATE citro3d ctru)
     target_link_libraries(keeperfx_hvlog PRIVATE citro3d ctru)

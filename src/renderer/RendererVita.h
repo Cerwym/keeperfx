@@ -4,7 +4,7 @@
 /** @file RendererVita.h
  *     PlayStation Vita renderer backend declaration.
  * @par Purpose:
- *     C++ IRenderer implementation using vitaGL (OpenGL ES over GXM).
+ *     C++ IRenderer implementation using SDL2 (hardware-accelerated presentation).
  *     Only compiled when PLATFORM_VITA is defined.
  */
 /******************************************************************************/
@@ -18,12 +18,12 @@
 /**
  * Vita renderer backend.
  *
- * Uses vitaGL as an OpenGL ES 2.0 wrapper over the PSP2/GXM hardware.
- * The 8-bit paletted framebuffer is uploaded each frame as a GL texture
- * and rendered as a fullscreen quad — the same blit-based approach as
- * the desktop OpenGL backend.
+ * Uses SDL2 hardware presentation: the 8-bit paletted game framebuffer is
+ * palette-expanded to RGBA each frame, uploaded as a streaming SDL_Texture,
+ * and presented via SDL_RenderCopy.  SDL_RenderSetLogicalSize(640, 480) makes
+ * SDL2 auto-letterbox into the Vita's native 960×544 display.
  *
- * Resolution: 960x544 (native Vita OLED / LCD).
+ * Resolution: 640×480 logical (rendered), 960×544 physical (Vita screen).
  */
 class RendererVita : public IRenderer {
 public:
@@ -39,22 +39,20 @@ public:
     uint8_t* LockFramebuffer(int* out_pitch) override;
     void UnlockFramebuffer() override;
 
-    const char* GetName() const override { return "Vita (vitaGL)"; }
+    const char* GetName() const override { return "Vita (SDL2)"; }
     bool SupportsRuntimeSwitch() const override { return false; }
 
 private:
-    bool m_initialized = false;
-    uint8_t* m_framebuffer = nullptr;   /**< CPU-side staging buffer (8-bit indexed) */
-    uint8_t* m_rgbaBuffer  = nullptr;   /**< RGBA expanded buffer for GL upload */
-    int m_width  = 960;
-    int m_height = 544;
+    static const int k_gameW = 640;
+    static const int k_gameH = 480;
 
-    unsigned int m_texture   = 0;
-    unsigned int m_program   = 0;
-    unsigned int m_vao       = 0;
-    unsigned int m_vbo       = 0;
+    bool          m_initialized = false;
+    struct SDL_Renderer* m_renderer  = nullptr;
+    struct SDL_Texture*  m_texture   = nullptr;
+    uint8_t*      m_framebuffer = nullptr;   /**< 8-bit indexed game buffer */
+    uint8_t*      m_rgbaBuffer  = nullptr;   /**< RGBA staging buffer for upload */
 
-    void ExpandPalette();   /**< Convert 8-bit indexed to RGBA using lbPalette */
+    void ExpandPalette();   /**< Convert 8-bit indexed → RGBA using lbPalette */
 };
 
 #endif // PLATFORM_VITA

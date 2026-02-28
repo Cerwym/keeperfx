@@ -2,6 +2,10 @@
 #include "platform/PlatformVita.h"
 #ifdef PLATFORM_VITA
 #include <psp2/io/dirent.h>
+#include <psp2/kernel/processmgr.h>
+#include <psp2/kernel/clib.h>
+#include <signal.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #endif
@@ -40,8 +44,23 @@ const char* PlatformVita::GetWineHost() const
 
 // ----- Crash / error parachute -----
 
+static void vita_crash_handler(int sig)
+{
+    FILE* f = fopen("ux0:data/keeperfx/crash.log", "a");
+    if (f) {
+        fprintf(f, "KeeperFX crashed: signal %d\n", sig);
+        fclose(f);
+    }
+    sceClibPrintf("KeeperFX CRASH: signal %d\n", sig);
+    sceKernelExitProcess(1);
+}
+
 void PlatformVita::InstallExceptionHandler()
 {
+    signal(SIGSEGV, vita_crash_handler);
+    signal(SIGABRT, vita_crash_handler);
+    signal(SIGFPE,  vita_crash_handler);
+    signal(SIGILL,  vita_crash_handler);
 }
 
 void PlatformVita::ErrorParachuteInstall()
