@@ -134,6 +134,11 @@
 #include "frontmenu_ingame_map.h"
 #include <stdint.h>
 
+#ifdef PLATFORM_VITA
+#include <psp2/kernel/processmgr.h>
+#include <psp2/kernel/clib.h>
+#endif
+
 #ifdef FUNCTESTING
   #include "ftests/ftest.h"
 #endif
@@ -1050,7 +1055,18 @@ short setup_game(void)
   if (!RendererInit((RendererType)cfg_renderer_type))
   {
       ERRORLOG("Failed to initialise renderer; falling back to software");
-      RendererInit(RENDERER_SOFTWARE);
+      if (!RendererInit(RENDERER_SOFTWARE))
+      {
+          ERRORLOG("All renderers failed to initialise — cannot continue");
+#ifdef PLATFORM_VITA
+          // On Vita, SDL_GetWindowSurface is unsupported (GXM-only SDL2) so the
+          // software renderer always fails.  A blank screen is unacceptable;
+          // exit cleanly so the user sees a crash report rather than nothing.
+          sceClibPrintf("[keeperfx] FATAL: no renderer could be initialised\n");
+          sceKernelExitProcess(1);
+#endif
+          return 0;
+      }
   }
 
   if (flag_is_set(start_params.startup_flags, SFlg_Legal))
