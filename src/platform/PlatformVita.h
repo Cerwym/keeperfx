@@ -7,9 +7,10 @@
 /** Vita-specific IAudioPlatform — wraps vita_fmv_audio_* C functions. */
 class VitaAudioPlatform : public IAudioPlatform {
 public:
-    bool FmvAudioOpen(int freq, int channels) override;
-    void FmvAudioQueue(const void* pcm, int bytes) override;
-    void FmvAudioClose() override;
+    bool    FmvAudioOpen(int freq, int channels) override;
+    void    FmvAudioQueue(const void* pcm, int bytes) override;
+    void    FmvAudioClose() override;
+    int64_t FmvAudioPtsNs() override;
 };
 
 /** PS Vita implementation of IPlatform using VitaSDK sceIo dirent API. */

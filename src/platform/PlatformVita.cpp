@@ -416,6 +416,11 @@ void VitaAudioPlatform::FmvAudioClose()
     vita_fmv_audio_close();
 }
 
+int64_t VitaAudioPlatform::FmvAudioPtsNs()
+{
+    return vita_fmv_audio_pts_ns();
+}
+
 IAudioPlatform* PlatformVita::GetAudio()
 {
     return &m_audio;

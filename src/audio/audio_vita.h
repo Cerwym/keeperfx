@@ -12,11 +12,16 @@ extern "C" {
 int  vita_fmv_audio_open(int freq, int channels);
 
 /** Queue a block of S16 stereo PCM for FMV audio output.
- *  Blocks until the DMA buffer is consumed — call from FMV decode thread. */
+ *  Blocks until a ring buffer slot is free — use as back-pressure to pace
+ *  the decode thread to the hardware audio clock. */
 void vita_fmv_audio_queue(const void *pcm, int bytes);
 
 /** Close the FMV audio port. */
 void vita_fmv_audio_close(void);
+
+/** Returns nanoseconds of audio submitted to the DMA hardware since open.
+ *  Use as the master clock for video PTS synchronisation. */
+int64_t vita_fmv_audio_pts_ns(void);
 
 #ifdef __cplusplus
 }

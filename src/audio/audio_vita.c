@@ -778,13 +778,19 @@ void stop_music(void)
 
 static int     s_fmv_port         = -1;
 static int     s_fmv_grain        = FMV_DMA_GRAIN;
+static int     s_fmv_output_rate  = 48000;
 static int16_t s_fmv_accum[FMV_DMA_GRAIN * 2];   /* accumulator for partial grains */
 static int     s_fmv_accum_count  = 0;
+
+/* Audio clock: count of samples submitted to sceAudioOutOutput.
+ * sceAudioOutOutput returns when the PREVIOUS grain finishes, so this
+ * leads the actual listener by ~1 grain (~42ms) — acceptable for sync. */
+static volatile uint64_t s_fmv_samples_played = 0;
 
 /* Dedicated output thread — two-semaphore bounded buffer pattern:
      s_fmv_sema_empty = free slot count  (starts at FMV_RING_GRAINS)
      s_fmv_sema_full  = filled slot count (starts at 0)
-   Producer: WaitSema(empty, poll) → write ring[wr] → advance wr → Signal(full)
+   Producer: WaitSema(empty, block) → write ring[wr] → advance wr → Signal(full)
    Consumer: WaitSema(full, block) → read ring[rd] → DMA → advance rd → Signal(empty)
    No race: a slot is atomically claimed (empty--, committed to producer) before writing,
    and atomically published (full++) after writing and only then readable by consumer. */
@@ -805,9 +811,17 @@ static int vita_fmv_audio_thread(SceSize args, void *argp)
         int rd = s_fmv_ring_rd;
         sceAudioOutOutput(s_fmv_port, s_fmv_ring[rd]);
         s_fmv_ring_rd = (rd + 1) % FMV_RING_GRAINS;
+        s_fmv_samples_played += (uint64_t)s_fmv_grain;
         sceKernelSignalSema(s_fmv_sema_empty, 1);
     }
     return sceKernelExitDeleteThread(0);
+}
+
+/** Returns nanoseconds of audio that have been output to the DMA hardware.
+ *  Used by the FMV decode thread as the master clock for video PTS sync. */
+int64_t vita_fmv_audio_pts_ns(void)
+{
+    return (int64_t)(s_fmv_samples_played * 1000000000ULL / (uint64_t)s_fmv_output_rate);
 }
 
 int vita_fmv_audio_open(int freq, int channels)
@@ -835,9 +849,11 @@ int vita_fmv_audio_open(int freq, int channels)
         (channels >= 2) ? SCE_AUDIO_OUT_MODE_STEREO
                         : SCE_AUDIO_OUT_MODE_MONO);
 
-    s_fmv_accum_count = 0;
-    s_fmv_ring_wr     = 0;
-    s_fmv_ring_rd     = 0;
+    s_fmv_accum_count    = 0;
+    s_fmv_ring_wr        = 0;
+    s_fmv_ring_rd        = 0;
+    s_fmv_samples_played = 0;
+    s_fmv_output_rate    = rate;
 
     /* empty sema: starts at FMV_RING_GRAINS (all slots free) */
     s_fmv_sema_empty = sceKernelCreateSema("vita_fmv_empty", 0,
@@ -889,18 +905,15 @@ void vita_fmv_audio_queue(const void *pcm, int bytes)
         src       += copy * 2;
         src_count -= copy;
         if (s_fmv_accum_count >= s_fmv_grain) {
-            /* Claim a free slot (non-blocking poll via timeout=0).
-               If no free slot the ring is full — drop grain, don't block.
-               Write AFTER claiming to guarantee the slot is ours before we
-               touch it; publish AFTER writing so consumer only reads complete data. */
-            SceUInt32 instant = 0;
-            if (sceKernelWaitSema(s_fmv_sema_empty, 1, &instant) >= 0) {
-                int wr = s_fmv_ring_wr;
-                memcpy(s_fmv_ring[wr], s_fmv_accum,
-                       (size_t)FMV_DMA_GRAIN * 2 * sizeof(int16_t));
-                s_fmv_ring_wr = (wr + 1) % FMV_RING_GRAINS;
-                sceKernelSignalSema(s_fmv_sema_full, 1);
-            }
+            /* Claim a free slot — blocking wait.  This provides back-pressure
+               that paces the decode thread to the hardware audio clock,
+               preventing grain drops and keeping audio/video in sync. */
+            sceKernelWaitSema(s_fmv_sema_empty, 1, NULL);
+            int wr = s_fmv_ring_wr;
+            memcpy(s_fmv_ring[wr], s_fmv_accum,
+                   (size_t)FMV_DMA_GRAIN * 2 * sizeof(int16_t));
+            s_fmv_ring_wr = (wr + 1) % FMV_RING_GRAINS;
+            sceKernelSignalSema(s_fmv_sema_full, 1);
             s_fmv_accum_count = 0;
         }
     }

@@ -32,6 +32,11 @@ public:
 
     /** Close the FMV audio port opened by FmvAudioOpen(). */
     virtual void FmvAudioClose() = 0;
+
+    /** Returns nanoseconds of audio submitted to the hardware DMA since open,
+     *  or -1 if this platform does not provide an audio clock.
+     *  Use as the master clock for video PTS synchronisation. */
+    virtual int64_t FmvAudioPtsNs() { return -1; }
 };
 
 #endif // IAUDIOPLATFORM_H
