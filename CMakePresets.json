@@ -193,6 +193,20 @@
         },
 
         {
+            "name": "vita-debug",
+            "displayName": "PS Vita Debug (perf logging)",
+            "description": "PlayStation Vita debug build with startup timing logs in keeperfx.log",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "PLATFORM_VITA": "ON",
+                "VITA_PERF_LOG": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
+        },
+
+        {
             "name": "switch-release",
             "displayName": "Nintendo Switch Release",
             "description": "Nintendo Switch build using devkitA64",
@@ -340,6 +354,13 @@
             "displayName": "PS Vita RelWithDebInfo Build",
             "inherits": "StandardLog",
             "configurePreset": "vita-reldebug"
+        },
+
+        {
+            "name": "vita-debug",
+            "displayName": "PS Vita Debug Build (perf logging)",
+            "inherits": "StandardLog",
+            "configurePreset": "vita-debug"
         },
 
         {

@@ -299,6 +299,11 @@ if(PLATFORM_VITA)
     # the initialisation order must be restructured (vitaGL → SDL), which is a
     # larger refactor. Enable with -DVITA_ENABLE_VITAGL=ON once that is done.
     option(VITA_ENABLE_VITAGL "Enable vitaGL GPU palette shader on Vita" OFF)
+    # Enable startup/load timing logs in keeperfx.log (debug builds only)
+    option(VITA_PERF_LOG "Enable startup timing logs on Vita (debug only)" OFF)
+    if(VITA_PERF_LOG)
+        target_compile_definitions(keeperfx PUBLIC VITA_PERF_LOG=1)
+    endif()
     if(VITA_ENABLE_VITAGL)
         find_library(VITAGL_LIB    vitaGL    HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
         find_library(VITASHARK_LIB vitashark HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")

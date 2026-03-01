@@ -16,6 +16,10 @@
 #include "platform.h"
 #include "keeperfx.hpp"
 
+#ifdef VITA_PERF_LOG
+#include <SDL2/SDL.h>
+#endif
+
 #include "bflib_coroutine.h"
 #include "bflib_math.h"
 #include "bflib_keybrd.h"
@@ -978,6 +982,15 @@ short setup_game(void)
 {
   struct CPU_INFO cpu_info; // CPU status variable
   short result;
+#if defined(VITA_PERF_LOG)
+  Uint32 _perf_start = SDL_GetTicks(), _perf_step = _perf_start;
+#define VITA_TICK(label) do { \
+    Uint32 _now = SDL_GetTicks(); \
+    JUSTLOG("[perf] %-32s  step %4ums  total %4ums", (label), _now - _perf_step, _now - _perf_start); \
+    _perf_step = _now; } while(0)
+#else
+#define VITA_TICK(label) ((void)0)
+#endif
   // Do only a very basic setup
   cpu_detect(&cpu_info);
   SYNCMSG("CPU %s type %d family %d model %d stepping %d features %08lx",cpu_info.vendor,
@@ -1023,6 +1036,7 @@ short setup_game(void)
       ERRORLOG("Configuration load error.");
       return 0;
   }
+  VITA_TICK("load_configuration");
 
   #ifdef FUNCTESTING
     start_params.startup_flags &= ~SFlg_Legal;
@@ -1040,6 +1054,7 @@ short setup_game(void)
       ERRORLOG("Error on allocation/loading of legal_load_files.");
       return 0;
   }
+  VITA_TICK("LbDataLoadAll(legal_load_files)");
 
   // Setup polyscans
   setup_bflib_render();
@@ -1050,6 +1065,7 @@ short setup_game(void)
       ERRORLOG("Unable to set display mode for legal screen");
       return 0;
   }
+  VITA_TICK("setup_screen_mode_zero (legal)");
 
   // Initialise renderer backend (SDL window exists at this point)
   if (!RendererInit((RendererType)cfg_renderer_type))
@@ -1068,6 +1084,7 @@ short setup_game(void)
           return 0;
       }
   }
+  VITA_TICK("RendererInit");
 
   if (flag_is_set(start_params.startup_flags, SFlg_Legal))
   {
@@ -1098,6 +1115,7 @@ short setup_game(void)
   // Start the sound system
   if (!init_sound())
     WARNMSG("Sound system disabled.");
+  VITA_TICK("init_sound");
   // Note: for some reason, signal handlers must be installed AFTER
   // init_sound(). This will probably change when we'll move sound
   // to SDL - then we'll put that line earlier, before setup_game().
@@ -1175,12 +1193,14 @@ short setup_game(void)
       if ( !initial_setup() )
         result = 0;
   }
+  VITA_TICK("initial_setup");
 
   if (result == 1)
   {
     load_settings();
     if ( !setup_gui_strings_data() )
       result = 0;
+    VITA_TICK("setup_gui_strings_data");
   }
 
   if (result == 1)
@@ -1192,6 +1212,7 @@ short setup_game(void)
       setup_mesh_randomizers();
       setup_stuff();
       init_lookups();
+      VITA_TICK("init_keeper + setup");
   }
 
   if (result == 1)
