@@ -612,6 +612,12 @@ struct movie_t {
 			palette[i].b = m_frame->data[1][(i * 4) + 0]; // blue
 			palette[i].g = m_frame->data[1][(i * 4) + 1]; // green
 			palette[i].r = m_frame->data[1][(i * 4) + 2]; // red
+			// RendererVita (and vitaGL) read lbPalette[] directly (6-bit values).
+			// SDL_SetPaletteColors only updates lbDrawSurface->format->palette which
+			// those renderers never read. Update lbPalette here so the video is visible.
+			lbPalette[i*3+0] = palette[i].r >> 2;
+			lbPalette[i*3+1] = palette[i].g >> 2;
+			lbPalette[i*3+2] = palette[i].b >> 2;
 		}
 		LbScreenWaitVbi(); // this is a no-op today
 		// LbPaletteSet expects values in range 0-63 for reasons, nuking 75% of the color range

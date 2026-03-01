@@ -492,12 +492,12 @@ TbBool InitAudio(const struct SoundSettings *settings)
         s_music_running = 1;
         s_music_thread  = sceKernelCreateThread("vita_music", vita_music_thread,
                                                 0x60,          /* lower priority than SFX */
-                                                128 * 1024,    /* 128 KB stack */
+                                                64 * 1024,     /* 64 KB stack (same as DMA thread) */
                                                 0, 0, NULL);
         if (s_music_thread >= 0)
             sceKernelStartThread(s_music_thread, 0, NULL);
         else {
-            WARNLOG("vita audio: music thread create failed (%d)", (int)s_music_thread);
+            WARNLOG("vita audio: music thread create failed (0x%08X)", (unsigned int)s_music_thread);
             s_music_running = 0;
         }
     } else {
@@ -737,7 +737,8 @@ void stop_music(void)
 
 static int     s_fmv_port    = -1;
 static int     s_fmv_grain   = FMV_DMA_GRAIN;
-static int16_t s_fmv_silence[FMV_DMA_GRAIN * 2]; /* zeroed at start, never written */
+static int16_t s_fmv_accum[FMV_DMA_GRAIN * 2];   /* accumulator for partial grains */
+static int     s_fmv_accum_count = 0;             /* stereo samples held in accumulator */
 
 int vita_fmv_audio_open(int freq, int channels)
 {
@@ -763,28 +764,29 @@ int vita_fmv_audio_open(int freq, int channels)
     sceAudioOutSetConfig(s_fmv_port, s_fmv_grain, rate,
         (channels >= 2) ? SCE_AUDIO_OUT_MODE_STEREO
                         : SCE_AUDIO_OUT_MODE_MONO);
+    s_fmv_accum_count = 0;
     return 1;
 }
 
 void vita_fmv_audio_queue(const void *pcm, int bytes)
 {
     if (s_fmv_port < 0 || !pcm || bytes <= 0) return;
-    /* sceAudioOutOutput expects exactly s_fmv_grain * sizeof(int16_t) * channels bytes.
-       Walk the buffer in grain-sized chunks; pad the last partial chunk with silence. */
-    int frame_bytes = s_fmv_grain * 2 * sizeof(int16_t); /* always 2 ch after resample */
-    const uint8_t *p   = (const uint8_t *)pcm;
-    int remaining = bytes;
-    while (remaining > 0) {
-        if (remaining >= frame_bytes) {
-            sceAudioOutOutput(s_fmv_port, p);
-            p         += frame_bytes;
-            remaining -= frame_bytes;
-        } else {
-            /* partial last frame — copy into silence buffer then output */
-            memcpy(s_fmv_silence, p, remaining);
-            memset((uint8_t *)s_fmv_silence + remaining, 0, frame_bytes - remaining);
-            sceAudioOutOutput(s_fmv_port, s_fmv_silence);
-            remaining = 0;
+    /* Incoming data is always S16 stereo: 2 ch × 2 bytes = 4 bytes per stereo sample.
+       Accumulate samples and only call sceAudioOutOutput when a full grain is ready.
+       This avoids per-packet silence-padding which causes audible skipping. */
+    const int16_t *src = (const int16_t *)pcm;
+    int src_count = bytes / (2 * (int)sizeof(int16_t)); /* stereo sample count */
+    while (src_count > 0) {
+        int space = s_fmv_grain - s_fmv_accum_count;
+        int copy  = (src_count < space) ? src_count : space;
+        memcpy(s_fmv_accum + s_fmv_accum_count * 2, src,
+               (size_t)copy * 2 * sizeof(int16_t));
+        s_fmv_accum_count += copy;
+        src       += copy * 2;
+        src_count -= copy;
+        if (s_fmv_accum_count >= s_fmv_grain) {
+            sceAudioOutOutput(s_fmv_port, s_fmv_accum);
+            s_fmv_accum_count = 0;
         }
     }
 }
@@ -792,6 +794,13 @@ void vita_fmv_audio_queue(const void *pcm, int bytes)
 void vita_fmv_audio_close(void)
 {
     if (s_fmv_port >= 0) {
+        /* Flush any partial grain with silence padding (happens at most once, at end). */
+        if (s_fmv_accum_count > 0) {
+            size_t remaining = (size_t)(s_fmv_grain - s_fmv_accum_count) * 2 * sizeof(int16_t);
+            memset(s_fmv_accum + s_fmv_accum_count * 2, 0, remaining);
+            sceAudioOutOutput(s_fmv_port, s_fmv_accum);
+            s_fmv_accum_count = 0;
+        }
         sceAudioOutReleasePort(s_fmv_port);
         s_fmv_port = -1;
     }
