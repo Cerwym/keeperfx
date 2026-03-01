@@ -732,6 +732,71 @@ void stop_music(void)
 #endif
 }
 
+/* ── FMV audio (dedicated SCE port for Smacker playback) ────────────────── */
+#define FMV_DMA_GRAIN  2048   /* samples per sceAudioOutOutput call */
+
+static int     s_fmv_port    = -1;
+static int     s_fmv_grain   = FMV_DMA_GRAIN;
+static int16_t s_fmv_silence[FMV_DMA_GRAIN * 2]; /* zeroed at start, never written */
+
+int vita_fmv_audio_open(int freq, int channels)
+{
+    if (s_fmv_port >= 0) {
+        /* already open — close and reopen with new parameters */
+        sceAudioOutReleasePort(s_fmv_port);
+        s_fmv_port = -1;
+    }
+    /* Vita only supports 48000 and 44100 for MAIN ports */
+    int rate = (freq == 44100) ? 44100 : 48000;
+    s_fmv_grain = FMV_DMA_GRAIN;
+    s_fmv_port  = sceAudioOutOpenPort(
+        SCE_AUDIO_OUT_PORT_TYPE_MAIN,
+        s_fmv_grain,
+        rate,
+        (channels >= 2) ? SCE_AUDIO_OUT_MODE_STEREO
+                        : SCE_AUDIO_OUT_MODE_MONO);
+    if (s_fmv_port < 0) {
+        WARNLOG("vita_fmv_audio_open: sceAudioOutOpenPort failed (0x%08X)", s_fmv_port);
+        s_fmv_port = -1;
+        return 0;
+    }
+    sceAudioOutSetConfig(s_fmv_port, s_fmv_grain, rate,
+        (channels >= 2) ? SCE_AUDIO_OUT_MODE_STEREO
+                        : SCE_AUDIO_OUT_MODE_MONO);
+    return 1;
+}
+
+void vita_fmv_audio_queue(const void *pcm, int bytes)
+{
+    if (s_fmv_port < 0 || !pcm || bytes <= 0) return;
+    /* sceAudioOutOutput expects exactly s_fmv_grain * sizeof(int16_t) * channels bytes.
+       Walk the buffer in grain-sized chunks; pad the last partial chunk with silence. */
+    int frame_bytes = s_fmv_grain * 2 * sizeof(int16_t); /* always 2 ch after resample */
+    const uint8_t *p   = (const uint8_t *)pcm;
+    int remaining = bytes;
+    while (remaining > 0) {
+        if (remaining >= frame_bytes) {
+            sceAudioOutOutput(s_fmv_port, p);
+            p         += frame_bytes;
+            remaining -= frame_bytes;
+        } else {
+            /* partial last frame — copy into silence buffer then output */
+            memcpy(s_fmv_silence, p, remaining);
+            memset((uint8_t *)s_fmv_silence + remaining, 0, frame_bytes - remaining);
+            sceAudioOutOutput(s_fmv_port, s_fmv_silence);
+            remaining = 0;
+        }
+    }
+}
+
+void vita_fmv_audio_close(void)
+{
+    if (s_fmv_port >= 0) {
+        sceAudioOutReleasePort(s_fmv_port);
+        s_fmv_port = -1;
+    }
+}
+
 /* ── SDL audio stubs (symbols expected by the linker from bflib_sndlib.cpp) ── */
 int  InitialiseSDLAudio(void) { return 1; }
 void ShutDownSDLAudio(void)   {}

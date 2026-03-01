@@ -4,6 +4,7 @@
 #include "bflib_basics.h"
 #include "bflib_fileio.h"
 #include "bflib_sound.h"
+#include "IAudioPlatform.h"
 
 /** Abstract interface for OS/platform-specific operations.
  *
@@ -110,6 +111,12 @@ public:
      *  prevent the system from blanking the screen (e.g. sceKernelPowerTick
      *  on Vita).  Default is a no-op. */
     virtual void FrameTick() {}
+
+    // ----- Audio sub-interface -----
+    /** Returns the platform audio implementation, or nullptr if the platform
+     *  has no native audio path (desktop CI, headless builds).
+     *  When nullptr, callers fall back to SDL audio or silent playback. */
+    virtual IAudioPlatform* GetAudio() { return nullptr; }
 };
 
 #endif // IPLATFORM_H

@@ -49,7 +49,11 @@ void        PlatformManager_LogWrite(const char* message);
 void        PlatformManager_FrameTick(void);
 
 #ifdef __cplusplus
-}
+} // extern "C"
+
+/** Returns the platform audio sub-interface, or nullptr for headless/desktop CI.
+ *  C++-only (IAudioPlatform is a C++ class).  Call from .cpp translation units. */
+IAudioPlatform* PlatformManager_GetAudio(void);
 #endif
 
 #endif // PLATFORM_MANAGER_H

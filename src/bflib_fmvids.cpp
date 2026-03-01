@@ -6,6 +6,7 @@
 #include "bflib_vidsurface.h"
 #include "bflib_fileio.h"
 #include "kjm_input.h"
+#include "platform/PlatformManager.h"
 
 // See: https://trac.ffmpeg.org/ticket/3626
 extern "C" {
@@ -364,6 +365,10 @@ struct movie_t {
 			SDL_CloseAudioDevice(m_audio_device);
 			m_audio_device = 0;
 		}
+		IAudioPlatform* audio = PlatformManager_GetAudio();
+		if (audio) {
+			audio->FmvAudioClose();
+		}
 	}
 
 	void open_input(const char * filename) {
@@ -415,27 +420,48 @@ struct movie_t {
 	}
 
 	void open_audio_device() {
-        if (!flag_is_set(m_flags, SMK_NoSound))
-        {
-            SDL_AudioSpec desired, obtained;
-            desired.freq = 44100;
-            desired.format = AUDIO_F32SYS;
-            desired.channels = 2;
-            desired.silence = 0;
-            desired.samples = 0;
-            desired.padding = 0;
-            desired.size = 0;
-            desired.callback = nullptr;
-            desired.userdata = nullptr;
-            m_audio_device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
-            if (m_audio_device <= 0) {
-                throw std::runtime_error("Cannot open audio device");
+        if (flag_is_set(m_flags, SMK_NoSound))
+            return;
+
+        // If the platform provides a native audio path, use it.
+        // This avoids SDL audio entirely on platforms such as Vita where
+        // SDL_INIT_AUDIO is never initialised and sceAudio* is preferred.
+        IAudioPlatform* audio = PlatformManager_GetAudio();
+        if (audio) {
+            // Vita sceAudio requires S16 stereo; set the resampler target now.
+            m_output_audio_channels  = 2;
+            m_output_audio_frequency = 48000;
+            m_output_audio_format    = AV_SAMPLE_FMT_S16;
+            m_output_audio_layout    = AV_CHANNEL_LAYOUT_STEREO;
+            if (!audio->FmvAudioOpen(m_output_audio_frequency, m_output_audio_channels)) {
+                WARNLOG("FMV: Cannot open native audio device — playing silent");
+                m_flags |= SMK_NoSound;
             }
-            m_output_audio_channels = obtained.channels;
-            m_output_audio_frequency = obtained.freq;
-            m_output_audio_format = sdl_to_ffmpeg_format(obtained.format);
-            m_output_audio_layout = channels_to_ffmpeg_layout(obtained.channels);
+            return;
         }
+
+        // Desktop path: use SDL audio.
+        SDL_InitSubSystem(SDL_INIT_AUDIO);
+        SDL_AudioSpec desired, obtained;
+        desired.freq = 44100;
+        desired.format = AUDIO_F32SYS;
+        desired.channels = 2;
+        desired.silence = 0;
+        desired.samples = 0;
+        desired.padding = 0;
+        desired.size = 0;
+        desired.callback = nullptr;
+        desired.userdata = nullptr;
+        m_audio_device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
+        if (m_audio_device <= 0) {
+            WARNLOG("FMV: Cannot open SDL audio device (%s) — playing silent", SDL_GetError());
+            m_flags |= SMK_NoSound;
+            return;
+        }
+        m_output_audio_channels = obtained.channels;
+        m_output_audio_frequency = obtained.freq;
+        m_output_audio_format = sdl_to_ffmpeg_format(obtained.format);
+        m_output_audio_layout = channels_to_ffmpeg_layout(obtained.channels);
 	}
 
 	void find_stream_info() {
@@ -568,8 +594,13 @@ struct movie_t {
 #endif
 			m_frame->nb_samples
 		);
-		SDL_QueueAudio(m_audio_device, buffer, num_samples * sample_size);
-		SDL_PauseAudioDevice(m_audio_device, 0);
+		IAudioPlatform* audio = PlatformManager_GetAudio();
+		if (audio) {
+			audio->FmvAudioQueue(buffer, num_samples * sample_size);
+		} else {
+			SDL_QueueAudio(m_audio_device, buffer, num_samples * sample_size);
+			SDL_PauseAudioDevice(m_audio_device, 0);
+		}
 		av_freep(&buffer);
 	}
 

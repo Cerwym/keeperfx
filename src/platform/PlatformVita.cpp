@@ -18,6 +18,7 @@
 #include "bflib_basics.h"
 #include "bflib_filelst.h"
 #include "config.h"
+#include "audio/audio_vita.h"
 #endif
 #include "post_inc.h"
 
@@ -386,5 +387,27 @@ void PlatformVita::FrameTick()
 void        PlatformVita::SetArgv(int, char**) {} // argv[0] unused on Vita
 const char* PlatformVita::GetDataPath() const { return "ux0:data/keeperfx"; }
 const char* PlatformVita::GetSavePath() const { return "ux0:data/keeperfx/save"; }
+
+// ----- Audio sub-interface -----
+
+bool VitaAudioPlatform::FmvAudioOpen(int freq, int channels)
+{
+    return vita_fmv_audio_open(freq, channels) != 0;
+}
+
+void VitaAudioPlatform::FmvAudioQueue(const void* pcm, int bytes)
+{
+    vita_fmv_audio_queue(pcm, bytes);
+}
+
+void VitaAudioPlatform::FmvAudioClose()
+{
+    vita_fmv_audio_close();
+}
+
+IAudioPlatform* PlatformVita::GetAudio()
+{
+    return &m_audio;
+}
 
 #endif // PLATFORM_VITA

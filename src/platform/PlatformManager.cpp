@@ -167,3 +167,9 @@ extern "C" void PlatformManager_FrameTick()
     IPlatform* p = PlatformManager::Get();
     if (p) p->FrameTick();
 }
+
+IAudioPlatform* PlatformManager_GetAudio()
+{
+    IPlatform* p = PlatformManager::Get();
+    return p ? p->GetAudio() : nullptr;
+}
