@@ -2631,6 +2631,12 @@ void reinit_all_menus(void)
     set_gui_visible(visible);
 }
 
+#ifdef PLATFORM_VITA
+// VitaSDK sceIo* ignores POSIX chdir(); this modifier prepends the ux0: data path
+// to all relative filenames so LbDataLoad() resolves them correctly on device.
+extern "C" const char* vita_modify_load_filename(const char*);
+#endif
+
 const char * mdlf_for_cd(const char * input)
 {
     if (input[0] != '*') {
@@ -2647,7 +2653,14 @@ void frontend_load_data_from_cd(void)
 
 void frontend_load_data_reset(void)
 {
+#ifdef PLATFORM_VITA
+  // VitaSDK sceIo* ignores POSIX chdir(), so we must always keep the ux0: prefix
+  // function active. Resetting to defaultModifyDataLoadFilename would break all
+  // subsequent LbDataLoad calls (e.g. data/slab0-0.dat at level start).
+  LbDataLoadSetModifyFilenameFunction(vita_modify_load_filename);
+#else
   LbDataLoadSetModifyFilenameFunction(defaultModifyDataLoadFilename);
+#endif
 }
 
 void initialise_tab_tags(MenuID menu_id)

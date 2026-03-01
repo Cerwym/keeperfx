@@ -52,6 +52,9 @@ struct TbFileInfo {
     SceUID fd;
 };
 
+// Forward declaration — defined in the SystemInit section below.
+extern "C" const char* vita_modify_load_filename(const char* input);
+
 // ----- OS information -----
 
 const char* PlatformVita::GetOSVersion() const
@@ -107,12 +110,12 @@ void PlatformVita::ErrorParachuteUpdate()
 TbBool PlatformVita::FileExists(const char* path) const
 {
     SceIoStat stat;
-    return sceIoGetstat(path, &stat) >= 0;
+    return sceIoGetstat(vita_modify_load_filename(path), &stat) >= 0;
 }
 
 int PlatformVita::MakeDirectory(const char* path)
 {
-    int ret = sceIoMkdir(path, 0777);
+    int ret = sceIoMkdir(vita_modify_load_filename(path), 0777);
     if (ret >= 0 || ret == (int)0x80010011 /* SCE_ERROR_ERRNO_EEXIST */) return 0;
     return -1;
 }
@@ -179,6 +182,8 @@ static bool vita_find_next_entry(TbFileFind* ff, TbFileEntry* fe)
 
 TbFileFind* PlatformVita::FileFindFirst(const char* filespec, TbFileEntry* fe)
 {
+    // Resolve relative path before splitting into dir/pattern
+    filespec = vita_modify_load_filename(filespec);
     // Determine directory and optional pattern from filespec
     const char* slash   = strrchr(filespec, '/');
     const char* pattern = slash ? slash + 1 : filespec;
@@ -245,7 +250,7 @@ TbFileHandle PlatformVita::FileOpen(const char* fname, unsigned char accmode)
         case Lb_FILE_MODE_READ_ONLY:
         default:                     flags = SCE_O_RDONLY;                               break;
     }
-    SceUID fd = sceIoOpen(fname, flags, 0777);
+    SceUID fd = sceIoOpen(vita_modify_load_filename(fname), flags, 0777);
     if (fd < 0) {
         WARNLOG("sceIoOpen(\"%s\") failed: 0x%08X", fname ? fname : "(null)", (unsigned)fd);
         return nullptr;
@@ -315,7 +320,7 @@ short PlatformVita::FileFlush(TbFileHandle handle)
 
 long PlatformVita::FileLength(const char* fname)
 {
-    SceUID fd = sceIoOpen(fname, SCE_O_RDONLY, 0);
+    SceUID fd = sceIoOpen(vita_modify_load_filename(fname), SCE_O_RDONLY, 0);
     if (fd < 0) return -1;
     long len = (long)sceIoLseek(fd, 0, SCE_SEEK_END);
     sceIoClose(fd);
@@ -324,7 +329,7 @@ long PlatformVita::FileLength(const char* fname)
 
 int PlatformVita::FileDelete(const char* fname)
 {
-    return (sceIoRemove(fname) < 0) ? -1 : 1;
+    return (sceIoRemove(vita_modify_load_filename(fname)) < 0) ? -1 : 1;
 }
 
 // ----- CDROM / Redbook audio (no-ops on Vita) -----
@@ -346,7 +351,7 @@ void PlatformVita::LogWrite(const char* message)
 // TbLoadFilesV2 arrays use literal relative paths (e.g. "data/creature.tab").
 // VitaSDK's POSIX chdir does not affect all fopen sites, so we prepend
 // keeper_runtime_directory here instead.
-static const char *vita_modify_load_filename(const char *input)
+extern "C" const char *vita_modify_load_filename(const char *input)
 {
     // Special markers: pass through unchanged.
     if (input[0] == '*' || input[0] == '!') return input;
