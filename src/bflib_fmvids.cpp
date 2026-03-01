@@ -17,6 +17,7 @@ extern "C" {
 }
 
 #include <cstdio>
+#include <cctype>
 #include <string>
 #include <memory>
 #include <stdexcept>
@@ -27,6 +28,33 @@ extern "C" {
 #include "post_inc.h"
 
 namespace {
+
+#ifdef PLATFORM_VITA
+// VitaSDK URL scheme 'ux0:data/foo' is treated by FFmpeg's URL parser as an
+// unknown protocol, causing avformat_open_input to fail. VitaSDK newlib maps
+// the POSIX path '/ux0/data/foo' to the same location transparently, and a
+// leading '/' means FFmpeg never sees a colon-scheme.
+static std::string vita_ffmpeg_path(const char *path)
+{
+    const char *colon = strchr(path, ':');
+    if (colon && colon > path) {
+        bool is_mount = true;
+        for (const char *p = path; p < colon; p++) {
+            if (!isalnum((unsigned char)*p)) { is_mount = false; break; }
+        }
+        if (is_mount) {
+            std::string r = "/";
+            r.append(path, (size_t)(colon - path));
+            r += '/';
+            const char *rest = colon + 1;
+            if (*rest == '/') rest++; // avoid double slash
+            r += rest;
+            return r;
+        }
+    }
+    return path;
+}
+#endif
 
 void copy_to_screen_pxquad(unsigned char *srcbuf, unsigned char *dstbuf, long width, long dst_shift)
 {
@@ -329,7 +357,12 @@ struct movie_t {
 	}
 
 	void open_input(const char * filename) {
+#ifdef PLATFORM_VITA
+		std::string posix_path = vita_ffmpeg_path(filename);
+		if (avformat_open_input(&m_format_context, posix_path.c_str(), nullptr, nullptr) != 0) {
+#else
 		if (avformat_open_input(&m_format_context, filename, nullptr, nullptr) != 0) {
+#endif
 			throw std::runtime_error("Cannot open source file");
 		}
 	}

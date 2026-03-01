@@ -142,50 +142,59 @@ static volatile int     s_music_running = 0;
 #endif
 
 /* ─────────────────────────────────────────────────────────────────────────
-   decode_wav — read one WAV embedded at current file position.
+   decode_wav_mem — decode one WAV from a memory buffer.
    Returns malloc'd S16LE mono data (caller owns it), NULL on error.
+   Replaces the old FILE*-based decode_wav; no fseek/fread required.
    ───────────────────────────────────────────────────────────────────────── */
-static int16_t *decode_wav(FILE *f, uint32_t *out_len, uint32_t *out_rate)
+static int16_t *decode_wav_mem(const uint8_t *data, size_t size,
+                                uint32_t *out_len, uint32_t *out_rate)
 {
+    if (size < sizeof(RiffChunk) + 4) return NULL;
+    const uint8_t *p   = data;
+    const uint8_t *end = data + size;
+
     RiffChunk riff;
-    if (fread(&riff, sizeof(riff), 1, f) != 1 || riff.tag != RIFF_RIFF)
-        return NULL;
+    memcpy(&riff, p, sizeof(riff)); p += sizeof(riff);
+    if (riff.tag != RIFF_RIFF || p >= end) return NULL;
+
     uint32_t wave_tag;
-    if (fread(&wave_tag, 4, 1, f) != 1 || wave_tag != RIFF_WAVE)
-        return NULL;
+    memcpy(&wave_tag, p, 4); p += 4;
+    if (wave_tag != RIFF_WAVE) return NULL;
 
     WaveFmt  fmt    = {0};
     uint8_t *raw    = NULL;
     uint32_t raw_sz = 0;
 
-    RiffChunk chunk;
-    while (fread(&chunk, sizeof(chunk), 1, f) == 1) {
+    while (p + sizeof(RiffChunk) <= end) {
+        RiffChunk chunk;
+        memcpy(&chunk, p, sizeof(chunk)); p += sizeof(chunk);
+        if (p + chunk.size > end) chunk.size = (uint32_t)(end - p);
+
         if (chunk.tag == RIFF_FMT) {
             size_t to_read = sizeof(WaveFmt) < chunk.size ? sizeof(WaveFmt) : (size_t)chunk.size;
-            fread(&fmt, to_read, 1, f);
-            if (chunk.size > (uint32_t)to_read)
-                fseek(f, (long)(chunk.size - to_read), SEEK_CUR);
+            memcpy(&fmt, p, to_read);
+            p += chunk.size;
         } else if (chunk.tag == RIFF_DATA) {
-            raw = (uint8_t *)malloc(chunk.size);
-            if (!raw) return NULL;
             raw_sz = chunk.size;
-            if (fread(raw, 1, raw_sz, f) != raw_sz) { free(raw); return NULL; }
+            raw = (uint8_t *)malloc(raw_sz);
+            if (!raw) return NULL;
+            memcpy(raw, p, raw_sz);
             break;
         } else {
-            fseek(f, (long)chunk.size, SEEK_CUR);
+            p += chunk.size;
         }
     }
     if (!raw || fmt.format == 0) { free(raw); return NULL; }
     *out_rate = fmt.sample_rate;
 
-    /* 4-bit pseudo-ADPCM: nibble-expand to U8 then to S16 (matches bflib_sndlib.cpp) */
+    /* 4-bit pseudo-ADPCM → S16 (matches bflib_sndlib.cpp) */
     if (fmt.format == WAVE_FORMAT_ADPCM && fmt.bits_per_sample == 4 && fmt.channels == 1) {
         uint32_t slen = raw_sz * 2;
         int16_t *out = (int16_t *)malloc(slen * sizeof(int16_t));
         if (!out) { free(raw); return NULL; }
         for (uint32_t i = 0; i < raw_sz; i++) {
-            int hi = ((raw[i] >> 4) & 0xF) * 2;  /* 0-30 */
-            int lo = (raw[i] & 0x7) * 2;           /* 0-14 — matches existing bflib_sndlib decode */
+            int hi = ((raw[i] >> 4) & 0xF) * 2;
+            int lo = (raw[i] & 0x7) * 2;
             out[i*2+0] = (int16_t)((hi - 128) << 8);
             out[i*2+1] = (int16_t)((lo - 128) << 8);
         }
@@ -199,7 +208,7 @@ static int16_t *decode_wav(FILE *f, uint32_t *out_len, uint32_t *out_rate)
             out[i] = (int16_t)((raw[i] - 128) << 8);
         free(raw); *out_len = raw_sz; return out;
     }
-    /* 16-bit signed mono — pass through (take ownership of raw) */
+    /* 16-bit signed mono — take ownership */
     if (fmt.bits_per_sample == 16 && fmt.channels == 1) {
         *out_len = raw_sz / 2;
         return (int16_t *)raw;
@@ -229,11 +238,12 @@ static int16_t *decode_wav(FILE *f, uint32_t *out_len, uint32_t *out_rate)
 
 /* ─────────────────────────────────────────────────────────────────────────
    vita_load_sound_bank — parse one .dat bank and decode all WAV samples.
-   Mirrors load_sound_bank() in bflib_sndlib.cpp.
+   Reads the entire file into memory in one fread, then parses from the
+   buffer to avoid O(n_samples) random-IO seeks on the memory card.
    ───────────────────────────────────────────────────────────────────────── */
 static void vita_load_sound_bank(const char *filename, int bank_idx)
 {
-    const int DIR_IDX = 2;  /* directory entry index (a5 was always 1622) */
+    const int DIR_IDX = 2;
     VitaSample *bank = s_samples[bank_idx];
 
     for (int i = 0; i < VITA_MAX_SAMPLES; i++) {
@@ -241,25 +251,37 @@ static void vita_load_sound_bank(const char *filename, int bank_idx)
     }
     s_sample_counts[bank_idx] = 0;
 
+    /* Read the entire file into memory to avoid O(n) random IO seeks. */
     FILE *f = fopen(filename, "rb");
     if (!f) { ERRORLOG("vita audio: cannot open %s", filename); return; }
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (file_size <= 0) { fclose(f); ERRORLOG("vita audio: empty file %s", filename); return; }
+    uint8_t *filebuf = (uint8_t *)malloc((size_t)file_size);
+    if (!filebuf) { fclose(f); ERRORLOG("vita audio: out of memory for %s", filename); return; }
+    if ((long)fread(filebuf, 1, (size_t)file_size, f) != file_size) {
+        free(filebuf); fclose(f);
+        ERRORLOG("vita audio: read error on %s", filename); return;
+    }
+    fclose(f);
 
     /* head offset is stored in the last 4 bytes of the file */
     uint32_t head_offset = 0;
-    fseek(f, -4, SEEK_END);
-    fread(&head_offset, 4, 1, f);
-    fseek(f, (long)head_offset, SEEK_SET);
+    memcpy(&head_offset, filebuf + file_size - 4, 4);
+    if (head_offset + sizeof(VitaBankHead) + sizeof(VitaBankEntry) * 9 > (size_t)file_size) {
+        free(filebuf); ERRORLOG("vita audio: bank header out of range in %s", filename); return;
+    }
 
-    VitaBankHead bhead;
-    fread(&bhead, sizeof(bhead), 1, f);
+    const uint8_t *p = filebuf + head_offset;
+    p += sizeof(VitaBankHead); /* skip signature */
 
     VitaBankEntry bentries[9];
-    fread(bentries, sizeof(bentries), 1, f);
+    memcpy(bentries, p, sizeof(bentries));
 
     VitaBankEntry *dir = &bentries[DIR_IDX];
     if (dir->first_sample_offset == 0 || dir->total_samples_size < sizeof(VitaBankSample)) {
-        ERRORLOG("vita audio: invalid bank directory in %s", filename);
-        fclose(f); return;
+        free(filebuf); ERRORLOG("vita audio: invalid bank directory in %s", filename); return;
     }
 
     int count = (int)(dir->total_samples_size / sizeof(VitaBankSample));
@@ -267,12 +289,17 @@ static void vita_load_sound_bank(const char *filename, int bank_idx)
 
     VitaBankSample hdr;
     for (int i = 0; i < count; i++) {
-        fseek(f, (long)(dir->first_sample_offset + (uint32_t)i * sizeof(VitaBankSample)), SEEK_SET);
-        if (fread(&hdr, sizeof(hdr), 1, f) != 1) break;
+        size_t hdr_off = dir->first_sample_offset + (uint32_t)i * sizeof(VitaBankSample);
+        if (hdr_off + sizeof(VitaBankSample) > (size_t)file_size) break;
+        memcpy(&hdr, filebuf + hdr_off, sizeof(hdr));
 
-        fseek(f, (long)(dir->first_data_offset + hdr.data_offset), SEEK_SET);
+        size_t wav_off = dir->first_data_offset + hdr.data_offset;
+        if (wav_off >= (size_t)file_size) {
+            WARNLOG("vita audio: sample %d offset out of range in %s", i, filename); continue;
+        }
         uint32_t pcm_len = 0, pcm_rate = 0;
-        int16_t *pcm = decode_wav(f, &pcm_len, &pcm_rate);
+        int16_t *pcm = decode_wav_mem(filebuf + wav_off, (size_t)file_size - wav_off,
+                                      &pcm_len, &pcm_rate);
         if (!pcm) { WARNLOG("vita audio: failed to decode sample %d in %s", i, filename); continue; }
 
         bank[i].data     = pcm;
@@ -280,8 +307,8 @@ static void vita_load_sound_bank(const char *filename, int bank_idx)
         bank[i].src_rate = pcm_rate ? pcm_rate : hdr.sample_rate;
         bank[i].sfxid    = hdr.sfxid;
     }
+    free(filebuf);
     s_sample_counts[bank_idx] = count;
-    fclose(f);
     JUSTLOG("vita audio: loaded %d samples from %s", count, filename);
 }
 

@@ -109,8 +109,10 @@ int LbDataLoad(struct TbLoadFiles *load_file, LoadFilesGetSizeFunc get_size_fn, 
     LbJustLog("LbDataLoad: filelength %ld for file \"%s\"\n",slength,fname);
 #endif
     load_file->SLength = (get_size_fn) ? (long) get_size_fn(slength): slength;
-    if (slength <= 0)
+    if (slength <= 0) {
+        ERRORLOG("LbDataLoad: file not found: \"%s\"", fname);
         return -101;
+    }
     if (!is_static)
     {
         *(load_file->Start) = calloc(load_file->SLength + 512, 1);
