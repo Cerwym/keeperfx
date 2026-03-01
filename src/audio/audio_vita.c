@@ -741,23 +741,31 @@ static int     s_fmv_grain        = FMV_DMA_GRAIN;
 static int16_t s_fmv_accum[FMV_DMA_GRAIN * 2];   /* accumulator for partial grains */
 static int     s_fmv_accum_count  = 0;
 
-/* Dedicated output thread — keeps sceAudioOutOutput (blocking) off the decode thread */
-static SceUID  s_fmv_sema         = -1;
-static SceUID  s_fmv_thread       = -1;
-static int     s_fmv_thread_run   = 0;
+/* Dedicated output thread — two-semaphore bounded buffer pattern:
+     s_fmv_sema_empty = free slot count  (starts at FMV_RING_GRAINS)
+     s_fmv_sema_full  = filled slot count (starts at 0)
+   Producer: WaitSema(empty, poll) → write ring[wr] → advance wr → Signal(full)
+   Consumer: WaitSema(full, block) → read ring[rd] → DMA → advance rd → Signal(empty)
+   No race: a slot is atomically claimed (empty--, committed to producer) before writing,
+   and atomically published (full++) after writing and only then readable by consumer. */
+static SceUID  s_fmv_sema_empty  = -1;   /* counts free ring slots */
+static SceUID  s_fmv_sema_full   = -1;   /* counts filled ring slots */
+static SceUID  s_fmv_thread      = -1;
+static int     s_fmv_thread_run  = 0;
 static int16_t s_fmv_ring[FMV_RING_GRAINS][FMV_DMA_GRAIN * 2];
-static int     s_fmv_ring_wr      = 0;   /* written by decode thread */
-static int     s_fmv_ring_rd      = 0;   /* read by audio thread */
+static int     s_fmv_ring_wr     = 0;   /* written by decode thread */
+static int     s_fmv_ring_rd     = 0;   /* read by audio thread */
 
 static int vita_fmv_audio_thread(SceSize args, void *argp)
 {
     (void)args; (void)argp;
     while (s_fmv_thread_run) {
-        sceKernelWaitSema(s_fmv_sema, 1, NULL);
+        sceKernelWaitSema(s_fmv_sema_full, 1, NULL);
         if (!s_fmv_thread_run) break;
         int rd = s_fmv_ring_rd;
         sceAudioOutOutput(s_fmv_port, s_fmv_ring[rd]);
         s_fmv_ring_rd = (rd + 1) % FMV_RING_GRAINS;
+        sceKernelSignalSema(s_fmv_sema_empty, 1);
     }
     return sceKernelExitDeleteThread(0);
 }
@@ -791,10 +799,17 @@ int vita_fmv_audio_open(int freq, int channels)
     s_fmv_ring_wr     = 0;
     s_fmv_ring_rd     = 0;
 
-    /* Create a semaphore (max = ring size) so the audio thread never reads ahead */
-    s_fmv_sema = sceKernelCreateSema("vita_fmv_sema", 0, 0, FMV_RING_GRAINS, NULL);
-    if (s_fmv_sema < 0) {
-        WARNLOG("vita_fmv_audio_open: sceKernelCreateSema failed (0x%08X)", s_fmv_sema);
+    /* empty sema: starts at FMV_RING_GRAINS (all slots free) */
+    s_fmv_sema_empty = sceKernelCreateSema("vita_fmv_empty", 0,
+                                            FMV_RING_GRAINS, FMV_RING_GRAINS, NULL);
+    /* full sema: starts at 0 (no filled slots yet) */
+    s_fmv_sema_full  = sceKernelCreateSema("vita_fmv_full",  0,
+                                            0, FMV_RING_GRAINS, NULL);
+    if (s_fmv_sema_empty < 0 || s_fmv_sema_full < 0) {
+        WARNLOG("vita_fmv_audio_open: sceKernelCreateSema failed (%08X / %08X)",
+                s_fmv_sema_empty, s_fmv_sema_full);
+        if (s_fmv_sema_empty >= 0) { sceKernelDeleteSema(s_fmv_sema_empty); s_fmv_sema_empty = -1; }
+        if (s_fmv_sema_full  >= 0) { sceKernelDeleteSema(s_fmv_sema_full);  s_fmv_sema_full  = -1; }
         sceAudioOutReleasePort(s_fmv_port);
         s_fmv_port = -1;
         return 0;
@@ -806,11 +821,11 @@ int vita_fmv_audio_open(int freq, int channels)
         0x40, 64 * 1024, 0, 0, NULL);
     if (s_fmv_thread < 0) {
         WARNLOG("vita_fmv_audio_open: sceKernelCreateThread failed (0x%08X)", s_fmv_thread);
-        sceKernelDeleteSema(s_fmv_sema);
+        sceKernelDeleteSema(s_fmv_sema_empty); s_fmv_sema_empty = -1;
+        sceKernelDeleteSema(s_fmv_sema_full);  s_fmv_sema_full  = -1;
         sceAudioOutReleasePort(s_fmv_port);
-        s_fmv_thread     = -1;
-        s_fmv_sema       = -1;
-        s_fmv_port       = -1;
+        s_fmv_thread = -1;
+        s_fmv_port   = -1;
         return 0;
     }
     sceKernelStartThread(s_fmv_thread, 0, NULL);
@@ -834,15 +849,17 @@ void vita_fmv_audio_queue(const void *pcm, int bytes)
         src       += copy * 2;
         src_count -= copy;
         if (s_fmv_accum_count >= s_fmv_grain) {
-            /* Try to enqueue into the ring buffer. sceKernelSignalSema fails (returns
-               error) when already at max count — that means the ring is full and the
-               audio thread is falling behind; drop this grain instead of blocking. */
-            int wr = s_fmv_ring_wr;
-            memcpy(s_fmv_ring[wr], s_fmv_accum,
-                   (size_t)FMV_DMA_GRAIN * 2 * sizeof(int16_t));
-            if (sceKernelSignalSema(s_fmv_sema, 1) >= 0) {
-                /* Only advance write pointer if the sema accept the signal */
+            /* Claim a free slot (non-blocking poll via timeout=0).
+               If no free slot the ring is full — drop grain, don't block.
+               Write AFTER claiming to guarantee the slot is ours before we
+               touch it; publish AFTER writing so consumer only reads complete data. */
+            SceUInt32 instant = 0;
+            if (sceKernelWaitSema(s_fmv_sema_empty, 1, &instant) >= 0) {
+                int wr = s_fmv_ring_wr;
+                memcpy(s_fmv_ring[wr], s_fmv_accum,
+                       (size_t)FMV_DMA_GRAIN * 2 * sizeof(int16_t));
                 s_fmv_ring_wr = (wr + 1) % FMV_RING_GRAINS;
+                sceKernelSignalSema(s_fmv_sema_full, 1);
             }
             s_fmv_accum_count = 0;
         }
@@ -852,17 +869,14 @@ void vita_fmv_audio_queue(const void *pcm, int bytes)
 void vita_fmv_audio_close(void)
 {
     if (s_fmv_thread >= 0) {
-        /* Signal thread to stop */
         s_fmv_thread_run = 0;
-        sceKernelSignalSema(s_fmv_sema, 1);   /* wake if waiting */
+        sceKernelSignalSema(s_fmv_sema_full, 1);  /* wake audio thread if blocked */
         sceKernelWaitThreadEnd(s_fmv_thread, NULL, NULL);
         sceKernelDeleteThread(s_fmv_thread);
         s_fmv_thread = -1;
     }
-    if (s_fmv_sema >= 0) {
-        sceKernelDeleteSema(s_fmv_sema);
-        s_fmv_sema = -1;
-    }
+    if (s_fmv_sema_empty >= 0) { sceKernelDeleteSema(s_fmv_sema_empty); s_fmv_sema_empty = -1; }
+    if (s_fmv_sema_full  >= 0) { sceKernelDeleteSema(s_fmv_sema_full);  s_fmv_sema_full  = -1; }
     s_fmv_accum_count = 0;
     s_fmv_ring_wr     = 0;
     s_fmv_ring_rd     = 0;
