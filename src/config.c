@@ -1265,7 +1265,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
       sdir="fxdata";
       break;
   case FGrp_LoData:
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir="ldata";
       break;
   case FGrp_HiData:
@@ -1277,7 +1277,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
       sdir="music";
       break;
   case FGrp_VarLevels:
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir="levels";
       break;
   case FGrp_Save:
@@ -1317,7 +1317,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.levels_location;
       break;
   case FGrp_CmpgCrtrs:
@@ -1325,7 +1325,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.creatures_location;
       break;
   case FGrp_CmpgConfig:
@@ -1333,7 +1333,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.configs_location;
       break;
   case FGrp_CmpgMedia:
@@ -1341,7 +1341,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.media_location;
       break;
   case FGrp_LandView:
@@ -1349,7 +1349,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.land_location;
       break;
   case FGrp_CrtrData:
@@ -1357,7 +1357,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
       sdir="creatrs";
       break;
   default:
-      mdir="./";
+      mdir=keeper_runtime_directory;
       sdir=NULL;
       break;
   }

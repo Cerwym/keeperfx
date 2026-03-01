@@ -6,7 +6,6 @@
 #include <stdio.h>
 #ifdef PLATFORM_VITA
 #include "platform/PlatformVita.h"
-#include <unistd.h>
 #elif defined(PLATFORM_3DS)
 #include "platform/Platform3DS.h"
 #elif defined(PLATFORM_SWITCH)
@@ -36,9 +35,7 @@ int main(int argc, char* argv[]) {
     PlatformManager::Set(new PlatformVita());
     PlatformManager::Get()->SystemInit();
     LbErrorLogSetup(PlatformManager_GetDataPath(), "keeperfx.log", 5);
-    // Set the working directory to the data path so relative paths (e.g. "data/creature.tab")
-    // resolve against ux0:data/keeperfx/ rather than the app bundle.
-    chdir(PlatformManager_GetDataPath());
+    // sceIoChdir to data path is done inside PlatformVita::SystemInit()
     input_vita_initialize();
     audio_vita_initialize();
 #elif defined(PLATFORM_3DS)

@@ -327,15 +327,26 @@ TbBool prepare_diskpath(char *buf,long buflen)
         i = buflen - 1;
     if (i < 0)
         return false;
+    // Strip trailing path separators and whitespace.
     while (i > 0)
     {
         if ((buf[i] != '\\') && (buf[i] != '/') &&
             ((unsigned char)(buf[i]) > 32))
             break;
         i--;
-  }
-  buf[i+1]='\0';
-  return true;
+    }
+    // Also strip trailing "/." and "\." (current-directory components).
+    // This normalises paths like "ux0:data/keeperfx/./" -> "ux0:data/keeperfx"
+    // which result from resolving a relative INSTALL_PATH such as "./".
+    while (i >= 1 && buf[i] == '.' && (buf[i-1] == '/' || buf[i-1] == '\\'))
+    {
+        i -= 2; // drop the "/."
+        // strip any additional trailing separators left behind
+        while (i > 0 && (buf[i] == '/' || buf[i] == '\\'))
+            i--;
+    }
+    buf[i+1]='\0';
+    return true;
 }
 
 static void load_file_configuration(const char *fname, const char *sname, const char *config_textname, unsigned short flags)

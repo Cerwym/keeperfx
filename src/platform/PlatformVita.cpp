@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <errno.h>
 #include "bflib_crash.h"
 #endif
@@ -247,6 +248,11 @@ void PlatformVita::SystemInit()
     // Disable VFP/FPU exception traps on the main thread; without this, any
     // denormal or other edge-case float operation in the game code will trap.
     sceKernelChangeThreadVfpException(0x0800009FU, 0x0);
+    // Set the working directory using newlib's chdir (which routes through VitaSDK's
+    // virtual filesystem) so that relative asset paths (e.g. "data/creature.tab")
+    // resolve against ux0:data/keeperfx. This call belongs here rather than in the
+    // platform-agnostic main — it is Vita-specific initialisation.
+    chdir(GetDataPath());
 }
 
 void PlatformVita::FrameTick()
