@@ -61,6 +61,8 @@ void compute_shifted_palette_table(TbPixel *ocol, const unsigned char *spal,
 long PaletteFadePlayer(struct PlayerInfo *player);
 void PaletteApplyPainToPlayer(struct PlayerInfo *player, long intense);
 
+uint8_t palette_nearest_colour(uint8_t r, uint8_t g, uint8_t b, const uint8_t *palette);
+
 /******************************************************************************/
 #ifdef __cplusplus
 }

@@ -26,6 +26,8 @@
 #include "../../globals.h"
 #include "../../config_lenses.h"
 #include "../../custom_sprites.h"
+#include "../../vidfade.h"
+#include "../../bflib_video.h"
 
 #include "../../keeperfx.hpp"
 #include "../../post_inc.h"
@@ -182,6 +184,7 @@ void COverlayRenderer::Render(unsigned char *dstbuf, long dstpitch, unsigned cha
     int inv_alpha = 256 - alpha_clamped;
     
     // Composite overlay onto destination buffer with stretch-to-fit
+    const unsigned char* palette = lbDisplay.Palette;
     for (int y = 0; y < height; y++)
     {
         // Calculate overlay Y coordinate using fixed-point
@@ -210,14 +213,21 @@ void COverlayRenderer::Render(unsigned char *dstbuf, long dstpitch, unsigned cha
                 dst_row[x] = src_pixel;
                 continue;
             }
-            
+
+            // Blend in RGB space then find nearest palette colour
+            int src_r = palette[src_pixel * 3 + 0];
+            int src_g = palette[src_pixel * 3 + 1];
+            int src_b = palette[src_pixel * 3 + 2];
+            int ovl_r = palette[overlay_pixel * 3 + 0];
+            int ovl_g = palette[overlay_pixel * 3 + 1];
+            int ovl_b = palette[overlay_pixel * 3 + 2];
+
             // Alpha blend: result = (overlay * alpha + src * (1 - alpha)) / 256
-            unsigned char result = (unsigned char)(
-                (overlay_pixel * alpha_clamped + src_pixel * inv_alpha) >> 8
-            );
+            uint8_t blend_r = (uint8_t)((ovl_r * alpha_clamped + src_r * inv_alpha) >> 8);
+            uint8_t blend_g = (uint8_t)((ovl_g * alpha_clamped + src_g * inv_alpha) >> 8);
+            uint8_t blend_b = (uint8_t)((ovl_b * alpha_clamped + src_b * inv_alpha) >> 8);
             
-            // Write to destination
-            dst_row[x] = result;
+            dst_row[x] = palette_nearest_colour(blend_r, blend_g, blend_b, palette);
         }
     }
 }

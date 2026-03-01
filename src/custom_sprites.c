@@ -27,6 +27,7 @@
 #include "bflib_dernc.h"
 #include "sprites.h"
 #include "config_spritecolors.h"
+#include "vidfade.h"
 #include <spng.h>
 #include <json.h>
 #include <json-dom.h>
@@ -947,29 +948,7 @@ static void convert_row(unsigned char *dst_buf, uint32_t *src_buf, int len)
     }
 }
 
-static uint8_t nearest_color(uint32_t value, const uint8_t * palette)
-{
-    // naive approach
-    uint8_t nearest = 0;
-    uint32_t nearest_delta = UINT32_MAX;
-    const uint8_t vr = value & (MAX_COLOR_VALUE - 1);
-    const uint8_t vg = (value >> 6) & (MAX_COLOR_VALUE - 1);
-    const uint8_t vb = (value >> 12) & (MAX_COLOR_VALUE - 1);
-    for (int i = 0; i < 256; ++i) {
-        const uint8_t pr = palette[(i * 3) + 0];
-        const uint8_t pg = palette[(i * 3) + 1];
-        const uint8_t pb = palette[(i * 3) + 2];
-        const uint32_t delta =
-            (max(pr, vr) - min(pr, vr)) +
-            (max(pg, vg) - min(pg, vg)) +
-            (max(pb, vb) - min(pb, vb));
-        if (delta < nearest_delta) {
-            nearest = i;
-            nearest_delta = delta;
-        }
-    }
-    return nearest;
-}
+
 
 static void load_rgb_to_pal_table()
 {
@@ -996,7 +975,11 @@ static void load_rgb_to_pal_table()
     }
     // populate table
     for (uint32_t i = 0; i < table_size; ++i) {
-        rgb_to_pal_table[i] = nearest_color(i, palette);
+        rgb_to_pal_table[i] = palette_nearest_colour(
+            i & (MAX_COLOR_VALUE - 1),
+            (i >> 6) & (MAX_COLOR_VALUE - 1),
+            (i >> 12) & (MAX_COLOR_VALUE - 1),
+            palette);
     }
 }
 

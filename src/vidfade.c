@@ -353,6 +353,29 @@ void PaletteApplyPainToPlayer(struct PlayerInfo *player, long intense)
 
 
 /******************************************************************************/
+
+uint8_t palette_nearest_colour(uint8_t r, uint8_t g, uint8_t b, const uint8_t *palette)
+{
+    uint8_t nearest = 0;
+    uint32_t nearest_delta = UINT32_MAX;
+    for (int i = 0; i < 256; ++i) {
+        const uint8_t pr = palette[(i * 3) + 0];
+        const uint8_t pg = palette[(i * 3) + 1];
+        const uint8_t pb = palette[(i * 3) + 2];
+        const uint32_t delta =
+            (max(pr, r) - min(pr, r)) +
+            (max(pg, g) - min(pg, g)) +
+            (max(pb, b) - min(pb, b));
+        if (delta < nearest_delta) {
+            nearest = i;
+            nearest_delta = delta;
+            if (delta == 0) break;
+        }
+    }
+    return nearest;
+}
+
+/******************************************************************************/
 #ifdef __cplusplus
 }
 #endif
