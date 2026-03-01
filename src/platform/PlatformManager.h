@@ -33,6 +33,16 @@ void        PlatformManager_ErrorParachuteUpdate(void);
 TbBool      PlatformManager_FileExists(const char* path);
 int         PlatformManager_MakeDirectory(const char* path);
 int         PlatformManager_GetCurrentDirectory(char* buf, unsigned long buflen);
+TbFileHandle PlatformManager_FileOpen(const char* fname, unsigned char accmode);
+int          PlatformManager_FileClose(TbFileHandle handle);
+int          PlatformManager_FileRead(TbFileHandle handle, void* buf, unsigned long len);
+long         PlatformManager_FileWrite(TbFileHandle handle, const void* buf, unsigned long len);
+int          PlatformManager_FileSeek(TbFileHandle handle, long offset, unsigned char origin);
+int          PlatformManager_FilePosition(TbFileHandle handle);
+TbBool       PlatformManager_FileEof(TbFileHandle handle);
+short        PlatformManager_FileFlush(TbFileHandle handle);
+long         PlatformManager_FileLength(const char* fname);
+int          PlatformManager_FileDelete(const char* fname);
 void        PlatformManager_LogWrite(const char* message);
 /** Called once per frame to allow the platform to perform per-frame housekeeping
  *  (e.g. prevent screen blanking on Vita via sceKernelPowerTick). */

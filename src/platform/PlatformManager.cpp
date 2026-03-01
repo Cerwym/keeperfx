@@ -91,6 +91,56 @@ extern "C" int PlatformManager_GetCurrentDirectory(char* buf, unsigned long bufl
     return PlatformManager::Get()->GetCurrentDirectory(buf, buflen);
 }
 
+extern "C" TbFileHandle PlatformManager_FileOpen(const char* fname, unsigned char accmode)
+{
+    return PlatformManager::Get()->FileOpen(fname, accmode);
+}
+
+extern "C" int PlatformManager_FileClose(TbFileHandle handle)
+{
+    return PlatformManager::Get()->FileClose(handle);
+}
+
+extern "C" int PlatformManager_FileRead(TbFileHandle handle, void* buf, unsigned long len)
+{
+    return PlatformManager::Get()->FileRead(handle, buf, len);
+}
+
+extern "C" long PlatformManager_FileWrite(TbFileHandle handle, const void* buf, unsigned long len)
+{
+    return PlatformManager::Get()->FileWrite(handle, buf, len);
+}
+
+extern "C" int PlatformManager_FileSeek(TbFileHandle handle, long offset, unsigned char origin)
+{
+    return PlatformManager::Get()->FileSeek(handle, offset, origin);
+}
+
+extern "C" int PlatformManager_FilePosition(TbFileHandle handle)
+{
+    return PlatformManager::Get()->FilePosition(handle);
+}
+
+extern "C" TbBool PlatformManager_FileEof(TbFileHandle handle)
+{
+    return PlatformManager::Get()->FileEof(handle);
+}
+
+extern "C" short PlatformManager_FileFlush(TbFileHandle handle)
+{
+    return PlatformManager::Get()->FileFlush(handle);
+}
+
+extern "C" long PlatformManager_FileLength(const char* fname)
+{
+    return PlatformManager::Get()->FileLength(fname);
+}
+
+extern "C" int PlatformManager_FileDelete(const char* fname)
+{
+    return PlatformManager::Get()->FileDelete(fname);
+}
+
 extern "C" void PlatformManager_LogWrite(const char* message)
 {
     IPlatform* p = PlatformManager::Get();

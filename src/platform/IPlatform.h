@@ -46,6 +46,28 @@ public:
      *  (Windows/Vita ux0: style). */
     virtual int GetCurrentDirectory(char* buf, unsigned long buflen) = 0;
 
+    // ----- File I/O -----
+    /** Opens a file.  accmode is one of TbFileMode.  Returns NULL on failure. */
+    virtual TbFileHandle FileOpen(const char* fname, unsigned char accmode) = 0;
+    /** Closes a file handle.  Returns 0 on success, -1 on failure. */
+    virtual int          FileClose(TbFileHandle handle) = 0;
+    /** Reads up to `len` bytes.  Returns bytes read, or -1 on error. */
+    virtual int          FileRead(TbFileHandle handle, void* buf, unsigned long len) = 0;
+    /** Writes `len` bytes.  Returns bytes written, or -1 on error. */
+    virtual long         FileWrite(TbFileHandle handle, const void* buf, unsigned long len) = 0;
+    /** Seeks within the file (origin: Lb_FILE_SEEK_*).  Returns new position, -1 on error. */
+    virtual int          FileSeek(TbFileHandle handle, long offset, unsigned char origin) = 0;
+    /** Returns the current file position, or -1 on error. */
+    virtual int          FilePosition(TbFileHandle handle) = 0;
+    /** Returns non-zero if at end of file. */
+    virtual TbBool       FileEof(TbFileHandle handle) = 0;
+    /** Flushes buffered writes.  Returns 1 on success, 0 on error. */
+    virtual short        FileFlush(TbFileHandle handle) = 0;
+    /** Returns the byte length of the named file, or -1 on error. */
+    virtual long         FileLength(const char* fname) = 0;
+    /** Deletes a file.  Returns 1 on success, -1 on failure. */
+    virtual int          FileDelete(const char* fname) = 0;
+
     // ----- Path provider -----
     /** Called once at startup with the raw argc/argv before any path queries.
      *  Desktop platforms extract the executable directory from argv[0] here.

@@ -23,6 +23,9 @@ struct TbFileFind {
     int    namebuflen;
 };
 
+// TbFileInfo is defined here; it is an opaque type to all callers.
+struct TbFileInfo { FILE* fp; };
+
 // ----- OS information -----
 
 const char* PlatformWindows::GetOSVersion() const
@@ -372,4 +375,91 @@ void PlatformWindows::ResumeRedbookTrack()
 void PlatformWindows::StopRedbookTrack()
 {
     // TODO: implement CDROM features
+}
+
+// ----- File I/O -----
+
+TbFileHandle PlatformWindows::FileOpen(const char* fname, unsigned char accmode)
+{
+    const char* mode;
+    switch (accmode) {
+        case Lb_FILE_MODE_NEW:       mode = "wb";  break;
+        case Lb_FILE_MODE_OLD:       mode = "r+b"; break;
+        case Lb_FILE_MODE_APPEND:    mode = "ab";  break;
+        case Lb_FILE_MODE_READ_ONLY:
+        default:                     mode = "rb";  break;
+    }
+    FILE* fp = fopen(fname, mode);
+    if (!fp) return nullptr;
+    auto h = static_cast<TbFileInfo*>(malloc(sizeof(TbFileInfo)));
+    if (!h) { fclose(fp); return nullptr; }
+    h->fp = fp;
+    return h;
+}
+
+int PlatformWindows::FileClose(TbFileHandle handle)
+{
+    if (!handle) return -1;
+    auto h = static_cast<TbFileInfo*>(handle);
+    int r = fclose(h->fp);
+    free(h);
+    return r ? -1 : 0;
+}
+
+int PlatformWindows::FileRead(TbFileHandle handle, void* buf, unsigned long len)
+{
+    if (!handle) return -1;
+    return (int)fread(buf, 1, len, static_cast<TbFileInfo*>(handle)->fp);
+}
+
+long PlatformWindows::FileWrite(TbFileHandle handle, const void* buf, unsigned long len)
+{
+    if (!handle) return -1;
+    return (long)fwrite(buf, 1, len, static_cast<TbFileInfo*>(handle)->fp);
+}
+
+int PlatformWindows::FileSeek(TbFileHandle handle, long offset, unsigned char origin)
+{
+    if (!handle) return -1;
+    int whence;
+    switch (origin) {
+        case Lb_FILE_SEEK_BEGINNING: whence = SEEK_SET; break;
+        case Lb_FILE_SEEK_CURRENT:   whence = SEEK_CUR; break;
+        case Lb_FILE_SEEK_END:       whence = SEEK_END; break;
+        default:                     return -1;
+    }
+    return fseek(static_cast<TbFileInfo*>(handle)->fp, offset, whence);
+}
+
+int PlatformWindows::FilePosition(TbFileHandle handle)
+{
+    if (!handle) return -1;
+    return (int)ftell(static_cast<TbFileInfo*>(handle)->fp);
+}
+
+TbBool PlatformWindows::FileEof(TbFileHandle handle)
+{
+    if (!handle) return 1;
+    return feof(static_cast<TbFileInfo*>(handle)->fp) ? 1 : 0;
+}
+
+short PlatformWindows::FileFlush(TbFileHandle handle)
+{
+    if (!handle) return 0;
+    return fflush(static_cast<TbFileInfo*>(handle)->fp) == 0 ? 1 : 0;
+}
+
+long PlatformWindows::FileLength(const char* fname)
+{
+    FILE* fp = fopen(fname, "rb");
+    if (!fp) return -1;
+    fseek(fp, 0, SEEK_END);
+    long len = ftell(fp);
+    fclose(fp);
+    return len;
+}
+
+int PlatformWindows::FileDelete(const char* fname)
+{
+    return remove(fname) ? -1 : 1;
 }

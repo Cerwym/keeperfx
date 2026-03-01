@@ -18,28 +18,18 @@
  *     the Free Software Foundation; either version 2 of the License, or
  *     (at your option) any later version.
  */
-/******************************************************************************/
 #include "pre_inc.h"
 #include "bflib_fileio.h"
 
-#include <errno.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <limits.h>
-#include <time.h>
+#include <errno.h>
 
 #include "bflib_basics.h"
-#include "bflib_datetm.h"
 #include "platform/PlatformManager.h"
 
 #include "post_inc.h"
 
-/******************************************************************************/
-//Internal declarations
-void convert_find_info(struct TbFileFind *ffind);
 /******************************************************************************/
 
 short LbFileExists(const char *fname)
@@ -49,8 +39,7 @@ short LbFileExists(const char *fname)
 
 int LbFilePosition(TbFileHandle handle)
 {
-  int result = ftell(handle);
-  return result;
+  return PlatformManager_FilePosition(handle);
 }
 
 int create_directory_for_file(const char * fname)
@@ -88,163 +77,64 @@ TbFileHandle LbFileOpen(const char *fname, const unsigned char accmode)
     if ( mode == Lb_FILE_MODE_OLD )
       mode = Lb_FILE_MODE_NEW;
   }
-/* DISABLED - NOT NEEDED
   if ( mode == Lb_FILE_MODE_NEW )
   {
-#ifdef __DEBUG
-    LbSyncLog("LbFileOpen: creating file\n");
-#endif
-    rc = _sopen(fname, _O_WRONLY|_O_CREAT|_O_TRUNC|_O_BINARY, _SH_DENYNO);
-    //setmode(rc,_O_TRUNC);
-    close(rc);
-  }
-*/
-  TbFileHandle rc = NULL;
-  switch (mode)
-  {
-  case Lb_FILE_MODE_NEW:
-    {
-#ifdef __DEBUG
-      LbSyncLog("LbFileOpen: LBO_CREAT mode\n");
-#endif
-        if (create_directory_for_file(fname)) {
-          rc = fopen(fname, "wb");
-        }
-    };break;
-  case Lb_FILE_MODE_OLD:
-    {
-#ifdef __DEBUG
-        LbSyncLog("LbFileOpen: LBO_RDWR mode\n");
-#endif
-        rc = fopen(fname, "r+b");
-    };break;
-  case Lb_FILE_MODE_READ_ONLY:
-    {
-#ifdef __DEBUG
-        LbSyncLog("LbFileOpen: LBO_RDONLY mode\n");
-#endif
-        rc = fopen(fname, "rb");
-    };break;
+    if (!create_directory_for_file(fname))
+      return NULL;
   }
 #ifdef __DEBUG
-  LbSyncLog("LbFileOpen: errno = %d\n", rc, errno);
+  LbSyncLog("LbFileOpen: mode=%d\n", mode);
 #endif
-  return rc;
+  return PlatformManager_FileOpen(fname, mode);
 }
 
-//Closes a file
 int LbFileClose(TbFileHandle handle)
 {
-  if ( fclose(handle) )
-    return -1;
-  else
-    return 1;
+  return PlatformManager_FileClose(handle);
 }
 
-/*
- * Checks if the file position indicator is placed at end of the file.
- */
 TbBool LbFileEof(TbFileHandle handle)
 {
-  if (LbFilePosition(handle) >= LbFileLengthHandle(handle))
-    return 1;
-  return 0;
+  return PlatformManager_FileEof(handle);
 }
 
-/** Changes position in opened file.
- *
- * @param handle
- * @param offset
- * @param origin
- * @return Returns new file position, or -1 on error.
- */
 int LbFileSeek(TbFileHandle handle, long offset, unsigned char origin)
 {
-  int rc;
-  switch (origin)
-  {
-  case Lb_FILE_SEEK_BEGINNING:
-      rc = fseek(handle, offset, SEEK_SET);
-      break;
-  case Lb_FILE_SEEK_CURRENT:
-      rc = fseek(handle, offset, SEEK_CUR);
-      break;
-  case Lb_FILE_SEEK_END:
-      rc = fseek(handle, offset, SEEK_END);
-      break;
-  default:
-      rc = -1;
-      break;
-  }
-  return rc;
+  return PlatformManager_FileSeek(handle, offset, origin);
 }
 
-/**
- * Reads from previously opened disk file.
- *
- * @param handle
- * @param buffer
- * @param len
- * @return Gives amount of bytes read, or -1 on error.
- */
 int LbFileRead(TbFileHandle handle, void *buffer, unsigned long len)
 {
-    return fread(buffer, 1, len, handle);
+  return PlatformManager_FileRead(handle, buffer, len);
 }
 
-/**
- * Writes data at the operating system level.
- * The number of bytes transmitted is given by len and the data
- * to be transmitted is located at the address specified by buffer.
- * @return Returns the number of bytes (does not include any extra carriage-return
- * characters transmitted) of data transmitted to the file.
-*/
 long LbFileWrite(TbFileHandle handle, const void *buffer, const unsigned long len)
 {
-    return fwrite(buffer, 1, len, handle);
+  return PlatformManager_FileWrite(handle, buffer, len);
 }
 
-/**
- * Flushes the file buffers, writing all data immediately.
- * @return Returns 1 on success, 0 on error.
-*/
 short LbFileFlush(TbFileHandle handle)
 {
-  return fflush(handle) == 0;
+  return PlatformManager_FileFlush(handle);
 }
 
 long LbFileLengthHandle(TbFileHandle handle)
 {
-  long pos = ftell(handle);
-  fseek(handle, 0, SEEK_END);
-  long result = ftell(handle);
-  fseek(handle, pos, SEEK_SET);
+  int pos = LbFilePosition(handle);
+  LbFileSeek(handle, 0, Lb_FILE_SEEK_END);
+  long result = LbFilePosition(handle);
+  LbFileSeek(handle, pos, Lb_FILE_SEEK_BEGINNING);
   return result;
 }
 
-//Returns disk size of file
 long LbFileLength(const char *fname)
 {
-  TbFileHandle handle = fopen(fname, "rb");
-  long result = -1;
-  if (handle)
-  {
-    fseek(handle, 0, SEEK_END);
-    result = ftell(handle);
-    fclose(handle);
-  }
-  return result;
+  return PlatformManager_FileLength(fname);
 }
 
-//Removes a disk file
 int LbFileDelete(const char *filename)
 {
-  int result;
-  if ( remove(filename) )
-    result = -1;
-  else
-    result = 1;
-  return result;
+  return PlatformManager_FileDelete(filename);
 }
 
 int LbDirectoryCurrent(char *buf, unsigned long buflen)

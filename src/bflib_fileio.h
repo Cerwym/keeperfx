@@ -30,6 +30,7 @@ enum TbFileMode {
         Lb_FILE_MODE_NEW       = 0,
         Lb_FILE_MODE_OLD       = 1,
         Lb_FILE_MODE_READ_ONLY = 2,
+        Lb_FILE_MODE_APPEND    = 3,
 };
 
 enum TbFileSeekMode {

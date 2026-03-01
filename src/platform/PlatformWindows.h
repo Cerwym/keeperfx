@@ -24,6 +24,17 @@ public:
 #undef GetCurrentDirectory
     int    GetCurrentDirectory(char* buf, unsigned long buflen) override;
 
+    TbFileHandle FileOpen(const char* fname, unsigned char accmode) override;
+    int          FileClose(TbFileHandle handle) override;
+    int          FileRead(TbFileHandle handle, void* buf, unsigned long len) override;
+    long         FileWrite(TbFileHandle handle, const void* buf, unsigned long len) override;
+    int          FileSeek(TbFileHandle handle, long offset, unsigned char origin) override;
+    int          FilePosition(TbFileHandle handle) override;
+    TbBool       FileEof(TbFileHandle handle) override;
+    short        FileFlush(TbFileHandle handle) override;
+    long         FileLength(const char* fname) override;
+    int          FileDelete(const char* fname) override;
+
     void        SetArgv(int argc, char** argv) override;
     const char* GetDataPath() const override;
     const char* GetSavePath() const override;

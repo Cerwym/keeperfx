@@ -1314,35 +1314,57 @@ void sort_campaigns_quicksort(struct CampaignsList *clist, int beg, int end)
 void sort_campaigns(struct CampaignsList *clist,const char* sort_fname)
 {
 
-    FILE *fp = fopen(sort_fname, "r");
-
-    if( !fp )
+    long fsize = LbFileLength(sort_fname);
+    if (fsize <= 0)
     {
         ERRORLOG("failed to read %s",sort_fname);
         return;
     }
+    TbFileHandle fp = LbFileOpen(sort_fname, Lb_FILE_MODE_READ_ONLY);
+    if (fp == NULL)
+    {
+        ERRORLOG("failed to read %s",sort_fname);
+        return;
+    }
+    char *fbuf = (char *)malloc((size_t)fsize + 1);
+    if (!fbuf) { LbFileClose(fp); return; }
+    long rlen = (long)LbFileRead(fp, fbuf, (unsigned long)fsize);
+    LbFileClose(fp);
+    if (rlen <= 0) { free(fbuf); return; }
+    fbuf[rlen] = '\0';
     unsigned long beg = 0;
-
-    char line[DISKPATH_SIZE];
-    while(fgets(line, DISKPATH_SIZE, fp)) {
-
-        //cut off trailing \n
-        line[strlen(line)-1] = 0;
-
-        for (unsigned long i = 0; i < clist->items_num; i++)
+    char *pos = fbuf;
+    char *end = fbuf + rlen;
+    while (pos < end)
+    {
+        char *nl = (char *)memchr(pos, '\n', (size_t)(end - pos));
+        char *line_end = nl ? nl : end;
+        // strip trailing \r
+        while (line_end > pos && line_end[-1] == '\r')
+            line_end--;
+        size_t linelen = (size_t)(line_end - pos);
+        if (linelen > 0 && linelen < DISKPATH_SIZE)
         {
-            if (strcasecmp(clist->items[i].fname,line) == 0)
+            char line[DISKPATH_SIZE];
+            memcpy(line, pos, linelen);
+            line[linelen] = '\0';
+
+            for (unsigned long i = 0; i < clist->items_num; i++)
             {
-                if (i != beg)
+                if (strcasecmp(clist->items[i].fname,line) == 0)
                 {
-                    swap_campaigns_in_list(clist, beg, i);
+                    if (i != beg)
+                    {
+                        swap_campaigns_in_list(clist, beg, i);
+                    }
+                    beg++;
+                    break;
                 }
-                beg++;
-                break;
             }
         }
+        pos = nl ? nl + 1 : end;
     }
-    fclose(fp);
+    free(fbuf);
     sort_campaigns_quicksort(clist, beg, clist->items_num);
 }
 

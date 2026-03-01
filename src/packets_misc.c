@@ -258,10 +258,10 @@ void close_packet_file(void)
 
 void dump_memory_to_file(const char * fname, const char * buf, size_t len)
 {
-    FILE* file = fopen(fname, "w");
-    fwrite(buf, 1, len, file);
-    fflush(file);
-    fclose(file);
+    TbFileHandle file = LbFileOpen(fname, Lb_FILE_MODE_NEW);
+    LbFileWrite(file, buf, len);
+    LbFileFlush(file);
+    LbFileClose(file);
 }
 
 void write_debug_packets(void)

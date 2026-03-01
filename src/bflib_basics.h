@@ -88,7 +88,8 @@ typedef time_t TbTimeSec;
 
 typedef uint32_t TbBigChecksum;
 typedef int32_t Offset;
-typedef FILE * TbFileHandle;
+struct TbFileInfo;
+typedef struct TbFileInfo* TbFileHandle;
 typedef unsigned char TbBool;
 typedef short TbScreenPos;
 

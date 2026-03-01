@@ -320,10 +320,10 @@ int LbErrorLogSetup(const char *directory, const char *filename, TbBool flag)
     return -1;
 
   // Eagerly create the file and verify write access before returning success.
-  FILE *f = fopen(log_filename, "w");
+  TbFileHandle f = LbFileOpen(log_filename, Lb_FILE_MODE_NEW);
   if (f == NULL)
     return -1;
-  fclose(f);
+  LbFileClose(f);
 
   error_log_initialised = 1;
   return 1;
@@ -336,7 +336,7 @@ int LbErrorLogClose(void)
     return LbLogClose(&error_log);
 }
 
-FILE *file = NULL;
+TbFileHandle file = NULL;
 
 void write_log_to_array_for_live_viewing(const char* fmt_str, va_list args, const char* add_log_prefix) {
     if (consoleLogArraySize >= MAX_CONSOLE_LOG_COUNT) {
@@ -373,6 +373,7 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
   if ( log->Suspended )
     return 1;
   char header = NONE;
+  char wbuf[512];
   short need_initial_newline = false;
   if ( !log->Created )
   {
@@ -392,15 +393,15 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
         header = CREATE;
       }
   }
-   const char *accmode;
+   unsigned char lb_mode;
     if ((log->Created) || ((log->flags & 0x01) == 0))
-      accmode = "a";
+      lb_mode = Lb_FILE_MODE_APPEND;
     else
-      accmode = "w";
+      lb_mode = Lb_FILE_MODE_NEW;
     // Only load log if it's not already open
     if (file == NULL)
     {
-      file = fopen(log->filename, accmode);
+      file = LbFileOpen(log->filename, lb_mode);
       // Couldn't open. Abort
       if (file == NULL)
         return -1;
@@ -409,25 +410,28 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
     if (header != NONE)
     {
       if ( need_initial_newline )
-        fprintf(file, "\n");
+        LbFileWrite(file, "\n", 1);
       const char *actn;
       if (header == CREATE)
       {
-        fprintf(file, PROGRAM_NAME" ver "VER_STRING" (%s release) git:%s\n", (BFDEBUG_LEVEL>7)?"heavylog":"standard", GIT_REVISION);
+        snprintf(wbuf, sizeof(wbuf), PROGRAM_NAME" ver "VER_STRING" (%s release) git:%s\n", (BFDEBUG_LEVEL>7)?"heavylog":"standard", GIT_REVISION);
+        LbFileWrite(file, wbuf, strlen(wbuf));
         actn = "CREATED";
       } else
       {
         actn = "APPENDED";
       }
-      fprintf(file, "LOG %s", actn);
+      snprintf(wbuf, sizeof(wbuf), "LOG %s", actn);
+      LbFileWrite(file, wbuf, strlen(wbuf));
       short at_used = 0;
       if ((log->flags & LbLog_TimeInHeader) != 0)
       {
         struct TbTime curr_time;
         if (LbTime(&curr_time) == Lb_SUCCESS)
         {
-            fprintf(file, "  @ %02u:%02u:%02u",
+            snprintf(wbuf, sizeof(wbuf), "  @ %02u:%02u:%02u",
                 curr_time.Hour,curr_time.Minute,curr_time.Second);
+            LbFileWrite(file, wbuf, strlen(wbuf));
             at_used = 1;
         }
       }
@@ -441,17 +445,19 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
               sep = " ";
             else
               sep = "  @ ";
-            fprintf(file," %s%02u-%02u-%u",sep,curr_date.Day,curr_date.Month,curr_date.Year);
+            snprintf(wbuf, sizeof(wbuf), " %s%02u-%02u-%u",sep,curr_date.Day,curr_date.Month,curr_date.Year);
+            LbFileWrite(file, wbuf, strlen(wbuf));
         }
       }
-      fprintf(file, "\n\n");
+      LbFileWrite(file, "\n\n", 2);
     }
     if ((log->flags & LbLog_DateInLines) != 0)
     {
         struct TbDate curr_date;
         if (LbDate(&curr_date) == Lb_SUCCESS)
         {
-            fprintf(file,"%02u-%02u-%u ",curr_date.Day,curr_date.Month,curr_date.Year);
+            snprintf(wbuf, sizeof(wbuf), "%02u-%02u-%u ",curr_date.Day,curr_date.Month,curr_date.Year);
+            LbFileWrite(file, wbuf, strlen(wbuf));
         }
     }
     if ((log->flags & LbLog_TimeInLines) != 0)
@@ -459,12 +465,13 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
         struct TbTime curr_time;
         if (LbTime(&curr_time) == Lb_SUCCESS)
         {
-            fprintf(file, "%02u:%02u:%02u ",
+            snprintf(wbuf, sizeof(wbuf), "%02u:%02u:%02u ",
                 curr_time.Hour,curr_time.Minute,curr_time.Second);
+            LbFileWrite(file, wbuf, strlen(wbuf));
         }
     }
   if (log->prefix[0] != '\0') {
-      fputs(log->prefix, file);
+      LbFileWrite(file, log->prefix, strlen(log->prefix));
   }
 
   // Write formatted message to the array
@@ -474,7 +481,7 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
   // route to the platform's secondary log channel (e.g. sceClibPrintf on Vita).
   char linebuf[2048];
   vsnprintf(linebuf, sizeof(linebuf), fmt_str, arg);
-  fputs(linebuf, file);
+  LbFileWrite(file, linebuf, strlen(linebuf));
   if (log->prefix[0] != '\0') {
       // Build prefixed message for platform routing
       char fullbuf[2048];
@@ -483,11 +490,11 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
   } else {
       PlatformManager_LogWrite(linebuf);
   }
-  log->position = ftell(file);
+  log->position = LbFilePosition(file);
   // fclose is slow and automatically happens on normal program exit.
   // Opening/closing every time we log something hits performance hard.
   // fclose(file);
-  fflush(file);
+  LbFileFlush(file);
   return 1;
 }
 

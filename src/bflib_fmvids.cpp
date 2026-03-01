@@ -16,7 +16,7 @@ extern "C" {
     #pragma GCC diagnostic warning "-Wdeprecated-declarations"
 }
 
-#include <cstdio>
+
 #include <string>
 #include <memory>
 #include <stdexcept>
@@ -34,20 +34,20 @@ namespace {
 // is proven to work on VitaSDK (same as the sound bank loader uses).
 static int vita_avio_read(void *opaque, uint8_t *buf, int buf_size)
 {
-    size_t n = fread(buf, 1, (size_t)buf_size, (FILE *)opaque);
+    long n = LbFileRead((TbFileHandle)opaque, buf, (unsigned long)buf_size);
     return n > 0 ? (int)n : AVERROR_EOF;
 }
 static int64_t vita_avio_seek(void *opaque, int64_t offset, int whence)
 {
-    FILE *f = (FILE *)opaque;
+    TbFileHandle f = (TbFileHandle)opaque;
     if (whence == AVSEEK_SIZE) {
-        long cur = ftell(f);
-        fseek(f, 0, SEEK_END);
-        int64_t sz = ftell(f);
-        fseek(f, cur, SEEK_SET);
+        long cur = LbFilePosition(f);
+        LbFileSeek(f, 0, Lb_FILE_SEEK_END);
+        int64_t sz = LbFilePosition(f);
+        LbFileSeek(f, cur, Lb_FILE_SEEK_BEGINNING);
         return sz;
     }
-    return fseek(f, (long)offset, whence) == 0 ? (int64_t)ftell(f) : -1;
+    return LbFileSeek(f, (long)offset, whence) == 0 ? (int64_t)LbFilePosition(f) : -1;
 }
 #endif
 
@@ -301,7 +301,7 @@ struct movie_t {
 	AVRational m_time_base;
 	SDL_AudioDeviceID m_audio_device = 0;
 #ifdef PLATFORM_VITA
-	FILE * m_avio_file = nullptr;
+	TbFileHandle m_avio_file = nullptr;
 	AVIOContext * m_avio_ctx = nullptr;
 #endif
 
@@ -341,7 +341,7 @@ struct movie_t {
 			m_avio_ctx = nullptr;
 		}
 		if (m_avio_file) {
-			fclose(m_avio_file);
+			LbFileClose(m_avio_file);
 			m_avio_file = nullptr;
 		}
 #endif
@@ -370,12 +370,12 @@ struct movie_t {
 #ifdef PLATFORM_VITA
 		// FFmpeg's URL parser treats 'ux0:' as an unknown protocol.
 		// Use a custom AVIOContext backed by fopen, which handles ux0: natively.
-		m_avio_file = fopen(filename, "rb");
+		m_avio_file = LbFileOpen(filename, Lb_FILE_MODE_READ_ONLY);
 		if (!m_avio_file) throw std::runtime_error("Cannot open source file");
 		uint8_t *iobuf = (uint8_t *)av_malloc(32768);
-		if (!iobuf) { fclose(m_avio_file); m_avio_file = nullptr; throw std::runtime_error("Cannot allocate AVIO buffer"); }
+		if (!iobuf) { LbFileClose(m_avio_file); m_avio_file = nullptr; throw std::runtime_error("Cannot allocate AVIO buffer"); }
 		m_avio_ctx = avio_alloc_context(iobuf, 32768, 0, m_avio_file, vita_avio_read, nullptr, vita_avio_seek);
-		if (!m_avio_ctx) { av_free(iobuf); fclose(m_avio_file); m_avio_file = nullptr; throw std::runtime_error("Cannot allocate AVIO context"); }
+		if (!m_avio_ctx) { av_free(iobuf); LbFileClose(m_avio_file); m_avio_file = nullptr; throw std::runtime_error("Cannot allocate AVIO context"); }
 		m_format_context = avformat_alloc_context();
 		m_format_context->pb = m_avio_ctx;
 		m_format_context->flags |= AVFMT_FLAG_CUSTOM_IO;

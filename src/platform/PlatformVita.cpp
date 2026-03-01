@@ -2,6 +2,7 @@
 #include "platform/PlatformVita.h"
 #ifdef PLATFORM_VITA
 #include <psp2/io/dirent.h>
+#include <psp2/io/fcntl.h>
 #include <psp2/io/stat.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/clib.h>
@@ -14,6 +15,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include "bflib_crash.h"
+#include "bflib_basics.h"
 #include "bflib_filelst.h"
 #include "config.h"
 #endif
@@ -42,6 +44,11 @@ struct TbFileFind {
     SceUID      handle;
     char        namebuf[256];
     char        pattern[256]; // empty means no filtering
+};
+
+// TbFileInfo is defined here; it is an opaque type to all callers.
+struct TbFileInfo {
+    SceUID fd;
 };
 
 // ----- OS information -----
@@ -223,6 +230,100 @@ void PlatformVita::FileFindEnd(TbFileFind* ff)
         sceIoDclose(ff->handle);
         free(ff);
     }
+}
+
+// ----- File I/O -----
+
+TbFileHandle PlatformVita::FileOpen(const char* fname, unsigned char accmode)
+{
+    int flags;
+    switch (accmode) {
+        case Lb_FILE_MODE_NEW:       flags = SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC;  break;
+        case Lb_FILE_MODE_OLD:       flags = SCE_O_RDWR;                                 break;
+        case Lb_FILE_MODE_APPEND:    flags = SCE_O_WRONLY | SCE_O_CREAT | SCE_O_APPEND; break;
+        case Lb_FILE_MODE_READ_ONLY:
+        default:                     flags = SCE_O_RDONLY;                               break;
+    }
+    SceUID fd = sceIoOpen(fname, flags, 0777);
+    if (fd < 0) {
+        WARNLOG("sceIoOpen(\"%s\") failed: 0x%08X", fname ? fname : "(null)", (unsigned)fd);
+        return nullptr;
+    }
+    auto h = static_cast<TbFileInfo*>(malloc(sizeof(TbFileInfo)));
+    if (!h) { sceIoClose(fd); return nullptr; }
+    h->fd = fd;
+    return h;
+}
+
+int PlatformVita::FileClose(TbFileHandle handle)
+{
+    if (!handle) return -1;
+    auto h = static_cast<TbFileInfo*>(handle);
+    int r = sceIoClose(h->fd);
+    free(h);
+    return (r < 0) ? -1 : 0;
+}
+
+int PlatformVita::FileRead(TbFileHandle handle, void* buf, unsigned long len)
+{
+    if (!handle) return -1;
+    return sceIoRead(static_cast<TbFileInfo*>(handle)->fd, buf, len);
+}
+
+long PlatformVita::FileWrite(TbFileHandle handle, const void* buf, unsigned long len)
+{
+    if (!handle) return -1;
+    return sceIoWrite(static_cast<TbFileInfo*>(handle)->fd, buf, len);
+}
+
+int PlatformVita::FileSeek(TbFileHandle handle, long offset, unsigned char origin)
+{
+    if (!handle) return -1;
+    int whence;
+    switch (origin) {
+        case Lb_FILE_SEEK_BEGINNING: whence = SCE_SEEK_SET; break;
+        case Lb_FILE_SEEK_CURRENT:   whence = SCE_SEEK_CUR; break;
+        case Lb_FILE_SEEK_END:       whence = SCE_SEEK_END; break;
+        default:                     return -1;
+    }
+    return (int)sceIoLseek(static_cast<TbFileInfo*>(handle)->fd, offset, whence);
+}
+
+int PlatformVita::FilePosition(TbFileHandle handle)
+{
+    if (!handle) return -1;
+    return (int)sceIoLseek(static_cast<TbFileInfo*>(handle)->fd, 0, SCE_SEEK_CUR);
+}
+
+TbBool PlatformVita::FileEof(TbFileHandle handle)
+{
+    if (!handle) return 1;
+    SceUID fd = static_cast<TbFileInfo*>(handle)->fd;
+    SceOff cur = sceIoLseek(fd, 0, SCE_SEEK_CUR);
+    SceOff end = sceIoLseek(fd, 0, SCE_SEEK_END);
+    sceIoLseek(fd, cur, SCE_SEEK_SET);
+    return (cur >= end) ? 1 : 0;
+}
+
+short PlatformVita::FileFlush(TbFileHandle handle)
+{
+    // sceIo has no mid-write flush — writes are committed immediately
+    (void)handle;
+    return 1;
+}
+
+long PlatformVita::FileLength(const char* fname)
+{
+    SceUID fd = sceIoOpen(fname, SCE_O_RDONLY, 0);
+    if (fd < 0) return -1;
+    long len = (long)sceIoLseek(fd, 0, SCE_SEEK_END);
+    sceIoClose(fd);
+    return len;
+}
+
+int PlatformVita::FileDelete(const char* fname)
+{
+    return (sceIoRemove(fname) < 0) ? -1 : 1;
 }
 
 // ----- CDROM / Redbook audio (no-ops on Vita) -----

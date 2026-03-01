@@ -9,6 +9,7 @@
 #include <fnmatch.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include "bflib_crash.h"
@@ -22,6 +23,9 @@ struct TbFileFind {
     DIR*        handle = nullptr;
     bool        is_pattern = false;
 };
+
+// TbFileInfo is defined here; it is an opaque type to all callers.
+struct TbFileInfo { FILE* fp; };
 
 // ----- OS information -----
 
@@ -207,4 +211,91 @@ void PlatformLinux::ResumeRedbookTrack()
 void PlatformLinux::StopRedbookTrack()
 {
     // TODO: implement CDROM features
+}
+
+// ----- File I/O -----
+
+TbFileHandle PlatformLinux::FileOpen(const char* fname, unsigned char accmode)
+{
+    const char* mode;
+    switch (accmode) {
+        case Lb_FILE_MODE_NEW:       mode = "wb";  break;
+        case Lb_FILE_MODE_OLD:       mode = "r+b"; break;
+        case Lb_FILE_MODE_APPEND:    mode = "ab";  break;
+        case Lb_FILE_MODE_READ_ONLY:
+        default:                     mode = "rb";  break;
+    }
+    FILE* fp = fopen(fname, mode);
+    if (!fp) return nullptr;
+    auto h = static_cast<TbFileInfo*>(malloc(sizeof(TbFileInfo)));
+    if (!h) { fclose(fp); return nullptr; }
+    h->fp = fp;
+    return h;
+}
+
+int PlatformLinux::FileClose(TbFileHandle handle)
+{
+    if (!handle) return -1;
+    auto h = static_cast<TbFileInfo*>(handle);
+    int r = fclose(h->fp);
+    free(h);
+    return r ? -1 : 0;
+}
+
+int PlatformLinux::FileRead(TbFileHandle handle, void* buf, unsigned long len)
+{
+    if (!handle) return -1;
+    return (int)fread(buf, 1, len, static_cast<TbFileInfo*>(handle)->fp);
+}
+
+long PlatformLinux::FileWrite(TbFileHandle handle, const void* buf, unsigned long len)
+{
+    if (!handle) return -1;
+    return (long)fwrite(buf, 1, len, static_cast<TbFileInfo*>(handle)->fp);
+}
+
+int PlatformLinux::FileSeek(TbFileHandle handle, long offset, unsigned char origin)
+{
+    if (!handle) return -1;
+    int whence;
+    switch (origin) {
+        case Lb_FILE_SEEK_BEGINNING: whence = SEEK_SET; break;
+        case Lb_FILE_SEEK_CURRENT:   whence = SEEK_CUR; break;
+        case Lb_FILE_SEEK_END:       whence = SEEK_END; break;
+        default:                     return -1;
+    }
+    return fseek(static_cast<TbFileInfo*>(handle)->fp, offset, whence);
+}
+
+int PlatformLinux::FilePosition(TbFileHandle handle)
+{
+    if (!handle) return -1;
+    return (int)ftell(static_cast<TbFileInfo*>(handle)->fp);
+}
+
+TbBool PlatformLinux::FileEof(TbFileHandle handle)
+{
+    if (!handle) return 1;
+    return feof(static_cast<TbFileInfo*>(handle)->fp) ? 1 : 0;
+}
+
+short PlatformLinux::FileFlush(TbFileHandle handle)
+{
+    if (!handle) return 0;
+    return fflush(static_cast<TbFileInfo*>(handle)->fp) == 0 ? 1 : 0;
+}
+
+long PlatformLinux::FileLength(const char* fname)
+{
+    FILE* fp = fopen(fname, "rb");
+    if (!fp) return -1;
+    fseek(fp, 0, SEEK_END);
+    long len = ftell(fp);
+    fclose(fp);
+    return len;
+}
+
+int PlatformLinux::FileDelete(const char* fname)
+{
+    return remove(fname) ? -1 : 1;
 }
