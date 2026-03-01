@@ -17,7 +17,6 @@ extern "C" {
 }
 
 #include <cstdio>
-#include <cctype>
 #include <string>
 #include <memory>
 #include <stdexcept>
@@ -30,29 +29,25 @@ extern "C" {
 namespace {
 
 #ifdef PLATFORM_VITA
-// VitaSDK URL scheme 'ux0:data/foo' is treated by FFmpeg's URL parser as an
-// unknown protocol, causing avformat_open_input to fail. VitaSDK newlib maps
-// the POSIX path '/ux0/data/foo' to the same location transparently, and a
-// leading '/' means FFmpeg never sees a colon-scheme.
-static std::string vita_ffmpeg_path(const char *path)
+// FFmpeg's URL parser treats 'ux0:' as an unknown protocol.
+// Use a custom AVIOContext backed by POSIX fopen instead; fopen("ux0:...")
+// is proven to work on VitaSDK (same as the sound bank loader uses).
+static int vita_avio_read(void *opaque, uint8_t *buf, int buf_size)
 {
-    const char *colon = strchr(path, ':');
-    if (colon && colon > path) {
-        bool is_mount = true;
-        for (const char *p = path; p < colon; p++) {
-            if (!isalnum((unsigned char)*p)) { is_mount = false; break; }
-        }
-        if (is_mount) {
-            std::string r = "/";
-            r.append(path, (size_t)(colon - path));
-            r += '/';
-            const char *rest = colon + 1;
-            if (*rest == '/') rest++; // avoid double slash
-            r += rest;
-            return r;
-        }
+    size_t n = fread(buf, 1, (size_t)buf_size, (FILE *)opaque);
+    return n > 0 ? (int)n : AVERROR_EOF;
+}
+static int64_t vita_avio_seek(void *opaque, int64_t offset, int whence)
+{
+    FILE *f = (FILE *)opaque;
+    if (whence == AVSEEK_SIZE) {
+        long cur = ftell(f);
+        fseek(f, 0, SEEK_END);
+        int64_t sz = ftell(f);
+        fseek(f, cur, SEEK_SET);
+        return sz;
     }
-    return path;
+    return fseek(f, (long)offset, whence) == 0 ? (int64_t)ftell(f) : -1;
 }
 #endif
 
@@ -305,6 +300,10 @@ struct movie_t {
 	time_point m_video_start;
 	AVRational m_time_base;
 	SDL_AudioDeviceID m_audio_device = 0;
+#ifdef PLATFORM_VITA
+	FILE * m_avio_file = nullptr;
+	AVIOContext * m_avio_ctx = nullptr;
+#endif
 
 	int m_audio_index;
 	int m_video_index;
@@ -335,6 +334,17 @@ struct movie_t {
 		if (m_format_context) {
 			avformat_close_input(&m_format_context);
 		}
+#ifdef PLATFORM_VITA
+		if (m_avio_ctx) {
+			av_free(m_avio_ctx->buffer);
+			av_free(m_avio_ctx);
+			m_avio_ctx = nullptr;
+		}
+		if (m_avio_file) {
+			fclose(m_avio_file);
+			m_avio_file = nullptr;
+		}
+#endif
 		if (m_audio_context) {
 			avcodec_free_context(&m_audio_context);
 		}
@@ -358,13 +368,26 @@ struct movie_t {
 
 	void open_input(const char * filename) {
 #ifdef PLATFORM_VITA
-		std::string posix_path = vita_ffmpeg_path(filename);
-		if (avformat_open_input(&m_format_context, posix_path.c_str(), nullptr, nullptr) != 0) {
-#else
-		if (avformat_open_input(&m_format_context, filename, nullptr, nullptr) != 0) {
-#endif
+		// FFmpeg's URL parser treats 'ux0:' as an unknown protocol.
+		// Use a custom AVIOContext backed by fopen, which handles ux0: natively.
+		m_avio_file = fopen(filename, "rb");
+		if (!m_avio_file) throw std::runtime_error("Cannot open source file");
+		uint8_t *iobuf = (uint8_t *)av_malloc(32768);
+		if (!iobuf) { fclose(m_avio_file); m_avio_file = nullptr; throw std::runtime_error("Cannot allocate AVIO buffer"); }
+		m_avio_ctx = avio_alloc_context(iobuf, 32768, 0, m_avio_file, vita_avio_read, nullptr, vita_avio_seek);
+		if (!m_avio_ctx) { av_free(iobuf); fclose(m_avio_file); m_avio_file = nullptr; throw std::runtime_error("Cannot allocate AVIO context"); }
+		m_format_context = avformat_alloc_context();
+		m_format_context->pb = m_avio_ctx;
+		m_format_context->flags |= AVFMT_FLAG_CUSTOM_IO;
+		if (avformat_open_input(&m_format_context, "", nullptr, nullptr) != 0) {
+			m_format_context = nullptr;
 			throw std::runtime_error("Cannot open source file");
 		}
+#else
+		if (avformat_open_input(&m_format_context, filename, nullptr, nullptr) != 0) {
+			throw std::runtime_error("Cannot open source file");
+		}
+#endif
 	}
 
 	AVSampleFormat sdl_to_ffmpeg_format(SDL_AudioFormat format) {

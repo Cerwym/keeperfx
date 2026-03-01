@@ -14,6 +14,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include "bflib_crash.h"
+#include "bflib_filelst.h"
+#include "config.h"
 #endif
 #include "post_inc.h"
 
@@ -238,6 +240,22 @@ void PlatformVita::LogWrite(const char* message)
 
 // ----- Hardware / OS initialisation -----
 
+// Resolve relative FName paths to absolute ux0: paths.
+// TbLoadFilesV2 arrays use literal relative paths (e.g. "data/creature.tab").
+// VitaSDK's POSIX chdir does not affect all fopen sites, so we prepend
+// keeper_runtime_directory here instead.
+static const char *vita_modify_load_filename(const char *input)
+{
+    // Special markers: pass through unchanged.
+    if (input[0] == '*' || input[0] == '!') return input;
+    // Already absolute (Vita 'ux0:' or POSIX '/').
+    if (strchr(input, ':') || input[0] == '/') return input;
+    // Relative path: prepend keeper_runtime_directory.
+    static char resolved[2048];
+    snprintf(resolved, sizeof(resolved), "%s/%s", keeper_runtime_directory, input);
+    return resolved;
+}
+
 void PlatformVita::SystemInit()
 {
     // Maximise CPU/GPU clocks — default is throttled; same settings as vitaQuakeII.
@@ -248,11 +266,13 @@ void PlatformVita::SystemInit()
     // Disable VFP/FPU exception traps on the main thread; without this, any
     // denormal or other edge-case float operation in the game code will trap.
     sceKernelChangeThreadVfpException(0x0800009FU, 0x0);
-    // Set the working directory using newlib's chdir (which routes through VitaSDK's
-    // virtual filesystem) so that relative asset paths (e.g. "data/creature.tab")
-    // resolve against ux0:data/keeperfx. This call belongs here rather than in the
-    // platform-agnostic main — it is Vita-specific initialisation.
+    // chdir so that any POSIX-relative opens outside LbDataLoad also resolve.
     chdir(GetDataPath());
+    // Override the data-load filename modifier so that relative paths stored in
+    // TbLoadFilesV2.FName (e.g. "data/creature.tab") are resolved to absolute
+    // ux0: paths. VitaSDK's POSIX chdir does not reliably affect all fopen call
+    // sites, so we prefix keeper_runtime_directory explicitly instead.
+    LbDataLoadSetModifyFilenameFunction(vita_modify_load_filename);
 }
 
 void PlatformVita::FrameTick()
