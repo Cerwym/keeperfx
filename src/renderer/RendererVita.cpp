@@ -78,13 +78,6 @@ static const float k_quad_pos[4][2] = {
     { -1.0f, -1.0f },   // bottom-left
     {  1.0f, -1.0f },   // bottom-right
 };
-static const float k_quad_uv[4][2] = {
-    { 0.0f, 0.0f },
-    { 1.0f, 0.0f },
-    { 0.0f, 1.0f },
-    { 1.0f, 1.0f },
-};
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -209,11 +202,17 @@ void RendererVita::EndFrame()
 {
     if (!m_initialized) return;
 
-    // Upload 8-bit index buffer (300 KB, direct from game framebuffer).
+    const int w = lbDrawSurface->w;
+    const int h = lbDrawSurface->h;
+
+    // Upload 8-bit index buffer — only the actual game surface region.
+    // The index texture was pre-allocated at k_gameW×k_gameH (640×480); uploading
+    // a smaller subregion is valid.  UV below is clamped to (w/640, h/480) so the
+    // unused texture area is never sampled.
     SDL_LockSurface(lbDrawSurface);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, m_index_tex);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, k_gameW, k_gameH,
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h,
                     GL_LUMINANCE, GL_UNSIGNED_BYTE, lbDrawSurface->pixels);
     SDL_UnlockSurface(lbDrawSurface);
 
@@ -230,12 +229,24 @@ void RendererVita::EndFrame()
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 1,
                     GL_RGBA, GL_UNSIGNED_BYTE, rgba);
 
+    // UV: map only the live w×h portion of the index texture to the full quad.
+    // At 640×480 this is (1.0, 1.0) — identical to before.
+    // At 320×200 this is (0.5, ~0.417) — game image stretches to fill the screen.
+    const float u1 = (float)w / (float)k_gameW;
+    const float v1 = (float)h / (float)k_gameH;
+    const float dyn_uv[4][2] = {
+        { 0.0f, 0.0f },
+        { u1,   0.0f },
+        { 0.0f, v1   },
+        { u1,   v1   },
+    };
+
     // Draw fullscreen quad — the shader does the palette lookup per-pixel.
     glUseProgram(m_program);
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     vglVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 4, k_quad_pos);
-    vglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 4, k_quad_uv);
+    vglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 4, dyn_uv);
     vglDrawObjects(GL_TRIANGLE_STRIP, 4, GL_TRUE);
 
     vglSwapBuffers(GL_FALSE);
