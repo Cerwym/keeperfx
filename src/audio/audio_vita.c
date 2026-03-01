@@ -782,10 +782,16 @@ static int     s_fmv_output_rate  = 48000;
 static int16_t s_fmv_accum[FMV_DMA_GRAIN * 2];   /* accumulator for partial grains */
 static int     s_fmv_accum_count  = 0;
 
-/* Audio clock: count of samples submitted to sceAudioOutOutput.
- * sceAudioOutOutput returns when the PREVIOUS grain finishes, so this
- * leads the actual listener by ~1 grain (~42ms) — acceptable for sync. */
-static volatile uint64_t s_fmv_samples_played = 0;
+/* Audio clock.
+ * s_fmv_samples_played: cumulative stereo samples submitted to sceAudioOutOutput.
+ *   After the Nth call returns, (N-1) grains have *finished* playing and grain N
+ *   is now playing.  So the real listener position is (s_fmv_samples_played - grain)
+ *   plus time elapsed since grain N started.
+ * s_fmv_grain_start_us: sceKernelGetProcessTimeWide() result at the moment
+ *   sceAudioOutOutput returned for the current grain (i.e. when it started playing).
+ *   Used to interpolate within the grain for sub-42ms clock accuracy. */
+static volatile uint64_t s_fmv_samples_played  = 0;
+static volatile uint64_t s_fmv_grain_start_us  = 0;
 
 /* Dedicated output thread — two-semaphore bounded buffer pattern:
      s_fmv_sema_empty = free slot count  (starts at FMV_RING_GRAINS)
@@ -810,6 +816,11 @@ static int vita_fmv_audio_thread(SceSize args, void *argp)
         if (!s_fmv_thread_run) break;
         int rd = s_fmv_ring_rd;
         sceAudioOutOutput(s_fmv_port, s_fmv_ring[rd]);
+        /* sceAudioOutOutput just returned: the previous grain has finished and
+           the grain we submitted is now playing.  Record the wall-clock moment
+           (microseconds) so vita_fmv_audio_pts_ns() can interpolate within the
+           current grain, giving sub-42ms clock accuracy. */
+        s_fmv_grain_start_us = sceKernelGetSystemTimeWide();
         s_fmv_ring_rd = (rd + 1) % FMV_RING_GRAINS;
         s_fmv_samples_played += (uint64_t)s_fmv_grain;
         sceKernelSignalSema(s_fmv_sema_empty, 1);
@@ -817,11 +828,31 @@ static int vita_fmv_audio_thread(SceSize args, void *argp)
     return sceKernelExitDeleteThread(0);
 }
 
-/** Returns nanoseconds of audio that have been output to the DMA hardware.
- *  Used by the FMV decode thread as the master clock for video PTS sync. */
+/** Returns nanoseconds of audio that have been output to the speaker.
+ *  s_fmv_samples_played includes the grain currently playing, so we subtract
+ *  one grain and add back the elapsed wall-clock time within that grain.
+ *  This gives sub-grain (~1ms) accuracy instead of 42ms quantisation steps. */
 int64_t vita_fmv_audio_pts_ns(void)
 {
-    return (int64_t)(s_fmv_samples_played * 1000000000ULL / (uint64_t)s_fmv_output_rate);
+    uint64_t played = s_fmv_samples_played;
+    uint64_t start  = s_fmv_grain_start_us;
+    uint32_t rate   = (uint32_t)s_fmv_output_rate;
+    uint32_t grain  = (uint32_t)s_fmv_grain;
+
+    /* (played - grain) is the number of samples that have fully finished.
+       On the first DMA call played==grain so this correctly returns ~0. */
+    int64_t base_ns = (played >= grain)
+        ? (int64_t)((played - grain) * 1000000000ULL / rate)
+        : 0;
+
+    /* Add elapsed time within the currently-playing grain. */
+    uint64_t now_us   = sceKernelGetSystemTimeWide();
+    int64_t  grain_ns = (int64_t)grain * 1000000000LL / (int64_t)rate;
+    int64_t  elapsed  = (int64_t)(now_us - start) * 1000LL; /* µs → ns */
+    if (elapsed < 0)       elapsed = 0;
+    if (elapsed > grain_ns) elapsed = grain_ns;
+
+    return base_ns + elapsed;
 }
 
 int vita_fmv_audio_open(int freq, int channels)
@@ -853,6 +884,7 @@ int vita_fmv_audio_open(int freq, int channels)
     s_fmv_ring_wr        = 0;
     s_fmv_ring_rd        = 0;
     s_fmv_samples_played = 0;
+    s_fmv_grain_start_us = 0;
     s_fmv_output_rate    = rate;
 
     /* empty sema: starts at FMV_RING_GRAINS (all slots free) */

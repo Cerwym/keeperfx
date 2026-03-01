@@ -650,11 +650,12 @@ struct movie_t {
 	void wait_for_pts() {
 		const duration pts = nanoseconds((int64_t(m_frame->pts) * (1000000000 / m_time_base.den)) * m_time_base.num);
 		IAudioPlatform* audio = PlatformManager_GetAudio();
-		if (audio) {
+		const int64_t audio_pts_ns = audio ? audio->FmvAudioPtsNs() : -1;
+		if (audio_pts_ns >= 0) {
 			// Audio-slaved sync: wait until the hardware audio clock reaches
 			// the video PTS.  This ties video to the DMA hardware clock,
 			// preventing drift and eliminating frame drops from wall-clock skew.
-			const duration audio_now = nanoseconds(audio->FmvAudioPtsNs());
+			const duration audio_now = nanoseconds(audio_pts_ns);
 			const auto delta = pts - audio_now;
 			if (delta > duration()) {
 				std::this_thread::sleep_for(delta);
