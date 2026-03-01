@@ -109,9 +109,9 @@ static void update_mouse_from_touch(void)
     }
 }
 
-static void update_mouse_from_analog(void)
+static void update_cursor_from_analog(void)
 {
-    // Use left analog stick for cursor movement
+    // Use left analog stick for cursor movement — only when no touch active
     int lx = s_padData.lx - 128;  // Center at 0
     int ly = s_padData.ly - 128;
 
@@ -120,7 +120,6 @@ static void update_mouse_from_analog(void)
     if (abs(lx) < deadzone) lx = 0;
     if (abs(ly) < deadzone) ly = 0;
 
-    // Move cursor based on analog stick
     if (lx != 0 || ly != 0) {
         s_mouseX += lx / 20;
         s_mouseY += ly / 20;
@@ -131,13 +130,15 @@ static void update_mouse_from_analog(void)
         if (s_mouseY < 0) s_mouseY = 0;
         if (s_mouseY >= 544) s_mouseY = 543;
     }
+}
 
-    // Cross button acts as left click
+static void update_buttons_as_mouse_clicks(void)
+{
+    // Face buttons always produce mouse clicks regardless of touch state.
+    // The main menu (and most UI) is mouse-click driven, not keyboard-driven.
     if (s_padData.buttons & SCE_CTRL_CROSS) {
         s_mouseButtons |= INPUT_MOUSE_BUTTON_LEFT;
     }
-
-    // Circle button acts as right click
     if (s_padData.buttons & SCE_CTRL_CIRCLE) {
         s_mouseButtons |= INPUT_MOUSE_BUTTON_RIGHT;
     }
@@ -158,13 +159,13 @@ static void input_vita_poll_events(void)
     // Update virtual keyboard state
     update_key_states();
 
-    // Update mouse state from touch or analog stick
-    // Priority: touch > analog stick
+    // Update mouse state
     s_mouseButtons = 0;
     update_mouse_from_touch();
     if (!s_touchActive) {
-        update_mouse_from_analog();
+        update_cursor_from_analog();  // Touch takes priority for cursor position
     }
+    update_buttons_as_mouse_clicks(); // Buttons always fire regardless of touch
 }
 
 static TbBool input_vita_is_key_down(int keycode)
