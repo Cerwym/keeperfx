@@ -110,8 +110,15 @@ enum CustomLoadFlags {
     CLF_LensMists = 0x8
 };
 
+// On Vita, a 16 MB static BSS array exceeds the process memory budget when
+// combined with the 96 MB heap.  Allocate lazily in init_custom_sprites instead.
+#ifndef PLATFORM_VITA
 static unsigned char big_scratch_data[1024*1024*16] = {0};
 unsigned char *big_scratch = big_scratch_data;
+#else
+static unsigned char *big_scratch_alloc = NULL;
+unsigned char *big_scratch = NULL;
+#endif
 
 static void compress_raw(struct TbHugeSprite *sprite, unsigned char *src_buf, int x, int y, int w, int h);
 
@@ -381,6 +388,12 @@ static void load_sprites_for_mod_list(LevelNumber lvnum, const struct ModConfigI
 void init_custom_sprites(LevelNumber lvnum)
 {
     SYNCDBG(8, "Starting");
+#ifdef PLATFORM_VITA
+    if (big_scratch_alloc == NULL) {
+        big_scratch_alloc = malloc(1024*1024*16);
+        big_scratch = big_scratch_alloc;
+    }
+#endif
     free_spritesheet(&custom_sprites);
     custom_sprites = create_spritesheet();
     total_sprite_zip_count = 0;
