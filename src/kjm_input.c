@@ -295,6 +295,28 @@ void update_wheel_scrolled(void)
  */
 void update_mouse(void)
 {
+#ifdef PLATFORM_VITA
+  // Drive lbDisplay button state from native SCE controller input so that
+  // click/release detection (which reads lbDisplay.MLeftButton) works for
+  // face buttons.  The SDL joystick path only fires MActn_LBUTTONDOWN for R1;
+  // Cross/Circle are never mapped to mouse clicks through SDL on Vita.
+  if (g_input != NULL) {
+    static int s_prev_input_buttons = 0;
+    int ix, iy, ibuttons;
+    g_input->get_mouse(&ix, &iy, &ibuttons);
+    int btn_left  = (ibuttons & INPUT_MOUSE_BUTTON_LEFT)  ? 1 : 0;
+    int btn_right = (ibuttons & INPUT_MOUSE_BUTTON_RIGHT) ? 1 : 0;
+    int prev_left  = (s_prev_input_buttons & INPUT_MOUSE_BUTTON_LEFT)  ? 1 : 0;
+    int prev_right = (s_prev_input_buttons & INPUT_MOUSE_BUTTON_RIGHT) ? 1 : 0;
+    // Edge: set LeftButton/RightButton on the first frame of a press
+    if (btn_left  && !prev_left)  lbDisplay.LeftButton  = 1;
+    if (btn_right && !prev_right) lbDisplay.RightButton = 1;
+    // Level: keep MLeftButton/MRightButton set for the whole duration of the press
+    lbDisplay.MLeftButton  = btn_left;
+    lbDisplay.MRightButton = btn_right;
+    s_prev_input_buttons = ibuttons;
+  }
+#endif
   update_left_button_released();
   update_right_button_released();
   update_left_button_clicked();

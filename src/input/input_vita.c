@@ -72,13 +72,23 @@ static unsigned char s_keyState[KC_LIST_END];
 
 static void update_key_states(void)
 {
-    // Clear all keys
-    memset(s_keyState, 0, KC_LIST_END);
-
-    // Map Vita buttons to keyboard keys
+    // Compute new key state by OR-ing all buttons that share a keycode
+    unsigned char new_state[KC_LIST_END];
+    memset(new_state, 0, sizeof(new_state));
     for (int i = 0; i < BUTTON_MAP_SIZE; i++) {
         if (s_padData.buttons & s_buttonMap[i].btn_vita) {
-            s_keyState[s_buttonMap[i].keycode] = 1;
+            new_state[s_buttonMap[i].keycode] = 1;
+        }
+    }
+    // Fire keyboardControl() transitions so lbKeyOn[] stays in sync.
+    // Iterate by button (not by keycode) to cover all entries; update
+    // s_keyState inline so shared-keycode duplicates are suppressed.
+    for (int i = 0; i < BUTTON_MAP_SIZE; i++) {
+        int keycode = s_buttonMap[i].keycode;
+        if (new_state[keycode] != s_keyState[keycode]) {
+            keyboardControl(new_state[keycode] ? KActn_KEYDOWN : KActn_KEYUP,
+                            (TbKeyCode)keycode, KMod_NONE, 0);
+            s_keyState[keycode] = new_state[keycode]; // suppress duplicate for same keycode
         }
     }
 }
