@@ -733,12 +733,34 @@ void stop_music(void)
 }
 
 /* ── FMV audio (dedicated SCE port for Smacker playback) ────────────────── */
-#define FMV_DMA_GRAIN  2048   /* samples per sceAudioOutOutput call */
+#define FMV_DMA_GRAIN   2048   /* samples per sceAudioOutOutput call */
+#define FMV_RING_GRAINS 4      /* ring buffer capacity: 4 × ~42ms = ~170ms */
 
-static int     s_fmv_port    = -1;
-static int     s_fmv_grain   = FMV_DMA_GRAIN;
+static int     s_fmv_port         = -1;
+static int     s_fmv_grain        = FMV_DMA_GRAIN;
 static int16_t s_fmv_accum[FMV_DMA_GRAIN * 2];   /* accumulator for partial grains */
-static int     s_fmv_accum_count = 0;             /* stereo samples held in accumulator */
+static int     s_fmv_accum_count  = 0;
+
+/* Dedicated output thread — keeps sceAudioOutOutput (blocking) off the decode thread */
+static SceUID  s_fmv_sema         = -1;
+static SceUID  s_fmv_thread       = -1;
+static int     s_fmv_thread_run   = 0;
+static int16_t s_fmv_ring[FMV_RING_GRAINS][FMV_DMA_GRAIN * 2];
+static int     s_fmv_ring_wr      = 0;   /* written by decode thread */
+static int     s_fmv_ring_rd      = 0;   /* read by audio thread */
+
+static int vita_fmv_audio_thread(SceSize args, void *argp)
+{
+    (void)args; (void)argp;
+    while (s_fmv_thread_run) {
+        sceKernelWaitSema(s_fmv_sema, 1, NULL);
+        if (!s_fmv_thread_run) break;
+        int rd = s_fmv_ring_rd;
+        sceAudioOutOutput(s_fmv_port, s_fmv_ring[rd]);
+        s_fmv_ring_rd = (rd + 1) % FMV_RING_GRAINS;
+    }
+    return sceKernelExitDeleteThread(0);
+}
 
 int vita_fmv_audio_open(int freq, int channels)
 {
@@ -764,16 +786,43 @@ int vita_fmv_audio_open(int freq, int channels)
     sceAudioOutSetConfig(s_fmv_port, s_fmv_grain, rate,
         (channels >= 2) ? SCE_AUDIO_OUT_MODE_STEREO
                         : SCE_AUDIO_OUT_MODE_MONO);
+
     s_fmv_accum_count = 0;
+    s_fmv_ring_wr     = 0;
+    s_fmv_ring_rd     = 0;
+
+    /* Create a semaphore (max = ring size) so the audio thread never reads ahead */
+    s_fmv_sema = sceKernelCreateSema("vita_fmv_sema", 0, 0, FMV_RING_GRAINS, NULL);
+    if (s_fmv_sema < 0) {
+        WARNLOG("vita_fmv_audio_open: sceKernelCreateSema failed (0x%08X)", s_fmv_sema);
+        sceAudioOutReleasePort(s_fmv_port);
+        s_fmv_port = -1;
+        return 0;
+    }
+
+    s_fmv_thread_run = 1;
+    s_fmv_thread = sceKernelCreateThread(
+        "vita_fmv_audio", vita_fmv_audio_thread,
+        0x40, 64 * 1024, 0, 0, NULL);
+    if (s_fmv_thread < 0) {
+        WARNLOG("vita_fmv_audio_open: sceKernelCreateThread failed (0x%08X)", s_fmv_thread);
+        sceKernelDeleteSema(s_fmv_sema);
+        sceAudioOutReleasePort(s_fmv_port);
+        s_fmv_thread     = -1;
+        s_fmv_sema       = -1;
+        s_fmv_port       = -1;
+        return 0;
+    }
+    sceKernelStartThread(s_fmv_thread, 0, NULL);
     return 1;
 }
 
 void vita_fmv_audio_queue(const void *pcm, int bytes)
 {
-    if (s_fmv_port < 0 || !pcm || bytes <= 0) return;
+    if (s_fmv_port < 0 || s_fmv_thread < 0 || !pcm || bytes <= 0) return;
     /* Incoming data is always S16 stereo: 2 ch × 2 bytes = 4 bytes per stereo sample.
-       Accumulate samples and only call sceAudioOutOutput when a full grain is ready.
-       This avoids per-packet silence-padding which causes audible skipping. */
+       Accumulate samples until a full grain is ready, then hand off to the audio thread.
+       The audio thread owns sceAudioOutOutput — this function never blocks on DMA. */
     const int16_t *src = (const int16_t *)pcm;
     int src_count = bytes / (2 * (int)sizeof(int16_t)); /* stereo sample count */
     while (src_count > 0) {
@@ -785,7 +834,16 @@ void vita_fmv_audio_queue(const void *pcm, int bytes)
         src       += copy * 2;
         src_count -= copy;
         if (s_fmv_accum_count >= s_fmv_grain) {
-            sceAudioOutOutput(s_fmv_port, s_fmv_accum);
+            /* Try to enqueue into the ring buffer. sceKernelSignalSema fails (returns
+               error) when already at max count — that means the ring is full and the
+               audio thread is falling behind; drop this grain instead of blocking. */
+            int wr = s_fmv_ring_wr;
+            memcpy(s_fmv_ring[wr], s_fmv_accum,
+                   (size_t)FMV_DMA_GRAIN * 2 * sizeof(int16_t));
+            if (sceKernelSignalSema(s_fmv_sema, 1) >= 0) {
+                /* Only advance write pointer if the sema accept the signal */
+                s_fmv_ring_wr = (wr + 1) % FMV_RING_GRAINS;
+            }
             s_fmv_accum_count = 0;
         }
     }
@@ -793,14 +851,22 @@ void vita_fmv_audio_queue(const void *pcm, int bytes)
 
 void vita_fmv_audio_close(void)
 {
+    if (s_fmv_thread >= 0) {
+        /* Signal thread to stop */
+        s_fmv_thread_run = 0;
+        sceKernelSignalSema(s_fmv_sema, 1);   /* wake if waiting */
+        sceKernelWaitThreadEnd(s_fmv_thread, NULL, NULL);
+        sceKernelDeleteThread(s_fmv_thread);
+        s_fmv_thread = -1;
+    }
+    if (s_fmv_sema >= 0) {
+        sceKernelDeleteSema(s_fmv_sema);
+        s_fmv_sema = -1;
+    }
+    s_fmv_accum_count = 0;
+    s_fmv_ring_wr     = 0;
+    s_fmv_ring_rd     = 0;
     if (s_fmv_port >= 0) {
-        /* Flush any partial grain with silence padding (happens at most once, at end). */
-        if (s_fmv_accum_count > 0) {
-            size_t remaining = (size_t)(s_fmv_grain - s_fmv_accum_count) * 2 * sizeof(int16_t);
-            memset(s_fmv_accum + s_fmv_accum_count * 2, 0, remaining);
-            sceAudioOutOutput(s_fmv_port, s_fmv_accum);
-            s_fmv_accum_count = 0;
-        }
         sceAudioOutReleasePort(s_fmv_port);
         s_fmv_port = -1;
     }
