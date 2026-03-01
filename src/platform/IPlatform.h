@@ -112,6 +112,11 @@ public:
      *  on Vita).  Default is a no-op. */
     virtual void FrameTick() {}
 
+    /** Called during long loading operations (no frames rendered).
+     *  Implementations should reset the auto-suspend/blank timer.
+     *  Default is a no-op. */
+    virtual void WorkTick() {}
+
     // ----- Audio sub-interface -----
     /** Returns the platform audio implementation, or nullptr if the platform
      *  has no native audio path (desktop CI, headless builds).

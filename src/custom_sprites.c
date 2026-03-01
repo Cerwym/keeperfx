@@ -31,6 +31,7 @@
 #include <json.h>
 #include <json-dom.h>
 #include <minizip/unzip.h>
+#include "platform/PlatformManager.h"
 #include "post_inc.h"
 
 // Performance tests
@@ -319,6 +320,7 @@ static void load_dir_sprites(const char *dir_path, const char *dir_desc)
             if (add_flag & CLF_Icons)
                 cnt_icon++;
             cnt_zip++;
+            PlatformManager_WorkTick();
         } while (LbFileFindNext(ff, &fe) >= 0);
         LbFileFindEnd(ff);
 

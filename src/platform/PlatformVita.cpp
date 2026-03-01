@@ -393,6 +393,11 @@ void PlatformVita::FrameTick()
     sceKernelPowerTick(SCE_KERNEL_POWER_TICK_DEFAULT); // prevent screen blanking
 }
 
+void PlatformVita::WorkTick()
+{
+    sceKernelPowerTick(SCE_KERNEL_POWER_TICK_DEFAULT); // prevent auto-suspend during loading
+}
+
 // ----- Path provider -----
 
 void        PlatformVita::SetArgv(int, char**) {} // argv[0] unused on Vita

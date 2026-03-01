@@ -57,6 +57,7 @@ public:
 
     void SystemInit() override;
     void FrameTick() override;
+    void WorkTick() override;
 
     IAudioPlatform* GetAudio() override;
 

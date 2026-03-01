@@ -47,6 +47,7 @@ void        PlatformManager_LogWrite(const char* message);
 /** Called once per frame to allow the platform to perform per-frame housekeeping
  *  (e.g. prevent screen blanking on Vita via sceKernelPowerTick). */
 void        PlatformManager_FrameTick(void);
+void        PlatformManager_WorkTick(void);
 
 #ifdef __cplusplus
 } // extern "C"

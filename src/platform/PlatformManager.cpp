@@ -168,6 +168,12 @@ extern "C" void PlatformManager_FrameTick()
     if (p) p->FrameTick();
 }
 
+extern "C" void PlatformManager_WorkTick()
+{
+    IPlatform* p = PlatformManager::Get();
+    if (p) p->WorkTick();
+}
+
 IAudioPlatform* PlatformManager_GetAudio()
 {
     IPlatform* p = PlatformManager::Get();
