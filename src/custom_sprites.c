@@ -110,14 +110,14 @@ enum CustomLoadFlags {
     CLF_LensMists = 0x8
 };
 
-// On Vita, a 16 MB static BSS array exceeds the process memory budget when
-// combined with the 96 MB heap.  Allocate lazily in init_custom_sprites instead.
+// big_scratch is the permanent gameplay scratch buffer (256 KB).
+// It is defined in platform_shims.c for all constrained platforms and allocated
+// in PlatformVita::SystemInit() before any gameplay code runs.
+// On PC it is a static array here; sized at 256 KB to match the constrained-platform
+// limit and catch any over-use at compile/test time.
 #ifndef PLATFORM_VITA
-static unsigned char big_scratch_data[1024*1024*16] = {0};
+static unsigned char big_scratch_data[256 * 1024] = {0};
 unsigned char *big_scratch = big_scratch_data;
-#else
-static unsigned char *big_scratch_alloc = NULL;
-unsigned char *big_scratch = NULL;
 #endif
 
 static void compress_raw(struct TbHugeSprite *sprite, unsigned char *src_buf, int x, int y, int w, int h);
@@ -388,12 +388,6 @@ static void load_sprites_for_mod_list(LevelNumber lvnum, const struct ModConfigI
 void init_custom_sprites(LevelNumber lvnum)
 {
     SYNCDBG(8, "Starting");
-#ifdef PLATFORM_VITA
-    if (big_scratch_alloc == NULL) {
-        big_scratch_alloc = malloc(1024*1024*16);
-        big_scratch = big_scratch_alloc;
-    }
-#endif
     free_spritesheet(&custom_sprites);
     custom_sprites = create_spritesheet();
     total_sprite_zip_count = 0;
@@ -477,14 +471,6 @@ void init_custom_sprites(LevelNumber lvnum)
     {
         load_sprites_for_mod_list(lvnum, mods_conf.after_map_item, mods_conf.after_map_cnt);
     }
-
-#ifdef PLATFORM_VITA
-    /* Scratch buffer was only needed during ZIP decompression above.
-     * Free it now to return 16 MB to the heap before TOML/config loading. */
-    free(big_scratch_alloc);
-    big_scratch_alloc = NULL;
-    big_scratch = NULL;
-#endif
 }
 
 /**
@@ -785,12 +771,18 @@ static int read_png_icon(unzFile zip, const char *path, const char *subpath, int
         return 0;
     }
 
-    unsigned char *dst_buf = big_scratch;
+    unsigned char *dst_buf = malloc(out_size);
+    if (dst_buf == NULL) {
+        ERRORLOG("Unable to allocate decode buffer for %s", path);
+        spng_ctx_free(ctx);
+        return 0;
+    }
     spng_decode_image(ctx, dst_buf, out_size, fmt, SPNG_DECODE_TRNS);
 
     if (sprite.SWidth >= 255 || sprite.SHeight >= 255)
     {
         ERRORLOG("Sprites more than 255x255 are not supported");
+        free(dst_buf);
         return 0;
     }
 
@@ -798,6 +790,7 @@ static int read_png_icon(unzFile zip, const char *path, const char *subpath, int
     sprite.Data = malloc(sz);
 
     compress_raw(&sprite, dst_buf, 0, 0, sprite.SWidth, sprite.SHeight);
+    free(dst_buf);
 
     spng_ctx_free(ctx);
 
@@ -866,10 +859,16 @@ static int read_png_data(unzFile zip, const char *path, struct SpriteContext *co
         return 0;
     }
 
-    unsigned char *dst_buf = big_scratch;
+    unsigned char *dst_buf = malloc(out_size);
+    if (dst_buf == NULL) {
+        ERRORLOG("Unable to allocate decode buffer for %s/%s", path, subpath);
+        spng_ctx_free(ctx);
+        return 0;
+    }
     if (spng_decode_image(ctx, dst_buf, out_size, fmt, SPNG_DECODE_TRNS))
     {
         ERRORLOG("Unable to decode %s/%s", path, subpath);
+        free(dst_buf);
         spng_ctx_free(ctx);
         return 0;
     }
@@ -881,12 +880,14 @@ static int read_png_data(unzFile zip, const char *path, struct SpriteContext *co
     if (dst_w >= 255 || dst_h >= 255)
     {
         ERRORLOG("Sprites more than 255x255 are not supported");
+        free(dst_buf);
         return 0;
     }
 
     if (next_free_sprite >= KEEPERSPRITE_ADD_NUM)
     {
         ERRORLOG("Too many custom sprites allocated");
+        free(dst_buf);
         return 0;
     }
     short sprite_idx = next_free_sprite;
@@ -950,6 +951,7 @@ static int read_png_data(unzFile zip, const char *path, struct SpriteContext *co
 #undef READ_WITH_DEFAULT
 
     spng_ctx_free(ctx);
+    free(dst_buf);
     return 1;
 }
 #pragma clang diagnostic pop
@@ -1330,6 +1332,7 @@ add_custom_json(const char *path, const char *name, TbBool (*process)(const char
     unz_file_info64 zip_info = {0};
     VALUE root;
     JSON_INPUT_POS json_input_pos;
+    char *json_buf = NULL;
     unzFile zip = unzOpen(path);
 
     if (zip == NULL)
@@ -1357,24 +1360,31 @@ add_custom_json(const char *path, const char *name, TbBool (*process)(const char
         goto end;
     }
 
+    json_buf = malloc(zip_info.uncompressed_size + 1);
+    if (json_buf == NULL)
+    {
+        WARNLOG("Unable to allocate JSON buffer for %s/%s", path, name);
+        goto end;
+    }
+
     if (UNZ_OK != unzOpenCurrentFile(zip))
     {
         goto end;
     }
 
-    if (unzReadCurrentFile(zip, big_scratch, zip_info.uncompressed_size) != zip_info.uncompressed_size)
+    if (unzReadCurrentFile(zip, json_buf, zip_info.uncompressed_size) != zip_info.uncompressed_size)
     {
         WARNLOG("Unable to read %s/%s", path, name);
         goto end;
     }
-    big_scratch[zip_info.uncompressed_size] = 0;
+    json_buf[zip_info.uncompressed_size] = 0;
 
     if (UNZ_OK != unzCloseCurrentFile(zip))
     {
         goto end;
     }
 
-    int ret = json_dom_parse((char *) big_scratch, zip_info.uncompressed_size, NULL, 0, &root, &json_input_pos);
+    int ret = json_dom_parse(json_buf, zip_info.uncompressed_size, NULL, 0, &root, &json_input_pos);
     if (ret)
     {
 
@@ -1394,11 +1404,13 @@ add_custom_json(const char *path, const char *name, TbBool (*process)(const char
 
     fastUnzClearCache();
     unzClose(zip);
+    free(json_buf);
 
     return ret_ok;
 end:
     fastUnzClearCache();
     unzClose(zip);
+    free(json_buf);
     return 0;
 }
 

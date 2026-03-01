@@ -100,13 +100,12 @@ TbBool take_screenshot(char *fname) { (void)fname; return 0; }
 TbBool perform_any_screen_capturing(void) { return 0; }
 TbBool cumulative_screen_shot(void) { return 0; }
 
-/* custom_sprites.c — stubs for 3DS/Switch only.
- * Vita compiles the real custom_sprites.c (spng + minizip + zlib built from source via FetchContent).
- * TODO(3DS/Switch): replicate the Vita FetchContent pattern in CMakeLists.txt for devkitARM/devkitA64,
- * then remove this #ifndef guard so the real implementation is used on those platforms too. */
+// On constrained platforms (Vita/3DS/Switch) big_scratch is allocated in
+// PlatformVita/3DS/Switch SystemInit. On PC it is a static array in custom_sprites.c.
+unsigned char *big_scratch = NULL;
+
 #ifndef PLATFORM_VITA
 struct TbSpriteSheet *gui_panel_sprites = NULL;
-unsigned char *big_scratch = NULL;
 short bad_icon_id = INT16_MAX;
 int total_sprite_zip_count = 0;
 short iso_td_add[KEEPERSPRITE_ADD_NUM];

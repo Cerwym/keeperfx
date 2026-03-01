@@ -380,6 +380,12 @@ void PlatformVita::SystemInit()
     // ux0: paths. VitaSDK's POSIX chdir does not reliably affect all fopen call
     // sites, so we prefix keeper_runtime_directory explicitly instead.
     LbDataLoadSetModifyFilenameFunction(vita_modify_load_filename);
+    // Allocate the permanent gameplay scratch buffer.  Must happen before any
+    // gameplay code runs.  Sized at 256 KB — enough for the largest algorithm
+    // use (BFS flood-fill queue, ~116 KB) with headroom.  Sprite PNG decode and
+    // ZIP/JSON config parsing use their own transient local allocations.
+    extern unsigned char *big_scratch;
+    big_scratch = (unsigned char *)malloc(256 * 1024);
 }
 
 void PlatformVita::FrameTick()

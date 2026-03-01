@@ -64,7 +64,7 @@ extern unsigned char palette_buf[PALETTE_SIZE];
 extern unsigned char *engine_palette;
 extern unsigned char *scratch;
 
-extern unsigned char *big_scratch; // 16 Mb
+extern unsigned char *big_scratch; // 256 KB — gameplay scratch; sprite decode uses local malloc
 /******************************************************************************/
 TbBool copy_raw8_image_buffer(unsigned char *dst_buf,const int scanline,const int nlines,const int dst_width,const int dst_height,
     const int spw,const int sph,const unsigned char *src_buf,const int src_width,const int src_height);
