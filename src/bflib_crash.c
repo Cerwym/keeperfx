@@ -17,6 +17,10 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#if !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include "pre_inc.h"
 #include "bflib_crash.h"
 #include <signal.h>
@@ -66,7 +70,9 @@ static const char* sigstr(int s)
     case SIGPROF : return "Profiling alarm clock (4.2 BSD)";
     case SIGWINCH : return "Window size change (4.3 BSD, Sun)";
     case SIGIO : return "I/O now possible (4.2 BSD)";
+#ifdef SIGSYS
     case SIGSYS : return "Bad system call";
+#endif
 #ifdef SIGSTKFLT
     case SIGSTKFLT : return "Stack fault";
 #endif

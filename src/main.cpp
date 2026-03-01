@@ -3604,6 +3604,10 @@ void keeper_gameplay_loop(void)
         frametime_end_measurement(Frametime_FullFrame);
     } // end while
     SYNCDBG(0,"Gameplay loop finished after %lu turns",(unsigned long)game.play_gameturn);
+
+    // Reset the game kind because we are not in a game anymore at this point
+    game.game_kind = GKind_Unset;
+
     api_event("GAME_ENDED");
 }
 
@@ -3994,11 +3998,19 @@ void game_loop(void)
       dungeon->lvstats.end_time = starttime;
       if (!TimerNoReset)
       {
-        TimerFreeze = true;
-        memset(&Timer, 0, sizeof(Timer));
+          if (is_feature_on(Ft_SkipHeartZoom))
+          {
+              timerstarttime = starttime;
+          }
+          else
+          {
+              TimerFreeze = true;
+          }
+          memset(&Timer, 0, sizeof(Timer));
       }
       LbScreenClear(0);
       LbScreenSwap();
+      game.frame_skip = 0;
       keeper_gameplay_loop();
       set_pointer_graphic_none();
       LbScreenClear(0);
@@ -4258,12 +4270,13 @@ short process_command_line(unsigned short argc, char *argv[])
           if (strcasecmp(pr2str, "game") == 0)
           {
               TimerGame = true;
+              narg++;
           }
           else if (strcasecmp(pr2str, "continuous") == 0)
           {
               TimerNoReset = true;
+              narg++;
           }
-          narg++;
       }
       else if ( strcasecmp(parstr,"config") == 0 )
       {

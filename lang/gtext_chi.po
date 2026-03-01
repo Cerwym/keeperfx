@@ -6752,6 +6752,6 @@ msgid "Summon: Call upon temporary guardians to assist the creature in combat."
 msgstr "召唤术：在战斗中召唤出暂时存在的卫兵与怪物协同作战。"
 
 #: guitext:1082
-msgctxt "In-game interface description"
-msgid "Renderer: Switch between software and OpenGL renderer. LMB toggle."
-msgstr ""
+msgctxt "Highscore Default Name"
+msgid "Keeper"
+msgstr "守护者"

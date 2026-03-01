@@ -7242,6 +7242,6 @@ msgstr ""
 #~ msgstr "Capacità di ricerca: non utilizzato."
 
 #: guitext:1082
-msgctxt "In-game interface description"
-msgid "Renderer: Switch between software and OpenGL renderer. LMB toggle."
-msgstr ""
+msgctxt "Highscore Default Name"
+msgid "Keeper"
+msgstr "Keeper"
