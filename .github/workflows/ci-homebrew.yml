@@ -58,13 +58,20 @@ jobs:
             /usr/local/vitasdk/arm-vita-eabi/include/libavcodec
             /usr/local/vitasdk/arm-vita-eabi/include/libavutil
             /usr/local/vitasdk/arm-vita-eabi/include/libswresample
-          key: ffmpeg-vita-fish47-v1
+          key: ffmpeg-vita-fish47-v2
 
       - name: Build FFmpeg-vita
         if: matrix.preset == 'vita-release' && steps.cache-ffmpeg-vita.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 https://github.com/fish47/FFmpeg-vita.git /tmp/FFmpeg-vita
           cd /tmp/FFmpeg-vita
+          # fish47/FFmpeg-vita omits Smacker source files. Inject them from mainline
+          # FFmpeg 6.0.1 (same base version: libavformat 60.3.100). The Makefile entries
+          # and allformats/allcodecs registrations are already present in the fork.
+          curl -fsSL https://raw.githubusercontent.com/FFmpeg/FFmpeg/n6.0.1/libavformat/smacker.c \
+               -o libavformat/smacker.c
+          curl -fsSL https://raw.githubusercontent.com/FFmpeg/FFmpeg/n6.0.1/libavcodec/smacker.c \
+               -o libavcodec/smacker.c
           ./configure \
             --target-os=vita \
             --enable-vita \
@@ -76,8 +83,8 @@ jobs:
             --enable-small \
             --prefix=$VITASDK/arm-vita-eabi \
             --disable-everything \
-            --enable-decoder=aac_vita,mp3_vita,aac,adpcm_ima_qt,alac,flac,mp3,opus,pcm_s16le,pcm_s24le,pcm_s32le,vorbis \
-            --enable-demuxer=aac,mp3,mp4,m4a,matroska,flac,ogg,opus,wav \
+            --enable-decoder=aac_vita,mp3_vita,aac,adpcm_ima_qt,alac,flac,mp3,opus,pcm_s16le,pcm_s24le,pcm_s32le,vorbis,smacker,smackaud \
+            --enable-demuxer=aac,mp3,mp4,m4a,matroska,flac,ogg,opus,wav,smacker \
             --enable-muxer=null \
             --enable-parser=aac,mpegaudio,vorbis,opus \
             --enable-protocol=file \
