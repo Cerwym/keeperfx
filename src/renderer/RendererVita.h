@@ -75,7 +75,9 @@ private:
     struct SDL_Renderer* m_renderer  = nullptr;
     struct SDL_Texture*  m_texture   = nullptr;
     uint8_t*             m_rgbaBuffer = nullptr;
+    uint32_t             m_paletteLut[256] = {};  /**< precomputed RGBA (ABGR in SDL) per index */
 
+    void RebuildPaletteLut();
     void ExpandPaletteFrom(const uint8_t* src);
 #endif
 };

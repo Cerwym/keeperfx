@@ -315,6 +315,8 @@ void RendererVita::EndFrame()
 {
     if (!m_initialized) return;
 
+    RebuildPaletteLut();
+
     SDL_LockSurface(lbDrawSurface);
     ExpandPaletteFrom(static_cast<const uint8_t*>(lbDrawSurface->pixels));
     SDL_UnlockSurface(lbDrawSurface);
@@ -337,16 +339,26 @@ void RendererVita::UnlockFramebuffer()
     SDL_UnlockSurface(lbDrawSurface);
 }
 
+void RendererVita::RebuildPaletteLut()
+{
+    // lbPalette: 256 RGB triplets, each component 0–63 (6-bit). Expand once per frame
+    // into a 256-entry RGBA uint32 LUT so ExpandPaletteFrom only needs 1 load + 1 store
+    // per pixel instead of 3 loads + 4 stores.
+    // SDL RGBA32 on little-endian is stored as R,G,B,A bytes → uint32 = 0xAABBGGRR.
+    for (int i = 0; i < 256; i++) {
+        uint8_t r = (uint8_t)(lbPalette[i*3+0] << 2);
+        uint8_t g = (uint8_t)(lbPalette[i*3+1] << 2);
+        uint8_t b = (uint8_t)(lbPalette[i*3+2] << 2);
+        m_paletteLut[i] = (uint32_t)r | ((uint32_t)g << 8) | ((uint32_t)b << 16) | 0xFF000000u;
+    }
+}
+
 void RendererVita::ExpandPaletteFrom(const uint8_t* src)
 {
-    // lbPalette: 256 RGB triplets, each component 0–63 (6-bit). Shift to 8-bit.
     const int n = k_gameW * k_gameH;
+    uint32_t* dst = (uint32_t*)m_rgbaBuffer;
     for (int i = 0; i < n; i++) {
-        int idx = src[i];
-        m_rgbaBuffer[i*4+0] = lbPalette[idx*3+0] << 2;
-        m_rgbaBuffer[i*4+1] = lbPalette[idx*3+1] << 2;
-        m_rgbaBuffer[i*4+2] = lbPalette[idx*3+2] << 2;
-        m_rgbaBuffer[i*4+3] = 0xFF;
+        dst[i] = m_paletteLut[src[i]];
     }
 }
 
