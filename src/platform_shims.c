@@ -23,6 +23,7 @@
 #include "moonphase.h"
 #include "custom_sprites.h"
 #include "creature_graphics.h"
+#include "bflib_sprite.h"
 #include "engine_render.h"
 #include "engine_arrays.h"
 #include "scrcapt.h"
@@ -99,7 +100,8 @@ TbBool take_screenshot(char *fname) { (void)fname; return 0; }
 TbBool perform_any_screen_capturing(void) { return 0; }
 TbBool cumulative_screen_shot(void) { return 0; }
 
-/* custom_sprites.c — sprite globals and lookup functions */
+/* custom_sprites.c — sprite globals and lookup functions (3DS/Switch only; Vita compiles real custom_sprites.c) */
+#ifndef PLATFORM_VITA
 struct TbSpriteSheet *gui_panel_sprites = NULL;
 unsigned char *big_scratch = NULL;
 short bad_icon_id = INT16_MAX;
@@ -109,16 +111,17 @@ short td_iso_add[KEEPERSPRITE_ADD_NUM];
 TbSpriteData keepersprite_add[KEEPERSPRITE_ADD_NUM] = { 0 };
 struct KeeperSprite creature_table_add[KEEPERSPRITE_ADD_NUM] = { {0} };
 
-const struct TbSprite *get_panel_sprite(short i) { (void)i; return NULL; }
-const struct TbSprite *get_button_sprite(short i) { (void)i; return NULL; }
-const struct TbSprite *get_button_sprite_for_player(short i, PlayerNumber p) { (void)i; (void)p; return NULL; }
-const struct TbSprite *get_frontend_sprite(short i) { (void)i; return NULL; }
-const struct TbSprite *get_new_icon_sprite(short i) { (void)i; return NULL; }
+const struct TbSprite *get_panel_sprite(short sprite_idx) { (void)sprite_idx; return NULL; }
+const struct TbSprite *get_button_sprite(short sprite_idx) { (void)sprite_idx; return NULL; }
+const struct TbSprite *get_button_sprite_for_player(short sprite_idx, PlayerNumber plyr_idx) { (void)sprite_idx; (void)plyr_idx; return NULL; }
+const struct TbSprite *get_frontend_sprite(short sprite_idx) { (void)sprite_idx; return NULL; }
+const struct TbSprite *get_new_icon_sprite(short sprite_idx) { (void)sprite_idx; return NULL; }
 short get_icon_id(const char *name) { (void)name; return 0; }
 short get_anim_id_(const char *name) { (void)name; return 0; }
 short get_anim_id(const char *name, struct ObjectConfigStats *objst) { (void)name; (void)objst; return 0; }
 const struct LensOverlayData *get_lens_overlay_data(const char *name) { (void)name; return NULL; }
 const struct LensMistData *get_lens_mist_data(const char *name) { (void)name; return NULL; }
+#endif /* !PLATFORM_VITA */
 
 /* input_sdl.c / audio_openal.c — init functions */
 void input_sdl_initialize(void) {}
@@ -129,9 +132,11 @@ void audio_openal_initialize(void) {}
 SoundVolume GetCurrentSoundMasterVolume(void) { return 0; }
 #endif
 
-/* custom_sprites.c — sprite system init */
+/* custom_sprites.c — sprite system init (3DS/Switch only; Vita compiles real custom_sprites.c) */
+#ifndef PLATFORM_VITA
 void init_custom_sprites(LevelNumber level_no) { (void)level_no; }
 int  is_custom_icon(short icon_idx) { (void)icon_idx; return 0; }
+#endif /* !PLATFORM_VITA */
 
 /* Lua stubs— only needed on platforms where LuaJIT is not available (3DS, Switch).
  * On Vita, LuaJIT-Vita (SonicMastr fork) is used and lua source files are compiled normally.

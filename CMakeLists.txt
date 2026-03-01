@@ -136,7 +136,9 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_fmvids\\.c$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/KeeperSpeechImp\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/steam_api\\.c$")
-    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/custom_sprites\\.c$")
+    if(NOT PLATFORM_VITA)
+        list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/custom_sprites\\.c$")
+    endif()
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/moonphase\\.c$")
     # Lua: available on Vita via SonicMastr/LuaJIT-Vita (vdpm). Not yet available on 3DS/Switch.
     if(NOT PLATFORM_VITA)
@@ -354,6 +356,59 @@ if(PLATFORM_VITA)
     target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ${FFMPEG_VITA_STUBS} -Wl,--end-group)
     target_link_libraries(keeperfx PRIVATE centijson_static centitoml)
     target_link_libraries(keeperfx_hvlog PRIVATE centijson_static centitoml)
+    # zlib, spng, minizip — built from source for Vita (not in vitasdk sysroot).
+    # custom_sprites.c uses spng for PNG decoding and minizip for ZIP reading from mod packs.
+    include(FetchContent)
+    if(POLICY CMP0169)
+        cmake_policy(SET CMP0169 OLD)  # allow FetchContent_Populate
+    endif()
+    FetchContent_Declare(zlib_src
+        URL      https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    FetchContent_GetProperties(zlib_src)
+    if(NOT zlib_src_POPULATED)
+        FetchContent_Populate(zlib_src)
+    endif()
+    add_library(vita_zlib STATIC
+        ${zlib_src_SOURCE_DIR}/adler32.c
+        ${zlib_src_SOURCE_DIR}/compress.c
+        ${zlib_src_SOURCE_DIR}/crc32.c
+        ${zlib_src_SOURCE_DIR}/deflate.c
+        ${zlib_src_SOURCE_DIR}/gzclose.c
+        ${zlib_src_SOURCE_DIR}/gzlib.c
+        ${zlib_src_SOURCE_DIR}/gzread.c
+        ${zlib_src_SOURCE_DIR}/gzwrite.c
+        ${zlib_src_SOURCE_DIR}/infback.c
+        ${zlib_src_SOURCE_DIR}/inffast.c
+        ${zlib_src_SOURCE_DIR}/inflate.c
+        ${zlib_src_SOURCE_DIR}/inftrees.c
+        ${zlib_src_SOURCE_DIR}/trees.c
+        ${zlib_src_SOURCE_DIR}/uncompr.c
+        ${zlib_src_SOURCE_DIR}/zutil.c)
+    target_include_directories(vita_zlib PUBLIC ${zlib_src_SOURCE_DIR})
+    # minizip from zlib contrib (read-only ZIP access for custom sprite mod packs)
+    add_library(vita_minizip STATIC
+        ${zlib_src_SOURCE_DIR}/contrib/minizip/unzip.c
+        ${zlib_src_SOURCE_DIR}/contrib/minizip/ioapi.c)
+    target_include_directories(vita_minizip PUBLIC ${zlib_src_SOURCE_DIR}/contrib)
+    target_compile_definitions(vita_minizip PRIVATE USE_FILE32API=1)  # vitasdk newlib lacks fopen64/ftell64
+    target_link_libraries(vita_minizip PUBLIC vita_zlib)
+    FetchContent_Declare(spng_src
+        URL      https://github.com/randy408/libspng/archive/refs/tags/v0.7.4.tar.gz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
+    FetchContent_GetProperties(spng_src)
+    if(NOT spng_src_POPULATED)
+        FetchContent_Populate(spng_src)
+    endif()
+    add_library(vita_spng STATIC ${spng_src_SOURCE_DIR}/spng/spng.c)
+    target_include_directories(vita_spng PUBLIC ${spng_src_SOURCE_DIR}/spng)
+    target_compile_definitions(vita_spng PUBLIC SPNG_STATIC=1)
+    target_link_libraries(vita_spng PUBLIC vita_zlib)
+    # custom_sprites.c needs spng.h and minizip/unzip.h
+    target_include_directories(keeperfx       PRIVATE ${spng_src_SOURCE_DIR}/spng ${zlib_src_SOURCE_DIR}/contrib)
+    target_include_directories(keeperfx_hvlog PRIVATE ${spng_src_SOURCE_DIR}/spng ${zlib_src_SOURCE_DIR}/contrib)
+    target_link_libraries(keeperfx       PRIVATE vita_spng vita_minizip)
+    target_link_libraries(keeperfx_hvlog PRIVATE vita_spng vita_minizip)
     # LuaJIT for the Vita — cross-compiled via SonicMastr/LuaJIT-Vita fork.
     # Install prerequisites: vdpm luajit taihen vita-rss-libdl
     #
