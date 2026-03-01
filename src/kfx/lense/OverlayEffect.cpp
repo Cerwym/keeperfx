@@ -26,6 +26,7 @@
 #include "../../globals.h"
 #include "../../config_lenses.h"
 #include "../../custom_sprites.h"
+#include "../../bflib_video.h"
 
 #include "../../keeperfx.hpp"
 #include "../../post_inc.h"
@@ -180,7 +181,25 @@ void COverlayRenderer::Render(unsigned char *dstbuf, long dstpitch, unsigned cha
     // Clamp alpha to valid range (0-256, where 256 = opaque)
     int alpha_clamped = (alpha < 0) ? 0 : ((alpha > 256) ? 256 : alpha);
     int inv_alpha = 256 - alpha_clamped;
-    
+
+    // Pre-build blend LUT: blend_lut[ovl_idx][src_idx] -> nearest palette index.
+    // Palette index 255 is transparent so skip row 255 (never read).
+    const unsigned char* palette = lbDisplay.Palette;
+    uint8_t blend_lut[256][256];
+    for (int ovl = 0; ovl < 255; ++ovl)
+    {
+        int ovl_r = palette[ovl * 3 + 0] * alpha_clamped;
+        int ovl_g = palette[ovl * 3 + 1] * alpha_clamped;
+        int ovl_b = palette[ovl * 3 + 2] * alpha_clamped;
+        for (int src = 0; src < 256; ++src)
+        {
+            uint8_t r = (uint8_t)((ovl_r + palette[src * 3 + 0] * inv_alpha) >> 8);
+            uint8_t g = (uint8_t)((ovl_g + palette[src * 3 + 1] * inv_alpha) >> 8);
+            uint8_t b = (uint8_t)((ovl_b + palette[src * 3 + 2] * inv_alpha) >> 8);
+            blend_lut[ovl][src] = LbPaletteFindColour(palette, r, g, b);
+        }
+    }
+
     // Composite overlay onto destination buffer with stretch-to-fit
     for (int y = 0; y < height; y++)
     {
@@ -210,14 +229,8 @@ void COverlayRenderer::Render(unsigned char *dstbuf, long dstpitch, unsigned cha
                 dst_row[x] = src_pixel;
                 continue;
             }
-            
-            // Alpha blend: result = (overlay * alpha + src * (1 - alpha)) / 256
-            unsigned char result = (unsigned char)(
-                (overlay_pixel * alpha_clamped + src_pixel * inv_alpha) >> 8
-            );
-            
-            // Write to destination
-            dst_row[x] = result;
+
+            dst_row[x] = blend_lut[overlay_pixel][src_pixel];
         }
     }
 }
