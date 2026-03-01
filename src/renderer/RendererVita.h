@@ -72,11 +72,14 @@ private:
     GLint  m_loc_palette = -1;  /**< uniform "paletteTex" */
 #else
     // SDL2 CPU blit fallback
-    struct SDL_Renderer* m_renderer  = nullptr;
-    struct SDL_Texture*  m_texture   = nullptr;
+    struct SDL_Renderer* m_renderer   = nullptr;
+    struct SDL_Texture*  m_texture    = nullptr;
     uint8_t*             m_rgbaBuffer = nullptr;
+    int                  m_surfW      = 0;  /**< current surface width  (set by EnsureSurface) */
+    int                  m_surfH      = 0;  /**< current surface height (set by EnsureSurface) */
     uint32_t             m_paletteLut[256] = {};  /**< precomputed RGBA (ABGR in SDL) per index */
 
+    bool EnsureSurface(int w, int h);  /**< (re)allocate texture + RGBA buffer if size changed */
     void RebuildPaletteLut();
     void ExpandPaletteFrom(const uint8_t* src);
 #endif

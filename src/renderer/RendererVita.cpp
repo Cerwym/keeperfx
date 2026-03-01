@@ -271,27 +271,10 @@ bool RendererVita::Init()
         return false;
     }
 
-    SDL_RenderSetLogicalSize(m_renderer, k_gameW, k_gameH);
-
-    m_texture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA32,
-                                  SDL_TEXTUREACCESS_STREAMING, k_gameW, k_gameH);
-    if (!m_texture) {
-        ERRORLOG("RendererVita: SDL_CreateTexture failed: %s", SDL_GetError());
-        SDL_DestroyRenderer(m_renderer);
-        m_renderer = nullptr;
-        return false;
-    }
-
-    m_rgbaBuffer = (uint8_t*)malloc((size_t)k_gameW * k_gameH * 4);
-    if (!m_rgbaBuffer) {
-        ERRORLOG("RendererVita: failed to allocate RGBA buffer");
-        SDL_DestroyTexture(m_texture);   m_texture  = nullptr;
-        SDL_DestroyRenderer(m_renderer); m_renderer = nullptr;
-        return false;
-    }
-
+    // Texture / RGBA buffer are allocated lazily by EnsureSurface on the first EndFrame
+    // so the correct game surface dimensions are always used.
     m_initialized = true;
-    SYNCLOG("RendererVita: SDL2 blit fallback initialised %dx%d -> 960x544", k_gameW, k_gameH);
+    SYNCLOG("RendererVita: SDL2 blit fallback initialised (dynamic resolution)");
     return true;
 }
 
@@ -300,6 +283,7 @@ void RendererVita::Shutdown()
     if (!m_initialized) return;
 
     free(m_rgbaBuffer);  m_rgbaBuffer = nullptr;
+    m_surfW = 0;  m_surfH = 0;
     if (m_texture)  { SDL_DestroyTexture(m_texture);   m_texture  = nullptr; }
     if (m_renderer) { SDL_DestroyRenderer(m_renderer); m_renderer = nullptr; }
 
@@ -315,13 +299,15 @@ void RendererVita::EndFrame()
 {
     if (!m_initialized) return;
 
+    if (!EnsureSurface(lbDrawSurface->w, lbDrawSurface->h)) return;
+
     RebuildPaletteLut();
 
     SDL_LockSurface(lbDrawSurface);
     ExpandPaletteFrom(static_cast<const uint8_t*>(lbDrawSurface->pixels));
     SDL_UnlockSurface(lbDrawSurface);
 
-    SDL_UpdateTexture(m_texture, NULL, m_rgbaBuffer, k_gameW * 4);
+    SDL_UpdateTexture(m_texture, NULL, m_rgbaBuffer, m_surfW * 4);
     SDL_RenderClear(m_renderer);
     SDL_RenderCopy(m_renderer, m_texture, NULL, NULL);
     SDL_RenderPresent(m_renderer);
@@ -337,6 +323,33 @@ uint8_t* RendererVita::LockFramebuffer(int* out_pitch)
 void RendererVita::UnlockFramebuffer()
 {
     SDL_UnlockSurface(lbDrawSurface);
+}
+
+bool RendererVita::EnsureSurface(int w, int h)
+{
+    if (w == m_surfW && h == m_surfH) return true;
+
+    free(m_rgbaBuffer);  m_rgbaBuffer = nullptr;
+    if (m_texture) { SDL_DestroyTexture(m_texture); m_texture = nullptr; }
+
+    m_texture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA32,
+                                  SDL_TEXTUREACCESS_STREAMING, w, h);
+    if (!m_texture) {
+        ERRORLOG("RendererVita: SDL_CreateTexture %dx%d failed: %s", w, h, SDL_GetError());
+        return false;
+    }
+
+    m_rgbaBuffer = (uint8_t*)malloc((size_t)w * h * 4);
+    if (!m_rgbaBuffer) {
+        ERRORLOG("RendererVita: failed to allocate RGBA buffer %dx%d", w, h);
+        SDL_DestroyTexture(m_texture);  m_texture = nullptr;
+        return false;
+    }
+
+    SDL_RenderSetLogicalSize(m_renderer, w, h);
+    m_surfW = w;  m_surfH = h;
+    SYNCLOG("RendererVita: surface %dx%d -> 960x544", w, h);
+    return true;
 }
 
 void RendererVita::RebuildPaletteLut()
@@ -355,7 +368,7 @@ void RendererVita::RebuildPaletteLut()
 
 void RendererVita::ExpandPaletteFrom(const uint8_t* src)
 {
-    const int n = k_gameW * k_gameH;
+    const int n = m_surfW * m_surfH;
     uint32_t* dst = (uint32_t*)m_rgbaBuffer;
     for (int i = 0; i < n; i++) {
         dst[i] = m_paletteLut[src[i]];
