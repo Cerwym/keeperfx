@@ -478,6 +478,13 @@ void init_custom_sprites(LevelNumber lvnum)
         load_sprites_for_mod_list(lvnum, mods_conf.after_map_item, mods_conf.after_map_cnt);
     }
 
+#ifdef PLATFORM_VITA
+    /* Scratch buffer was only needed during ZIP decompression above.
+     * Free it now to return 16 MB to the heap before TOML/config loading. */
+    free(big_scratch_alloc);
+    big_scratch_alloc = NULL;
+    big_scratch = NULL;
+#endif
 }
 
 /**

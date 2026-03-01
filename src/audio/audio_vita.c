@@ -95,10 +95,10 @@ typedef struct {
     uint32_t  len;        /* number of int16_t samples */
     uint32_t  src_rate;   /* original sample rate for resampling */
     uint8_t   sfxid;
-    /* lazy-decode fields — raw_data points into the bank's filebuf */
-    const uint8_t *raw_data;
-    uint32_t       raw_len;
-    uint8_t        decoded;  /* 0 = not yet decoded, 1 = data/len are valid */
+    /* streaming fields — file offset/length instead of a RAM blob */
+    uint32_t  raw_file_offset; /* byte offset of WAV in bank file */
+    uint32_t  raw_file_len;    /* bytes to read (data_size + WAV header room) */
+    uint8_t   decoded;  /* 0 = not yet decoded, 1 = data/len are valid */
 } VitaSample;
 
 /* ── Software mixer channel ──────────────────────────────────────────────── */
@@ -120,7 +120,7 @@ typedef struct {
 /* ── Module state ────────────────────────────────────────────────────────── */
 static VitaSample  s_samples[VITA_NUM_BANKS][VITA_MAX_SAMPLES];
 static int         s_sample_counts[VITA_NUM_BANKS];
-static uint8_t    *s_bank_buf[VITA_NUM_BANKS];  /* raw file buffers kept for lazy decode */
+static TbFileHandle s_bank_fh[VITA_NUM_BANKS];  /* open file handles for on-demand streaming */
 static SwChannel   s_sw[VITA_MAX_CHANNELS];
 static int32_t     s_mix_buf[VITA_DMA_GRAIN * 2];   /* 32-bit accumulator */
 static int16_t     s_out_buf[VITA_DMA_GRAIN * 2];   /* final S16LE stereo */
@@ -244,80 +244,96 @@ static int16_t *decode_wav_mem(const uint8_t *data, size_t size,
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   vita_load_sound_bank — parse one .dat bank and store raw WAV pointers.
-   Reads the entire file into a 4096-byte-aligned buffer via LbFile*, then
-   walks the sample table and stores per-sample raw pointers for lazy decode.
+   vita_load_sound_bank — parse one .dat bank and store per-sample file offsets.
+   Reads only the small header + sample-table sections; the bulk WAV data is
+   NOT loaded into RAM.  Saves 40 MB (sound.dat) + 5.4 MB (speech_eng.dat).
    ───────────────────────────────────────────────────────────────────────── */
 static void vita_load_sound_bank(const char *filename, int bank_idx)
 {
     const int DIR_IDX = 2;
     VitaSample *bank = s_samples[bank_idx];
 
-    /* Release any previously decoded PCM and the old raw buffer. */
+    /* Release any previously decoded PCM and close old file handle. */
     for (int i = 0; i < VITA_MAX_SAMPLES; i++) {
         if (bank[i].decoded && bank[i].data) free(bank[i].data);
         memset(&bank[i], 0, sizeof(bank[i]));
     }
-    if (s_bank_buf[bank_idx]) { free(s_bank_buf[bank_idx]); s_bank_buf[bank_idx] = NULL; }
+    if (s_bank_fh[bank_idx]) { LbFileClose(s_bank_fh[bank_idx]); s_bank_fh[bank_idx] = 0; }
     s_sample_counts[bank_idx] = 0;
 
-    /* Read the entire file into a 4096-aligned buffer (Task 1: LbFile API). */
     long file_size = LbFileLength(filename);
     if (file_size <= 0) { ERRORLOG("vita audio: empty file %s", filename); return; }
-    uint8_t *filebuf = (uint8_t*)memalign(4096, (size_t)file_size);
-    if (!filebuf) { ERRORLOG("vita audio: out of memory for %s", filename); return; }
+
     TbFileHandle fh = LbFileOpen(filename, Lb_FILE_MODE_READ_ONLY);
-    if (!fh) { free(filebuf); ERRORLOG("vita audio: cannot open %s", filename); return; }
-    if (LbFileRead(fh, filebuf, (unsigned long)file_size) != (int)file_size) {
-        free(filebuf); LbFileClose(fh);
-        ERRORLOG("vita audio: read error %s", filename); return;
-    }
-    LbFileClose(fh);
+    if (!fh) { ERRORLOG("vita audio: cannot open %s", filename); return; }
 
-    /* head offset is stored in the last 4 bytes of the file */
+    /* Pass 1: read the last 4 bytes to find the bank header offset. */
     uint32_t head_offset = 0;
-    memcpy(&head_offset, filebuf + file_size - 4, 4);
-    if (head_offset + sizeof(VitaBankHead) + sizeof(VitaBankEntry) * 9 > (size_t)file_size) {
-        free(filebuf); ERRORLOG("vita audio: bank header out of range in %s", filename); return;
+    LbFileSeek(fh, file_size - 4, Lb_FILE_SEEK_BEGINNING);
+    if (LbFileRead(fh, &head_offset, 4) != 4) {
+        LbFileClose(fh); ERRORLOG("vita audio: cannot read header offset in %s", filename); return;
     }
 
-    const uint8_t *p = filebuf + head_offset;
-    p += sizeof(VitaBankHead); /* skip signature */
+    /* Pass 2: read the bank header + entry table at head_offset. */
+    size_t hdr_region_size = sizeof(VitaBankHead) + sizeof(VitaBankEntry) * 9;
+    if (head_offset + hdr_region_size > (size_t)file_size) {
+        LbFileClose(fh); ERRORLOG("vita audio: header region out of range in %s", filename); return;
+    }
+    uint8_t hdrbuf[sizeof(VitaBankHead) + sizeof(VitaBankEntry) * 9];
+    LbFileSeek(fh, (long)head_offset, Lb_FILE_SEEK_BEGINNING);
+    if (LbFileRead(fh, hdrbuf, (unsigned long)hdr_region_size) != (int)hdr_region_size) {
+        LbFileClose(fh); ERRORLOG("vita audio: cannot read bank header in %s", filename); return;
+    }
 
+    const uint8_t *p = hdrbuf;
+    p += sizeof(VitaBankHead); /* skip signature */
     VitaBankEntry bentries[9];
     memcpy(bentries, p, sizeof(bentries));
 
     VitaBankEntry *dir = &bentries[DIR_IDX];
     if (dir->first_sample_offset == 0 || dir->total_samples_size < sizeof(VitaBankSample)) {
-        free(filebuf); ERRORLOG("vita audio: invalid bank directory in %s", filename); return;
+        LbFileClose(fh); ERRORLOG("vita audio: invalid bank directory in %s", filename); return;
+    }
+    if (dir->first_sample_offset + dir->total_samples_size > (uint32_t)file_size) {
+        LbFileClose(fh); ERRORLOG("vita audio: sample table out of range in %s", filename); return;
     }
 
+    /* Pass 3: read the sample table (may be anywhere in the file). */
     int count = (int)(dir->total_samples_size / sizeof(VitaBankSample));
     if (count >= VITA_MAX_SAMPLES) count = VITA_MAX_SAMPLES - 1;
 
-    /* Task 2: store raw WAV pointers only — actual decode is deferred. */
-    VitaBankSample hdr;
-    for (int i = 0; i < count; i++) {
-        size_t hdr_off = dir->first_sample_offset + (uint32_t)i * sizeof(VitaBankSample);
-        if (hdr_off + sizeof(VitaBankSample) > (size_t)file_size) break;
-        memcpy(&hdr, filebuf + hdr_off, sizeof(hdr));
+    VitaBankSample *sample_table = (VitaBankSample*)malloc((size_t)count * sizeof(VitaBankSample));
+    if (!sample_table) {
+        LbFileClose(fh); ERRORLOG("vita audio: OOM for sample table of %s", filename); return;
+    }
+    LbFileSeek(fh, (long)dir->first_sample_offset, Lb_FILE_SEEK_BEGINNING);
+    if (LbFileRead(fh, sample_table, (unsigned long)((size_t)count * sizeof(VitaBankSample)))
+            != (int)((size_t)count * sizeof(VitaBankSample))) {
+        free(sample_table); LbFileClose(fh);
+        ERRORLOG("vita audio: cannot read sample table in %s", filename); return;
+    }
 
-        size_t wav_off = dir->first_data_offset + hdr.data_offset;
-        if (wav_off >= (size_t)file_size) {
+    /* Store per-sample file offsets — no WAV data loaded into RAM. */
+    for (int i = 0; i < count; i++) {
+        VitaBankSample *hdr = &sample_table[i];
+        uint32_t wav_off = dir->first_data_offset + hdr->data_offset;
+        if (wav_off >= (uint32_t)file_size) {
             WARNLOG("vita audio: sample %d offset out of range in %s", i, filename); continue;
         }
 
-        bank[i].raw_data = filebuf + wav_off;
-        bank[i].raw_len  = (uint32_t)((size_t)file_size - wav_off);
-        bank[i].src_rate = hdr.sample_rate;
-        bank[i].sfxid    = hdr.sfxid;
-        bank[i].decoded  = 0;
+        bank[i].raw_file_offset = wav_off;
+        /* data_size is the PCM payload; add room for RIFF/fmt/data chunk headers (~64 B) */
+        bank[i].raw_file_len    = hdr->data_size + 64;
+        bank[i].src_rate        = hdr->sample_rate;
+        bank[i].sfxid           = hdr->sfxid;
+        bank[i].decoded         = 0;
     }
 
-    /* Keep the buffer alive — raw_data pointers point into it. */
-    s_bank_buf[bank_idx] = filebuf;
+    free(sample_table);
+    /* Keep file open for on-demand seek+read when each sample is first played. */
+    s_bank_fh[bank_idx] = fh;
     s_sample_counts[bank_idx] = count;
-    JUSTLOG("vita audio: loaded %d samples from %s (lazy decode)", count, filename);
+    JUSTLOG("vita audio: loaded %d samples from %s (streaming)", count, filename);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -535,7 +551,7 @@ void FreeAudio(void)
             if (s_samples[b][i].decoded && s_samples[b][i].data)
                 free(s_samples[b][i].data);
         }
-        if (s_bank_buf[b]) { free(s_bank_buf[b]); s_bank_buf[b] = NULL; }
+        if (s_bank_fh[b]) { LbFileClose(s_bank_fh[b]); s_bank_fh[b] = 0; }
         memset(s_samples[b], 0, sizeof(s_samples[b]));
     }
     s_initialized = false;
@@ -548,17 +564,41 @@ void SetSoundMasterVolume(SoundVolume volume) { s_master_vol = (float)volume / 2
 SoundVolume GetCurrentSoundMasterVolume(void) { return (SoundVolume)(s_master_vol * 256.0f); }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   vita_ensure_sample_decoded — decode a sample on first use (lazy decode).
+   vita_ensure_sample_decoded — decode a sample on first use (streaming).
+   Seeks to the sample's position in the open bank file, reads just that
+   sample's WAV bytes into a temp buffer, decodes, then frees the temp buffer.
    No-op if already decoded or slot is empty. Called from play_sample.
    ───────────────────────────────────────────────────────────────────────── */
 static void vita_ensure_sample_decoded(int bank_idx, int sample_idx)
 {
     VitaSample *smp = &s_samples[bank_idx][sample_idx];
     if (smp->decoded) return;
-    if (!smp->raw_data || smp->raw_len == 0) return;
+    if (smp->raw_file_len == 0) return;
+
+    TbFileHandle fh = s_bank_fh[bank_idx];
+    if (!fh) {
+        WARNLOG("vita audio: bank %d file not open for sample %d", bank_idx, sample_idx);
+        return;
+    }
+
+    uint8_t *tmpbuf = (uint8_t*)malloc(smp->raw_file_len);
+    if (!tmpbuf) {
+        WARNLOG("vita audio: OOM reading sample bank %d idx %d", bank_idx, sample_idx);
+        return;
+    }
+
+    LbFileSeek(fh, (long)smp->raw_file_offset, Lb_FILE_SEEK_BEGINNING);
+    long nread = LbFileRead(fh, tmpbuf, smp->raw_file_len);
+    if (nread <= 0) {
+        free(tmpbuf);
+        WARNLOG("vita audio: read failed bank %d sample %d", bank_idx, sample_idx);
+        return;
+    }
 
     uint32_t pcm_len = 0, pcm_rate = 0;
-    int16_t *pcm = decode_wav_mem(smp->raw_data, (size_t)smp->raw_len, &pcm_len, &pcm_rate);
+    int16_t *pcm = decode_wav_mem(tmpbuf, (size_t)nread, &pcm_len, &pcm_rate);
+    free(tmpbuf);
+
     if (!pcm) {
         WARNLOG("vita audio: lazy decode failed for bank %d sample %d", bank_idx, sample_idx);
         return;
