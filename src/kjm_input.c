@@ -302,6 +302,7 @@ void update_mouse(void)
   // Cross/Circle are never mapped to mouse clicks through SDL on Vita.
   if (g_input != NULL) {
     static int s_prev_input_buttons = 0;
+    g_input->poll_events();   // read sceCtrl / touch (peek, safe alongside SDL)
     int ix, iy, ibuttons;
     g_input->get_mouse(&ix, &iy, &ibuttons);
     int btn_left  = (ibuttons & INPUT_MOUSE_BUTTON_LEFT)  ? 1 : 0;
