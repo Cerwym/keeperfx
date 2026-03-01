@@ -100,7 +100,10 @@ TbBool take_screenshot(char *fname) { (void)fname; return 0; }
 TbBool perform_any_screen_capturing(void) { return 0; }
 TbBool cumulative_screen_shot(void) { return 0; }
 
-/* custom_sprites.c — sprite globals and lookup functions (3DS/Switch only; Vita compiles real custom_sprites.c) */
+/* custom_sprites.c — stubs for 3DS/Switch only.
+ * Vita compiles the real custom_sprites.c (spng + minizip + zlib built from source via FetchContent).
+ * TODO(3DS/Switch): replicate the Vita FetchContent pattern in CMakeLists.txt for devkitARM/devkitA64,
+ * then remove this #ifndef guard so the real implementation is used on those platforms too. */
 #ifndef PLATFORM_VITA
 struct TbSpriteSheet *gui_panel_sprites = NULL;
 unsigned char *big_scratch = NULL;
@@ -132,7 +135,7 @@ void audio_openal_initialize(void) {}
 SoundVolume GetCurrentSoundMasterVolume(void) { return 0; }
 #endif
 
-/* custom_sprites.c — sprite system init (3DS/Switch only; Vita compiles real custom_sprites.c) */
+/* custom_sprites.c — sprite system init stubs (3DS/Switch only; see above TODO) */
 #ifndef PLATFORM_VITA
 void init_custom_sprites(LevelNumber level_no) { (void)level_no; }
 int  is_custom_icon(short icon_idx) { (void)icon_idx; return 0; }

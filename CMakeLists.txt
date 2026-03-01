@@ -136,6 +136,8 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_fmvids\\.c$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/KeeperSpeechImp\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/steam_api\\.c$")
+    # custom_sprites.c is enabled on Vita (spng/minizip/zlib built from source via FetchContent — see PLATFORM_VITA block below).
+    # TODO(3DS/Switch): replicate the same FetchContent pattern for the devkitARM/devkitA64 toolchain to lift this exclusion.
     if(NOT PLATFORM_VITA)
         list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/custom_sprites\\.c$")
     endif()
