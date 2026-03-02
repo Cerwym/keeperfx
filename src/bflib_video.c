@@ -145,8 +145,23 @@ TbResult LbScreenSwap(void)
     SYNCDBG(12,"Starting");
     PlatformManager_FrameTick();
     TbResult ret = LbMouseOnBeginSwap();
-    if (ret == Lb_SUCCESS)
+    if (ret == Lb_SUCCESS) {
+#if defined(VITA_PERF_LOG)
+        {
+            static Uint32 _ef_accum = 0;
+            static int    _ef_cnt   = 0;
+            Uint32 _ef_t0 = SDL_GetTicks();
+            RendererEndFrame();
+            _ef_accum += SDL_GetTicks() - _ef_t0;
+            if (++_ef_cnt >= 60) {
+                JUSTLOG("[perf] EndFrame   avg %u ms/frame (60-frame window)", _ef_accum / 60u);
+                _ef_accum = 0; _ef_cnt = 0;
+            }
+        }
+#else
         RendererEndFrame();
+#endif
+    }
     LbMouseOnEndSwap();
     return ret;
 }
