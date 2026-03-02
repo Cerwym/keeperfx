@@ -32,12 +32,18 @@ static void sdl_log_callback(void* /*userdata*/, int /*category*/, SDL_LogPriori
 
 int main(int argc, char* argv[]) {
 #if defined(PLATFORM_VITA)
+    { FILE* _f = fopen("ux0:data/keeperfx/kfx_boot.log", "w"); if (_f) { fprintf(_f, "main-enter\n"); fclose(_f); } }
     PlatformManager::Set(new PlatformVita());
+    { FILE* _f = fopen("ux0:data/keeperfx/kfx_boot.log", "a"); if (_f) { fprintf(_f, "post-ctor\n"); fclose(_f); } }
     PlatformManager::Get()->SystemInit();
+    { FILE* _f = fopen("ux0:data/keeperfx/kfx_boot.log", "a"); if (_f) { fprintf(_f, "post-sysinit\n"); fclose(_f); } }
     LbErrorLogSetup(PlatformManager_GetDataPath(), "keeperfx.log", 5);
+    { FILE* _f = fopen("ux0:data/keeperfx/kfx_boot.log", "a"); if (_f) { fprintf(_f, "post-logsetup\n"); fclose(_f); } }
     // sceIoChdir to data path is done inside PlatformVita::SystemInit()
     input_vita_initialize();
+    { FILE* _f = fopen("ux0:data/keeperfx/kfx_boot.log", "a"); if (_f) { fprintf(_f, "post-input\n"); fclose(_f); } }
     audio_vita_initialize();
+    { FILE* _f = fopen("ux0:data/keeperfx/kfx_boot.log", "a"); if (_f) { fprintf(_f, "post-audio\n"); fclose(_f); } }
 #elif defined(PLATFORM_3DS)
     PlatformManager::Set(new Platform3DS());
     LbErrorLogSetup(PlatformManager_GetDataPath(), "keeperfx.log", 5);

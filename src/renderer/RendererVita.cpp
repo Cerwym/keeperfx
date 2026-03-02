@@ -101,6 +101,7 @@ extern "C" void vita_vitagl_preinit(void)
     // If the process dies inside any vgl call, the last line in preinit.log
     // tells us exactly which step was fatal.
     sceIoMkdir("ux0:data/keeperfx", 0777);  // no-op if already exists
+    { FILE* _tr = fopen("ux0:data/keeperfx/kfx_preinit.log", "w"); if (_tr) fclose(_tr); }
 #define PREINIT_LOG(step) \
     strncat(s_preinit_log, " " step ";", PREINIT_LOG_MAX - 1); \
     { FILE* _pf = fopen("ux0:data/keeperfx/kfx_preinit.log", "a"); \
