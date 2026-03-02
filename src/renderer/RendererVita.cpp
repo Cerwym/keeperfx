@@ -17,6 +17,7 @@
 #ifdef PLATFORM_VITA
 
 #include <SDL2/SDL.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -25,7 +26,14 @@
 #include "globals.h"
 
 #ifdef VITA_HAVE_VITAGL
-#include <psp2/gxm.h>
+#include <psp2/io/stat.h>    // sceIoMkdir
+#include <psp2/kernel/sysmem.h>  // sceKernelAllocMemBlock probe
+#include <psp2/kernel/processmgr.h>  // sceKernelExitProcess
+#include <psp2/ctrl.h>
+extern "C" {
+#include "platform/debugscreen/debugScreen.h"
+#include "platform/vita_sce_diag.h"
+}
 #endif
 
 #include "post_inc.h"
@@ -42,6 +50,40 @@ static bool s_vitagl_ready = false;
 extern "C" bool vita_is_vitagl_ready(void) { return s_vitagl_ready; }
 
 // ---------------------------------------------------------------------------
+// Show an on-screen error message using the debug framebuffer (no vitaGL needed)
+// and wait for the user to press a button before exiting cleanly.
+// If CDRAM allocation fails (e.g. after a partial vitaGL init), the message is
+// written to kfx_fatal.log so it isn't silently lost, then the process exits.
+static void vita_fatal_dialog(const char* msg)
+{
+    // Always persist the message to a log first, in case screen init fails.
+    FILE* lf = fopen("ux0:data/keeperfx/kfx_fatal.log", "w");
+    if (lf) { fprintf(lf, "KeeperFX Fatal Error:\n%s\n", msg); fclose(lf); }
+
+    if (psvDebugScreenInit() < 0) {
+        // CDRAM unavailable (likely leaked by a partial vitaGL init).
+        // Message is in kfx_fatal.log; exit cleanly without crashing.
+        sceKernelExitProcess(1);
+        return;
+    }
+
+    psvDebugScreenSetFgColor(0xFF4040); // red text
+    psvDebugScreenPrintf("\n\n  KeeperFX -- Fatal Error\n\n");
+    psvDebugScreenSetFgColor(0xFFFFFF); // white body
+    psvDebugScreenPrintf("  %s\n\n", msg);
+    psvDebugScreenSetFgColor(0xAAAAAA); // grey hint
+    psvDebugScreenPrintf("  Press any button to exit.\n");
+
+    sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
+    SceCtrlData pad;
+    // Drain any held-down buttons first, then wait for a fresh press.
+    do { sceCtrlReadBufferPositive(0, &pad, 1); } while (pad.buttons != 0);
+    do { sceCtrlReadBufferPositive(0, &pad, 1); } while (pad.buttons == 0);
+
+    sceKernelExitProcess(0);
+}
+
+// ---------------------------------------------------------------------------
 // Preinit step log — strncat entries here during preinit (before keeperfx.log
 // is open), then SYNCLOG the full string in RendererVita::Init().
 // ---------------------------------------------------------------------------
@@ -55,24 +97,81 @@ extern "C" void vita_vitagl_preinit(void)
     s_preinit_log[0] = '\0';
     strncat(s_preinit_log, "start;", PREINIT_LOG_MAX - 1);
 
-    // VitaQuake1/2 pattern: set vertex pool (64 MB) and VDM buffer before
-    // vglInitExtended.  First param 0x1400000 = 20 MB internal GXM command
-    // buffer, matching both Quake ports exactly.
-    vglSetVertexPoolSize(64 * 1024 * 1024);
-    strncat(s_preinit_log, " vertPool;", PREINIT_LOG_MAX - 1);
+    // Ensure log directory exists and write "start" before any vgl calls.
+    // If the process dies inside any vgl call, the last line in preinit.log
+    // tells us exactly which step was fatal.
+    sceIoMkdir("ux0:data/keeperfx", 0777);  // no-op if already exists
+#define PREINIT_LOG(step) \
+    strncat(s_preinit_log, " " step ";", PREINIT_LOG_MAX - 1); \
+    { FILE* _pf = fopen("ux0:data/keeperfx/kfx_preinit.log", "a"); \
+      if (_pf) { fprintf(_pf, step "\n"); fclose(_pf); } }
 
+    PREINIT_LOG("start")
+
+    // -----------------------------------------------------------------------
+    // Diagnostic probe — log memory state before touching vitaGL.
+    // -----------------------------------------------------------------------
+    FILE* _diag = fopen("ux0:data/keeperfx/kfx_preinit.log", "a");
+    if (_diag) {
+        // CDRAM (GPU-visible RAM) availability
+        SceUID cdram_blk = sceKernelAllocMemBlock("probe_cdram", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, 256*1024, NULL);
+        fprintf(_diag, "sceKernelAllocMemBlock(CDRAM) uid=0x%08X\n", (unsigned)cdram_blk);
+        if (cdram_blk >= 0) sceKernelFreeMemBlock(cdram_blk);
+
+        SceUID cdram_big = sceKernelAllocMemBlock("probe_cdram_big", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, 4*1024*1024, NULL);
+        fprintf(_diag, "sceKernelAllocMemBlock(CDRAM 4MB) uid=0x%08X\n", (unsigned)cdram_big);
+        if (cdram_big >= 0) sceKernelFreeMemBlock(cdram_big);
+
+        // Heap headroom before vitaGL allocates
+        void* heap_probe_128 = malloc(100 * 1024 * 1024);
+        fprintf(_diag, "malloc(100MB) = %s\n", heap_probe_128 ? "OK" : "FAIL");
+        if (heap_probe_128) free(heap_probe_128);
+        void* heap_probe_32 = malloc(32 * 1024 * 1024);
+        fprintf(_diag, "malloc(32MB) = %s\n", heap_probe_32 ? "OK" : "FAIL");
+        if (heap_probe_32) free(heap_probe_32);
+
+        fclose(_diag);
+    }
+    strncat(s_preinit_log, " probed;", PREINIT_LOG_MAX - 1);
+    PREINIT_LOG("gxmProbeOK")
+
+    // Follow VitaQuake2: only set VDM buffer size; do NOT override vertex pool
+    // (default 32 MB is sufficient for 2D blit workload and conserves heap).
+    // Use vglInitExtended(0,...) auto-detect for GXM buffer size, same as Q2.
     vglSetVDMBufferSize(1024 * 1024);
-    strncat(s_preinit_log, " vdmBuf;", PREINIT_LOG_MAX - 1);
+    PREINIT_LOG("vdmBuf")
 
-    vglInitExtended(0x1400000, 960, 544, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
-    strncat(s_preinit_log, " vglInit;", PREINIT_LOG_MAX - 1);
+#ifdef VITA_SCE_DIAG
+    vita_diag_install_hooks();
+#endif
+    GLboolean vgl_ok = vglInitExtended(0, 960, 544, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
+#ifdef VITA_SCE_DIAG
+    vita_diag_unhook_all();
+    { FILE* _pf = fopen("ux0:data/keeperfx/kfx_preinit.log", "a");
+      if (_pf) { fprintf(_pf, "[SCE_DIAG] vglInitExtended returned %s\n",
+                         vgl_ok == GL_TRUE ? "GL_TRUE" : "GL_FALSE"); fclose(_pf); } }
+#endif
+    if (vgl_ok == GL_FALSE) {
+        PREINIT_LOG("vglInitFAILED")
+        vita_fatal_dialog(
+            "KeeperFX: GPU initialisation failed.\n\n"
+            "vitaGL (vglInitExtended) returned GL_FALSE.\n\n"
+            "Ensure ur0:data/external/libshacccg.suprx is installed\n"
+            "and that no other GXM application is running.");
+        // vita_fatal_dialog does not return.
+    }
+    PREINIT_LOG("vglInit")
 
     // Mirror VitaQuake2: route all textures through VRAM.
     vglUseVram(GL_TRUE);
-    strncat(s_preinit_log, " vram;", PREINIT_LOG_MAX - 1);
+    PREINIT_LOG("vram")
 
     s_vitagl_ready = true;
     strncat(s_preinit_log, " ready", PREINIT_LOG_MAX - 1);
+    { FILE* _pf = fopen("ux0:data/keeperfx/kfx_preinit.log", "a");
+      if (_pf) { fprintf(_pf, "ready\n"); fclose(_pf); } }
+
+#undef PREINIT_LOG
 }
 
 // ---------------------------------------------------------------------------
@@ -233,20 +332,13 @@ bool RendererVita::Init()
         SYNCLOG("RendererVita: vitaGL palette shader initialised (%dx%d -> 960x544)", k_gameW, k_gameH);
         return true;
     }
-    WARNLOG("RendererVita: vitaGL preinit failed — falling back to SDL2 blit");
+    ERRORLOG("RendererVita: vitaGL preinit failed — no SDL2 fallback on Vita");
+    return false;
 #endif // VITA_HAVE_VITAGL
 
-    // SDL2 blit path (fallback or non-vitaGL build).
-    m_renderer = SDL_CreateRenderer(lbWindow, -1,
-                                    SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!m_renderer) {
-        ERRORLOG("RendererVita: SDL_CreateRenderer failed: %s", SDL_GetError());
-        return false;
-    }
-
-    m_initialized = true;
-    SYNCLOG("RendererVita: SDL2 blit initialised (dynamic resolution)");
-    return true;
+    // Should not be reached: VITA_HAVE_VITAGL is required for a Vita build.
+    ERRORLOG("RendererVita: no renderer available (VITA_HAVE_VITAGL not set?)");
+    return false;
 }
 
 void RendererVita::Shutdown()
