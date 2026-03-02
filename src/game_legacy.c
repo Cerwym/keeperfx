@@ -32,7 +32,8 @@ struct Game *gpGame = NULL;
 
 GameTurn get_gameturn()
 {
-    return game.play_gameturn;
+    // Guard against calls before gpGame is allocated (e.g. early-startup error paths).
+    return gpGame ? game.play_gameturn : 0;
 }
 /******************************************************************************/
 #ifdef __cplusplus

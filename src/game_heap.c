@@ -49,6 +49,7 @@ TbBool setup_heap_manager(void)
 #else
     const char* fname = prepare_file_path(FGrp_StdData, "creature.jty");
 #endif
+    JUSTLOG("setup_heap_manager: opening \"%s\"", fname);
     jty_file_handle = LbFileOpen(fname, Lb_FILE_MODE_READ_ONLY);
     if (!jty_file_handle) {
         ERRORLOG("Can not open JTY file, \"%s\"",fname);

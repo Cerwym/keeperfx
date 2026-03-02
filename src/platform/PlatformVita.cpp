@@ -35,11 +35,9 @@
  *   Heap (below):  128 MB
  *   Total:        ~250 MB  (leaves ~6 MB headroom for kernel/system allocations)
  *
- * 128 MB heap is needed for vitaGL's GXM ring buffers (~32 MB vertex pool
- * default + overhead) plus SDL, audio, and runtime objects.  BSS is ~114 MB,
- * so 192 MB heap pushes total to ~314 MB and causes newlib abort() before
- * main() — do not raise above 128 MB. */
-int _newlib_heap_size_user  = 128 * 1024 * 1024; // 128 MB heap — 250 MB total (text+BSS+stack+heap), within 256 MB
+ * BSS is now ~9.1 MB (reduced from 114 MB across BSS paths A–E), so a 192 MB heap
+ * leaves ~245 MB total (text + data/BSS + stack + heap), safely within 256 MB. */
+int _newlib_heap_size_user  = 192 * 1024 * 1024; // 192 MB heap — ~245 MB total, within 256 MB
 int sceUserMainThreadStackSize = 4 * 1024 * 1024; // 4 MB main thread stack
 
 // TbFileFind is defined here; it is an opaque type to all callers.
