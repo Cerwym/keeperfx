@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_render.h"
 
@@ -41,7 +42,7 @@ struct PolyPoint *polyscans = NULL;
 
 void setup_bflib_render()
 {
-    polyscans = malloc(sizeof(struct PolyPoint) * 4096);
+    polyscans = KfxAlloc(sizeof(struct PolyPoint) * 4096);
     memset(polyscans, 0, sizeof(struct PolyPoint) * 4096);
 }
 
@@ -54,7 +55,7 @@ void finish_bflib_render()
 {
     if (polyscans)
     {
-        free(polyscans);
+        KfxFree(polyscans);
         polyscans = NULL;
     }
 }

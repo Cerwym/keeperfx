@@ -9,6 +9,7 @@
  *     pre-abstraction code path.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "renderer/RendererSoftware.h"
 

@@ -1,3 +1,4 @@
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "platform/PlatformVita.h"
 #ifdef PLATFORM_VITA
@@ -31,13 +32,14 @@
  *   Code (.text):    ~4 MB
  *   Data + BSS:    ~114 MB  (struct Game=51 MB, block_mem=34 MB, poly_pool=16 MB, ...)
  *   Main stack:      4 MB
- *   Heap (below):   96 MB
- *   Total:        ~218 MB  (leaves ~38 MB headroom for kernel/system allocations)
+ *   Heap (below):  128 MB
+ *   Total:        ~250 MB  (leaves ~6 MB headroom for kernel/system allocations)
  *
- * 96 MB heap is sufficient for SDL2, LuaJIT GC, and runtime C++ objects.
- * All large game data structures (Game, block_mem, poly_pool) are static BSS,
- * so they do not consume heap space at runtime. */
-int _newlib_heap_size_user  = 192 * 1024 * 1024; // 192 MB heap — matches VitaQuake1/2
+ * 128 MB heap is needed for vitaGL's GXM ring buffers (~32 MB vertex pool
+ * default + overhead) plus SDL, audio, and runtime objects.  BSS is ~114 MB,
+ * so 192 MB heap pushes total to ~314 MB and causes newlib abort() before
+ * main() — do not raise above 128 MB. */
+int _newlib_heap_size_user  = 128 * 1024 * 1024; // 128 MB heap — 250 MB total (text+BSS+stack+heap), within 256 MB
 int sceUserMainThreadStackSize = 4 * 1024 * 1024; // 4 MB main thread stack
 
 // TbFileFind is defined here; it is an opaque type to all callers.
@@ -204,7 +206,7 @@ TbFileFind* PlatformVita::FileFindFirst(const char* filespec, TbFileEntry* fe)
         return nullptr;
     }
 
-    auto ff = static_cast<TbFileFind*>(malloc(sizeof(TbFileFind)));
+    auto ff = static_cast<TbFileFind*>(KfxAlloc(sizeof(TbFileFind)));
     if (!ff) {
         sceIoDclose(dfd);
         return nullptr;
@@ -218,7 +220,7 @@ TbFileFind* PlatformVita::FileFindFirst(const char* filespec, TbFileEntry* fe)
         return ff;
     }
     sceIoDclose(ff->handle);
-    free(ff);
+    KfxFree(ff);
     return nullptr;
 }
 
@@ -234,7 +236,7 @@ void PlatformVita::FileFindEnd(TbFileFind* ff)
 {
     if (ff) {
         sceIoDclose(ff->handle);
-        free(ff);
+        KfxFree(ff);
     }
 }
 
@@ -255,7 +257,7 @@ TbFileHandle PlatformVita::FileOpen(const char* fname, unsigned char accmode)
         WARNLOG("sceIoOpen(\"%s\") failed: 0x%08X", fname ? fname : "(null)", (unsigned)fd);
         return nullptr;
     }
-    auto h = static_cast<TbFileInfo*>(malloc(sizeof(TbFileInfo)));
+    auto h = static_cast<TbFileInfo*>(KfxAlloc(sizeof(TbFileInfo)));
     if (!h) { sceIoClose(fd); return nullptr; }
     h->fd = fd;
     return h;
@@ -266,7 +268,7 @@ int PlatformVita::FileClose(TbFileHandle handle)
     if (!handle) return -1;
     auto h = static_cast<TbFileInfo*>(handle);
     int r = sceIoClose(h->fd);
-    free(h);
+    KfxFree(h);
     return (r < 0) ? -1 : 0;
 }
 
@@ -365,27 +367,36 @@ extern "C" const char *vita_modify_load_filename(const char *input)
 
 void PlatformVita::SystemInit()
 {
+#define _SYSI_LOG(msg) do { FILE* _f = fopen("ux0:data/keeperfx/kfx_boot.log", "a"); if (_f) { fprintf(_f, "sysinit:" msg "\n"); fclose(_f); } } while(0)
+    _SYSI_LOG("enter");
     // Maximise CPU/GPU clocks — default is throttled; same settings as vitaQuakeII.
     scePowerSetArmClockFrequency(444);
+    _SYSI_LOG("arm-clk");
     scePowerSetBusClockFrequency(222);
     scePowerSetGpuClockFrequency(222);
     scePowerSetGpuXbarClockFrequency(166);
+    _SYSI_LOG("clks-done");
     // Disable VFP/FPU exception traps on the main thread; without this, any
     // denormal or other edge-case float operation in the game code will trap.
     sceKernelChangeThreadVfpException(0x0800009FU, 0x0);
+    _SYSI_LOG("vfp");
     // chdir so that any POSIX-relative opens outside LbDataLoad also resolve.
     chdir(GetDataPath());
+    _SYSI_LOG("chdir");
     // Override the data-load filename modifier so that relative paths stored in
     // TbLoadFilesV2.FName (e.g. "data/creature.tab") are resolved to absolute
     // ux0: paths. VitaSDK's POSIX chdir does not reliably affect all fopen call
     // sites, so we prefix keeper_runtime_directory explicitly instead.
     LbDataLoadSetModifyFilenameFunction(vita_modify_load_filename);
+    _SYSI_LOG("modify-fn");
     // Allocate the permanent gameplay scratch buffer.  Must happen before any
     // gameplay code runs.  Sized at 256 KB — enough for the largest algorithm
     // use (BFS flood-fill queue, ~116 KB) with headroom.  Sprite PNG decode and
     // ZIP/JSON config parsing use their own transient local allocations.
     extern unsigned char *big_scratch;
-    big_scratch = (unsigned char *)malloc(256 * 1024);
+    big_scratch = (unsigned char *)KfxAlloc(256 * 1024);
+    _SYSI_LOG("malloc-done");
+#undef _SYSI_LOG
 }
 
 void PlatformVita::FrameTick()
@@ -403,6 +414,7 @@ void PlatformVita::WorkTick()
 void        PlatformVita::SetArgv(int, char**) {} // argv[0] unused on Vita
 const char* PlatformVita::GetDataPath() const { return "ux0:data/keeperfx"; }
 const char* PlatformVita::GetSavePath() const { return "ux0:data/keeperfx/save"; }
+size_t      PlatformVita::GetScratchSize() const { return 2 * 1024 * 1024; } /* 2 MB -- conservative until BSS is reduced */
 
 // ----- Audio sub-interface -----
 

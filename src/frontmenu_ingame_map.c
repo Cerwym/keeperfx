@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "frontmenu_ingame_map.h"
 
@@ -961,12 +962,12 @@ void setup_background(long units_per_px)
     if (MapDiagonalLength != 2*(PANEL_MAP_RADIUS*units_per_px/16))
     {
         MapDiagonalLength = 2*(PANEL_MAP_RADIUS*units_per_px/16);
-        free(MapBackground);
-        MapBackground = calloc(MapDiagonalLength*MapDiagonalLength, sizeof(TbPixel));
-        free(MapShapeStart);
-        MapShapeStart = (int32_t *)calloc(MapDiagonalLength, sizeof(int32_t));
-        free(MapShapeEnd);
-        MapShapeEnd = (int32_t *)calloc(MapDiagonalLength, sizeof(int32_t));
+        KfxFree(MapBackground);
+        MapBackground = KfxCalloc(MapDiagonalLength*MapDiagonalLength, sizeof(TbPixel));
+        KfxFree(MapShapeStart);
+        MapShapeStart = (int32_t *)KfxCalloc(MapDiagonalLength, sizeof(int32_t));
+        KfxFree(MapShapeEnd);
+        MapShapeEnd = (int32_t *)KfxCalloc(MapDiagonalLength, sizeof(int32_t));
     }
     if ((MapBackground == NULL) || (MapShapeStart == NULL) || (MapShapeEnd == NULL)) {
         MapDiagonalLength = 0;

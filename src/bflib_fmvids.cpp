@@ -1,3 +1,4 @@
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_fmvids.h"
 #include "bflib_video.h"
@@ -1314,13 +1315,13 @@ short anim_open(char *fname, int arg1, short arg2, int width, int height, int bp
 		SYNCLOG("Starting to record new movie, \"%s\".",fname);
 		memset(&animation, 0, sizeof(Animation));
 		animation.state_flags |= flags;
-		animation.videobuf = static_cast<unsigned char *>(calloc(2 * height*width, 1));
+		animation.videobuf = static_cast<unsigned char *>(KfxCalloc(2 * height*width, 1));
 		if (animation.videobuf==NULL) {
 			ERRORLOG("Cannot allocate video buffer.");
 			return false;
 		}
 		long max_chunk_size = anim_buffer_size(width,height,bpp);
-		animation.chunkdata = static_cast<unsigned char *>(calloc(max_chunk_size, 1));
+		animation.chunkdata = static_cast<unsigned char *>(KfxCalloc(max_chunk_size, 1));
 		if (animation.chunkdata==NULL) {
 			ERRORLOG("Cannot allocate chunk buffer.");
 			return false;
@@ -1374,7 +1375,7 @@ short anim_open(char *fname, int arg1, short arg2, int width, int height, int bp
 		}
 		// Now we can allocate chunk buffer
 		long max_chunk_size = anim_buffer_size(animation.header.width,animation.header.height,animation.header.depth);
-		animation.chunkdata = static_cast<unsigned char *>(calloc(max_chunk_size, 1));
+		animation.chunkdata = static_cast<unsigned char *>(KfxCalloc(max_chunk_size, 1));
 		if (animation.chunkdata==NULL) {
 			return false;
 		}
@@ -1516,7 +1517,7 @@ extern "C" short anim_stop()
 		return false;
 	}
 	animation.outfhndl = nullptr;
-	free(animation.chunkdata);
+	KfxFree(animation.chunkdata);
 	animation.chunkdata=NULL;
 	animation.state_flags = 0;
 	return true;

@@ -21,6 +21,7 @@
 #define _GNU_SOURCE
 #endif
 
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_crash.h"
 #include <signal.h>

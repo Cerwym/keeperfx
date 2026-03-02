@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "frontmenu_ingame_evnt.h"
 #include "globals.h"
@@ -776,13 +777,13 @@ void draw_consolelog()
             }
 
             //char line_buffer[sub_len + 1];
-            char *line_buffer = (char*)malloc((sub_len + 1) * sizeof(char));
+            char *line_buffer = (char*)KfxAlloc((sub_len + 1) * sizeof(char));
             if (!line_buffer) continue;
             strncpy(line_buffer, text + offset, sub_len);
             line_buffer[sub_len] = '\0';
 
             LbTextDrawResized(text_height, draw_ypos, text_height, line_buffer);
-            free(line_buffer);
+            KfxFree(line_buffer);
             draw_ypos += text_height; // Move to the next line position
             offset += sub_len;
             totalLinesDrawn++;

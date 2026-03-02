@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "frontmenu_ingame_evnt.h"
 #include "frontmenu_ingame_tabs.h"

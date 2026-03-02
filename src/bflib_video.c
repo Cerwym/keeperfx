@@ -18,6 +18,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_video.h"
 
@@ -352,6 +353,16 @@ static TbBool LbHwCheckIsModeAvailable(TbScreenMode mode, unsigned short display
     mdinfo->Available = false;
     mdinfo->window_pos_x = SDL_WINDOWPOS_CENTERED_DISPLAY(display);
     mdinfo->window_pos_y = SDL_WINDOWPOS_CENTERED_DISPLAY(display);
+#if defined(PLATFORM_VITA) && defined(VITA_HAVE_VITAGL)
+    // When vitaGL owns the display, SDL video is not initialised so SDL display
+    // queries cannot work.  The Vita screen is 960×544; our renderer scales any
+    // logical framebuffer up to fill it, so every registered mode is reachable.
+    extern bool vita_is_vitagl_ready(void);
+    if (vita_is_vitagl_ready()) {
+        mdinfo->Available = true;
+        return true;
+    }
+#endif
     // if this is window mode
     if (mdinfo->VideoFlags & Lb_VF_WINDOWED)
     {
@@ -515,15 +526,18 @@ TbResult LbScreenInitialize(void)
     // vitaGL must take ownership of the GXM display context BEFORE SDL_Init
     // touches video hardware.  The full GL setup (textures, shaders) is done
     // later in RendererVita::Init(), but the context must exist first.
+    { FILE* _f = fopen("ux0:kfx_boot.log", "a"); if (_f) { fprintf(_f, "pre-preinit\n"); fclose(_f); } }
     extern void vita_vitagl_preinit(void);
     vita_vitagl_preinit();
+    { FILE* _f = fopen("ux0:kfx_boot.log", "a"); if (_f) { fprintf(_f, "post-preinit ready=%d\n", (int)vita_is_vitagl_ready()); fclose(_f); } }
 #endif
 #if defined(PLATFORM_VITA) && defined(VITA_HAVE_VITAGL)
     if (vita_is_vitagl_ready()) {
         // vitaGL owns GXM — SDL video would conflict.
-        // Audio is sceAudioOut (audio_vita.c), input is sceCtrl (input_vita.c).
-        // Init SDL bare-minimum so SDL utility calls (SDL_Quit, timers) are safe.
-        SDL_Init(0);
+        // Audio is sceAudioOut (audio_vita.c), so SDL_INIT_AUDIO is not needed.
+        // Input buttons go through SDL GameController (bflib_input_joyst.cpp),
+        // so both JOYSTICK and GAMECONTROLLER are needed; VIDEO must never be initialised.
+        SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
     } else
 #endif
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK) < 0) {
@@ -710,7 +724,7 @@ TbResult LbPaletteSet(unsigned char *palette)
     SYNCDBG(12,"Starting");
     if ((!lbScreenInitialised) || (lbDrawSurface == NULL))
       return Lb_FAIL;
-    //destColors = (SDL_Color *) malloc(sizeof(SDL_Color) * PALETTE_COLORS);
+    //destColors = (SDL_Color *) KfxAlloc(sizeof(SDL_Color) * PALETTE_COLORS);
     SDL_Color* destColors = lbPaletteColors;
     const unsigned char* srcColors = palette;
     unsigned char* bufColors = lbPalette;
@@ -731,7 +745,7 @@ TbResult LbPaletteSet(unsigned char *palette)
     }
     //if (SDL_SetPalette(lbDrawSurface, SDL_LOGPAL | SDL_PHYSPAL,
     SDL_SetPaletteColors(lbDrawSurface->format->palette, lbPaletteColors, 0, PALETTE_COLORS);
-    //free(destColors);
+    //KfxFree(destColors);
     lbDisplay.Palette = lbPalette;
     return ret;
 }

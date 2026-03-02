@@ -18,6 +18,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "../../pre_inc.h"
 #include "DisplacementEffect.h"
 
@@ -57,7 +58,7 @@ void DisplacementEffect::FreeLookupTable()
 {
     if (m_lookup_table != nullptr)
     {
-        free(m_lookup_table);
+        KfxFree(m_lookup_table);
         m_lookup_table = nullptr;
     }
     m_table_width = 0;
@@ -75,7 +76,7 @@ void DisplacementEffect::BuildLookupTable(long width, long height)
     
     // Allocate lookup table
     size_t table_size = width * height * sizeof(DisplaceLookupEntry);
-    m_lookup_table = (DisplaceLookupEntry*)malloc(table_size);
+    m_lookup_table = (DisplaceLookupEntry*)KfxAlloc(table_size);
     if (m_lookup_table == nullptr)
     {
         ERRORLOG("Failed to allocate displacement lookup table (%" PRIuSIZE " bytes)", SZCAST(table_size));

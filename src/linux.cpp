@@ -2,6 +2,7 @@
 #include "platform/PlatformManager.h"
 #include "platform/PlatformLinux.h"
 #include "cdrom.h"
+#include "kfx_memory.h"
 
 // Steam is not supported on Linux; the symbols are required by the linker.
 extern "C" int steam_api_init()   { return 0; }
@@ -16,5 +17,6 @@ extern "C" void   StopRedbookTrack()            {}
 
 extern "C" int main(int argc, char *argv[]) {
     PlatformManager::Set(new PlatformLinux());
+    KfxMemInit();
     return kfxmain(argc, argv);
 }

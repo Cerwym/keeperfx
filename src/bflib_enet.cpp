@@ -12,6 +12,7 @@
  */
 /******************************************************************************/
 
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_enet.h"
 #include "bflib_network.h"

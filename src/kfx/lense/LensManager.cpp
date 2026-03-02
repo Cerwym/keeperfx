@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "../../pre_inc.h"
 #include "LensManager.h"
 
@@ -448,8 +449,8 @@ TbBool LensManager::AllocateBuffers()
         buffer_size = 256 * 256 + 2;
     }
     
-    m_lens_memory = (uint32_t*)calloc(buffer_size, sizeof(uint32_t));
-    m_spare_screen_memory = (unsigned char*)calloc(buffer_size, sizeof(unsigned char));
+    m_lens_memory = (uint32_t*)KfxCalloc(buffer_size, sizeof(uint32_t));
+    m_spare_screen_memory = (unsigned char*)KfxCalloc(buffer_size, sizeof(unsigned char));
     
     if (m_lens_memory == nullptr || m_spare_screen_memory == nullptr) {
         ERRORLOG("Failed to allocate lens buffers (%lu bytes)", buffer_size * sizeof(uint32_t));
@@ -470,12 +471,12 @@ TbBool LensManager::AllocateBuffers()
 void LensManager::FreeBuffers()
 {
     if (m_lens_memory != nullptr) {
-        free(m_lens_memory);
+        KfxFree(m_lens_memory);
         m_lens_memory = nullptr;
     }
     
     if (m_spare_screen_memory != nullptr) {
-        free(m_spare_screen_memory);
+        KfxFree(m_spare_screen_memory);
         m_spare_screen_memory = nullptr;
     }
     

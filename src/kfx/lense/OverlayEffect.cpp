@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "../../pre_inc.h"
 #include "OverlayEffect.h"
 
@@ -73,7 +74,7 @@ COverlayRenderer::~COverlayRenderer()
     // Only free if we allocated the data (file fallback path)
     if (m_owns_data && m_overlay_data != NULL)
     {
-        free(m_overlay_data);
+        KfxFree(m_overlay_data);
     }
     m_overlay_data = NULL;
 }
@@ -116,7 +117,7 @@ TbBool COverlayRenderer::LoadOverlay(long lens_idx)
         // This allows simple file-based mods without requiring ZIP/JSON
         // For overlays without registry, assume 256x256 (standard size)
         const int default_size = 256;
-        m_overlay_data = (unsigned char*)malloc(default_size * default_size);
+        m_overlay_data = (unsigned char*)KfxAlloc(default_size * default_size);
         
         if (m_overlay_data == NULL)
         {
@@ -132,7 +133,7 @@ TbBool COverlayRenderer::LoadOverlay(long lens_idx)
         {
             WARNLOG("Failed to load overlay '%s' from registry or files for lens %ld", 
                     cfg->overlay_file, lens_idx);
-            free(m_overlay_data);
+            KfxFree(m_overlay_data);
             m_overlay_data = NULL;
             m_owns_data = false;
             return false;

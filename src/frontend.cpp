@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "frontend.h"
 
@@ -3459,7 +3460,7 @@ void draw_debug_messages() {
         LbTextDraw(x, y, message->text);
         y += 32 / pixel_size;
         const auto next = message->next;
-        free(message);
+        KfxFree(message);
         message = next;
     }
     debug_messages_head = nullptr;

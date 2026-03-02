@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "../pre_inc.h"
 #include "audio_interface.h"
 
@@ -183,7 +184,7 @@ static int16_t *decode_wav_mem(const uint8_t *data, size_t size,
             p += chunk.size;
         } else if (chunk.tag == RIFF_DATA) {
             raw_sz = chunk.size;
-            raw = (uint8_t *)malloc(raw_sz);
+            raw = (uint8_t *)KfxAlloc(raw_sz);
             if (!raw) return NULL;
             memcpy(raw, p, raw_sz);
             break;
@@ -191,29 +192,29 @@ static int16_t *decode_wav_mem(const uint8_t *data, size_t size,
             p += chunk.size;
         }
     }
-    if (!raw || fmt.format == 0) { free(raw); return NULL; }
+    if (!raw || fmt.format == 0) { KfxFree(raw); return NULL; }
     *out_rate = fmt.sample_rate;
 
     /* 4-bit pseudo-ADPCM → S16 (matches bflib_sndlib.cpp) */
     if (fmt.format == WAVE_FORMAT_ADPCM && fmt.bits_per_sample == 4 && fmt.channels == 1) {
         uint32_t slen = raw_sz * 2;
-        int16_t *out = (int16_t *)malloc(slen * sizeof(int16_t));
-        if (!out) { free(raw); return NULL; }
+        int16_t *out = (int16_t *)KfxAlloc(slen * sizeof(int16_t));
+        if (!out) { KfxFree(raw); return NULL; }
         for (uint32_t i = 0; i < raw_sz; i++) {
             int hi = ((raw[i] >> 4) & 0xF) * 2;
             int lo = (raw[i] & 0x7) * 2;
             out[i*2+0] = (int16_t)((hi - 128) << 8);
             out[i*2+1] = (int16_t)((lo - 128) << 8);
         }
-        free(raw); *out_len = slen; return out;
+        KfxFree(raw); *out_len = slen; return out;
     }
     /* 8-bit unsigned mono → S16 */
     if (fmt.bits_per_sample == 8 && fmt.channels == 1) {
-        int16_t *out = (int16_t *)malloc(raw_sz * sizeof(int16_t));
-        if (!out) { free(raw); return NULL; }
+        int16_t *out = (int16_t *)KfxAlloc(raw_sz * sizeof(int16_t));
+        if (!out) { KfxFree(raw); return NULL; }
         for (uint32_t i = 0; i < raw_sz; i++)
             out[i] = (int16_t)((raw[i] - 128) << 8);
-        free(raw); *out_len = raw_sz; return out;
+        KfxFree(raw); *out_len = raw_sz; return out;
     }
     /* 16-bit signed mono — take ownership */
     if (fmt.bits_per_sample == 16 && fmt.channels == 1) {
@@ -223,23 +224,23 @@ static int16_t *decode_wav_mem(const uint8_t *data, size_t size,
     /* 8-bit stereo → downmix to mono S16 */
     if (fmt.bits_per_sample == 8 && fmt.channels == 2) {
         uint32_t slen = raw_sz / 2;
-        int16_t *out = (int16_t *)malloc(slen * sizeof(int16_t));
-        if (!out) { free(raw); return NULL; }
+        int16_t *out = (int16_t *)KfxAlloc(slen * sizeof(int16_t));
+        if (!out) { KfxFree(raw); return NULL; }
         for (uint32_t i = 0; i < slen; i++)
             out[i] = (int16_t)(((raw[i*2]-128) + (raw[i*2+1]-128)) << 7);
-        free(raw); *out_len = slen; return out;
+        KfxFree(raw); *out_len = slen; return out;
     }
     /* 16-bit stereo → downmix to mono S16 */
     if (fmt.bits_per_sample == 16 && fmt.channels == 2) {
         uint32_t slen = raw_sz / 4;
-        int16_t *out = (int16_t *)malloc(slen * sizeof(int16_t));
+        int16_t *out = (int16_t *)KfxAlloc(slen * sizeof(int16_t));
         int16_t *src = (int16_t *)raw;
-        if (!out) { free(raw); return NULL; }
+        if (!out) { KfxFree(raw); return NULL; }
         for (uint32_t i = 0; i < slen; i++)
             out[i] = (int16_t)((src[i*2] + src[i*2+1]) / 2);
-        free(raw); *out_len = slen; return out;
+        KfxFree(raw); *out_len = slen; return out;
     }
-    free(raw);
+    KfxFree(raw);
     return NULL;
 }
 
@@ -255,7 +256,7 @@ static void vita_load_sound_bank(const char *filename, int bank_idx)
 
     /* Release any previously decoded PCM and close old file handle. */
     for (int i = 0; i < VITA_MAX_SAMPLES; i++) {
-        if (bank[i].decoded && bank[i].data) free(bank[i].data);
+        if (bank[i].decoded && bank[i].data) KfxFree(bank[i].data);
         memset(&bank[i], 0, sizeof(bank[i]));
     }
     if (s_bank_fh[bank_idx]) { LbFileClose(s_bank_fh[bank_idx]); s_bank_fh[bank_idx] = 0; }
@@ -302,14 +303,14 @@ static void vita_load_sound_bank(const char *filename, int bank_idx)
     int count = (int)(dir->total_samples_size / sizeof(VitaBankSample));
     if (count >= VITA_MAX_SAMPLES) count = VITA_MAX_SAMPLES - 1;
 
-    VitaBankSample *sample_table = (VitaBankSample*)malloc((size_t)count * sizeof(VitaBankSample));
+    VitaBankSample *sample_table = (VitaBankSample*)KfxAlloc((size_t)count * sizeof(VitaBankSample));
     if (!sample_table) {
         LbFileClose(fh); ERRORLOG("vita audio: OOM for sample table of %s", filename); return;
     }
     LbFileSeek(fh, (long)dir->first_sample_offset, Lb_FILE_SEEK_BEGINNING);
     if (LbFileRead(fh, sample_table, (unsigned long)((size_t)count * sizeof(VitaBankSample)))
             != (int)((size_t)count * sizeof(VitaBankSample))) {
-        free(sample_table); LbFileClose(fh);
+        KfxFree(sample_table); LbFileClose(fh);
         ERRORLOG("vita audio: cannot read sample table in %s", filename); return;
     }
 
@@ -329,7 +330,7 @@ static void vita_load_sound_bank(const char *filename, int bank_idx)
         bank[i].decoded         = 0;
     }
 
-    free(sample_table);
+    KfxFree(sample_table);
     /* Keep file open for on-demand seek+read when each sample is first played. */
     s_bank_fh[bank_idx] = fh;
     s_sample_counts[bank_idx] = count;
@@ -549,7 +550,7 @@ void FreeAudio(void)
     for (int b = 0; b < VITA_NUM_BANKS; b++) {
         for (int i = 0; i < VITA_MAX_SAMPLES; i++) {
             if (s_samples[b][i].decoded && s_samples[b][i].data)
-                free(s_samples[b][i].data);
+                KfxFree(s_samples[b][i].data);
         }
         if (s_bank_fh[b]) { LbFileClose(s_bank_fh[b]); s_bank_fh[b] = 0; }
         memset(s_samples[b], 0, sizeof(s_samples[b]));
@@ -581,7 +582,7 @@ static void vita_ensure_sample_decoded(int bank_idx, int sample_idx)
         return;
     }
 
-    uint8_t *tmpbuf = (uint8_t*)malloc(smp->raw_file_len);
+    uint8_t *tmpbuf = (uint8_t*)KfxAlloc(smp->raw_file_len);
     if (!tmpbuf) {
         WARNLOG("vita audio: OOM reading sample bank %d idx %d", bank_idx, sample_idx);
         return;
@@ -590,14 +591,14 @@ static void vita_ensure_sample_decoded(int bank_idx, int sample_idx)
     LbFileSeek(fh, (long)smp->raw_file_offset, Lb_FILE_SEEK_BEGINNING);
     long nread = LbFileRead(fh, tmpbuf, smp->raw_file_len);
     if (nread <= 0) {
-        free(tmpbuf);
+        KfxFree(tmpbuf);
         WARNLOG("vita audio: read failed bank %d sample %d", bank_idx, sample_idx);
         return;
     }
 
     uint32_t pcm_len = 0, pcm_rate = 0;
     int16_t *pcm = decode_wav_mem(tmpbuf, (size_t)nread, &pcm_len, &pcm_rate);
-    free(tmpbuf);
+    KfxFree(tmpbuf);
 
     if (!pcm) {
         WARNLOG("vita audio: lazy decode failed for bank %d sample %d", bank_idx, sample_idx);

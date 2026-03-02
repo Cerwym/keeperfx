@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "creature_states_tortr.h"
 #include "globals.h"
@@ -364,7 +365,7 @@ long reveal_players_map_to_player(struct Thing *thing, PlayerNumber benefit_plyr
     }
     TbBool reveal_success = 0;
 
-    unsigned char* ownership_map = (unsigned char*)malloc(game.map_tiles_y * game.map_tiles_x);
+    unsigned char* ownership_map = (unsigned char*)KfxAlloc(game.map_tiles_y * game.map_tiles_x);
     memset(ownership_map,0,game.map_tiles_y*game.map_tiles_x);
     for (slb_y=0; slb_y < game.map_tiles_y; slb_y++)
     {
@@ -376,7 +377,7 @@ long reveal_players_map_to_player(struct Thing *thing, PlayerNumber benefit_plyr
                 ownership_map[slb_num] |= 0x01;
         }
     }
-    struct USPOINT_2D* revealed_pts = (struct USPOINT_2D*)malloc((game.map_tiles_y * game.map_tiles_x) * sizeof(struct USPOINT_2D));
+    struct USPOINT_2D* revealed_pts = (struct USPOINT_2D*)KfxAlloc((game.map_tiles_y * game.map_tiles_x) * sizeof(struct USPOINT_2D));
     unsigned int pts_to_reveal = 32;
     unsigned int pts_count = 0;
     unsigned int pt_idx = 0;
@@ -447,8 +448,8 @@ long reveal_players_map_to_player(struct Thing *thing, PlayerNumber benefit_plyr
         pt_idx++;
     }
     while ( pts_count >= pt_idx );
-    free(revealed_pts);
-    free(ownership_map);
+    KfxFree(revealed_pts);
+    KfxFree(ownership_map);
 
     if (reveal_success)
     {

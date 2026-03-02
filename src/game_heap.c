@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "game_heap.h"
 
@@ -75,6 +76,6 @@ void reset_heap_manager(void)
 void *he_alloc(size_t size)
 {
     // We could need some wrapper
-    return malloc(size);
+    return KfxAlloc(size);
 }
 /******************************************************************************/

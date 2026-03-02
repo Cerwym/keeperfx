@@ -13,6 +13,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config_keeperfx.h"
 
@@ -363,7 +364,7 @@ static void load_file_configuration(const char *fname, const char *sname, const 
     WARNMSG("%s file \"%s\" is too large.",config_textname,sname);
     return;
   }
-  char* buf = (char*)calloc(len + 256, 1);
+  char* buf = (char*)KfxCalloc(len + 256, 1);
   if (buf == NULL)
     return;
   // Loading file data
@@ -962,7 +963,7 @@ static void load_file_configuration(const char *fname, const char *sname, const 
   }
   SYNCDBG(7,"%s loaded", config_textname);
   // Freeing
-  free(buf);
+  KfxFree(buf);
 
 }
 

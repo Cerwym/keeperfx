@@ -13,6 +13,7 @@
  * @author   KeeperFX Team
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "lvl_script_commands_old.h"
 #include "bflib_math.h"

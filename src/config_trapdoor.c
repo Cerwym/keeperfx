@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config_trapdoor.h"
 #include "globals.h"
@@ -423,7 +424,7 @@ static TbBool load_trapdoor_config_file(const char *fname, unsigned short flags)
             WARNMSG("file \"%s\" doesn't exist or is too small.",fname);
         return false;
     }
-    char* buf = (char*)calloc(len + 256, 1);
+    char* buf = (char*)KfxCalloc(len + 256, 1);
     if (buf == NULL)
         return false;
 
@@ -445,7 +446,7 @@ static TbBool load_trapdoor_config_file(const char *fname, unsigned short flags)
         parse_named_field_blocks(buf, len, fname, flags, &trapdoor_door_named_fields_set);
     }
     //Freeing and exiting
-    free(buf);
+    KfxFree(buf);
     SYNCDBG(19,"Done");
     return result;
 }

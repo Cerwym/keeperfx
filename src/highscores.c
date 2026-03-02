@@ -13,6 +13,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 
 #include "bflib_dernc.h"
@@ -34,12 +35,12 @@ static TbBool load_high_score_table(void)
     long arr_size = campaign.hiscore_count * sizeof(struct HighScore);
     if (arr_size <= 0)
     {
-        free(campaign.hiscore_table);
+        KfxFree(campaign.hiscore_table);
         campaign.hiscore_table = NULL;
         return true;
     }
     if (campaign.hiscore_table == NULL)
-        campaign.hiscore_table = (struct HighScore *)calloc(arr_size, 1);
+        campaign.hiscore_table = (struct HighScore *)KfxCalloc(arr_size, 1);
     if (LbFileLengthRnc(fname) != arr_size)
         return false;
     if (campaign.hiscore_table == NULL)
@@ -59,7 +60,7 @@ static TbBool create_empty_high_score_table(void)
   int nmap = 1 * VISIBLE_HIGH_SCORES_COUNT;
   long arr_size = campaign.hiscore_count * sizeof(struct HighScore);
   if (campaign.hiscore_table == NULL)
-    campaign.hiscore_table = (struct HighScore *)calloc(arr_size, 1);
+    campaign.hiscore_table = (struct HighScore *)KfxCalloc(arr_size, 1);
   if (campaign.hiscore_table == NULL)
     return false;
   for (i=0; i < VISIBLE_HIGH_SCORES_COUNT; i++)

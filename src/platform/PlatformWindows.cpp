@@ -1,3 +1,4 @@
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "platform/PlatformWindows.h"
 #define WIN32_LEAN_AND_MEAN
@@ -272,21 +273,21 @@ int PlatformWindows::GetCurrentDirectory(char* buf, unsigned long buflen)
 
 TbFileFind* PlatformWindows::FileFindFirst(const char* filespec, TbFileEntry* fentry)
 {
-    auto ffind = static_cast<TbFileFind*>(malloc(sizeof(TbFileFind)));
+    auto ffind = static_cast<TbFileFind*>(KfxAlloc(sizeof(TbFileFind)));
     if (!ffind) {
         return nullptr;
     }
     WIN32_FIND_DATA fd;
     ffind->handle = FindFirstFile(filespec, &fd);
     if (ffind->handle == INVALID_HANDLE_VALUE) {
-        free(ffind);
+        KfxFree(ffind);
         return nullptr;
     }
     const int namelen = strlen(fd.cFileName);
-    ffind->namebuf = static_cast<char*>(malloc(namelen + 1));
+    ffind->namebuf = static_cast<char*>(KfxAlloc(namelen + 1));
     if (!ffind->namebuf) {
         FindClose(ffind->handle);
-        free(ffind);
+        KfxFree(ffind);
         return nullptr;
     }
     memcpy(ffind->namebuf, fd.cFileName, namelen + 1);
@@ -306,7 +307,7 @@ int32_t PlatformWindows::FileFindNext(TbFileFind* ffind, TbFileEntry* fentry)
     }
     const int namelen = strlen(fd.cFileName);
     if (namelen > ffind->namebuflen) {
-        auto buf = static_cast<char*>(realloc(ffind->namebuf, namelen + 1));
+        auto buf = static_cast<char*>(KfxRealloc(ffind->namebuf, namelen + 1));
         if (!buf) {
             return -1;
         }
@@ -322,8 +323,8 @@ void PlatformWindows::FileFindEnd(TbFileFind* ffind)
 {
     if (ffind) {
         FindClose(ffind->handle);
-        free(ffind->namebuf);
-        free(ffind);
+        KfxFree(ffind->namebuf);
+        KfxFree(ffind);
     }
 }
 
@@ -391,7 +392,7 @@ TbFileHandle PlatformWindows::FileOpen(const char* fname, unsigned char accmode)
     }
     FILE* fp = fopen(fname, mode);
     if (!fp) return nullptr;
-    auto h = static_cast<TbFileInfo*>(malloc(sizeof(TbFileInfo)));
+    auto h = static_cast<TbFileInfo*>(KfxAlloc(sizeof(TbFileInfo)));
     if (!h) { fclose(fp); return nullptr; }
     h->fp = fp;
     return h;
@@ -402,7 +403,7 @@ int PlatformWindows::FileClose(TbFileHandle handle)
     if (!handle) return -1;
     auto h = static_cast<TbFileInfo*>(handle);
     int r = fclose(h->fp);
-    free(h);
+    KfxFree(h);
     return r ? -1 : 0;
 }
 

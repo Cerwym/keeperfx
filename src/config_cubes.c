@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_basics.h"
 #include "bflib_fileio.h"
@@ -117,7 +118,7 @@ static TbBool load_cubes_config_file(const char *fname, unsigned short flags)
         }
         return false;
     }
-    char *buf = (char *)calloc(len + 256, 1);
+    char *buf = (char *)KfxCalloc(len + 256, 1);
     if (buf == NULL)
     {
         return false;
@@ -128,7 +129,7 @@ static TbBool load_cubes_config_file(const char *fname, unsigned short flags)
     // Parse blocks of the config file.
     parse_named_field_blocks(buf, len, fname, flags, &cubes_named_fields_set);
     // Freeing and exiting.
-    free(buf);
+    KfxFree(buf);
     return result;
 }
 

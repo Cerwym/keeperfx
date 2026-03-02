@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "../../pre_inc.h"
 #include "FlyeyeEffect.h"
 
@@ -232,7 +233,7 @@ void FlyeyeEffect::FreeLookupTable()
 {
     if (m_lookup_table != nullptr)
     {
-        free(m_lookup_table);
+        KfxFree(m_lookup_table);
         m_lookup_table = nullptr;
     }
     m_table_width = 0;
@@ -249,7 +250,7 @@ void FlyeyeEffect::BuildLookupTable(long width, long height)
     FreeLookupTable();
     
     // Allocate reference scanlines
-    g_ref_scanlines = (FlyeyeScanline*)malloc(REF_HEIGHT * sizeof(FlyeyeScanline));
+    g_ref_scanlines = (FlyeyeScanline*)KfxAlloc(REF_HEIGHT * sizeof(FlyeyeScanline));
     if (g_ref_scanlines == nullptr)
     {
         ERRORLOG("Failed to allocate flyeye reference scanlines");
@@ -273,11 +274,11 @@ void FlyeyeEffect::BuildLookupTable(long width, long height)
     
     // Allocate lookup table for actual resolution
     size_t table_size = width * height * sizeof(FlyeyeLookupEntry);
-    m_lookup_table = (FlyeyeLookupEntry*)malloc(table_size);
+    m_lookup_table = (FlyeyeLookupEntry*)KfxAlloc(table_size);
     if (m_lookup_table == nullptr)
     {
         ERRORLOG("Failed to allocate flyeye lookup table (%" PRIuSIZE " bytes)", SZCAST(table_size));
-        free(g_ref_scanlines);
+        KfxFree(g_ref_scanlines);
         g_ref_scanlines = nullptr;
         return;
     }
@@ -346,7 +347,7 @@ void FlyeyeEffect::BuildLookupTable(long width, long height)
         }
     }
     
-    free(g_ref_scanlines);
+    KfxFree(g_ref_scanlines);
     g_ref_scanlines = nullptr;
     
     SYNCDBG(7, "Built flyeye lookup table %ldx%ld", width, height);

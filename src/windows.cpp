@@ -2,6 +2,7 @@
 #include "platform.h"
 #include "platform/PlatformManager.h"
 #include "platform/PlatformWindows.h"
+#include "kfx_memory.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -52,6 +53,7 @@ static LONG __stdcall Vex_handler(_EXCEPTION_POINTERS *ExceptionInfo)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLine, int nCmdShow) {
     PlatformManager::Set(new PlatformWindows());
+    KfxMemInit();
     AddVectoredExceptionHandler(0, &Vex_handler);
     // Construct argc/argv from Unicode command line
     int argc = 0;

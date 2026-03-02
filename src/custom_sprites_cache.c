@@ -1,5 +1,6 @@
 #ifdef PLATFORM_VITA
 
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "custom_sprites_cache.h"
 #include "bflib_sprite.h"
@@ -203,14 +204,14 @@ static void revert_to_snapshot(SpriteCacheCtx *ctx, const SpriteCacheTierSnapsho
 {
     int cur_kspr = (int)*ctx->p_next_free_sprite;
     for (int i = snap->next_free_sprite; i < cur_kspr; i++) {
-        free(ctx->keepersprite_add[i]);
+        KfxFree(ctx->keepersprite_add[i]);
         ctx->keepersprite_add[i] = NULL;
     }
     *ctx->p_next_free_sprite = (short)snap->next_free_sprite;
 
     int cur_names = *ctx->p_num_added_sprite;
     for (int i = snap->num_added_sprite; i < cur_names; i++) {
-        free((char *)ctx->added_sprites[i].name);
+        KfxFree((char *)ctx->added_sprites[i].name);
         ctx->added_sprites[i].name = NULL;
     }
     *ctx->p_num_added_sprite = snap->num_added_sprite;
@@ -219,7 +220,7 @@ static void revert_to_snapshot(SpriteCacheCtx *ctx, const SpriteCacheTierSnapsho
 
     int cur_icons = *ctx->p_num_added_icons;
     for (int i = snap->num_added_icons; i < cur_icons; i++) {
-        free((char *)ctx->added_icons[i].name);
+        KfxFree((char *)ctx->added_icons[i].name);
         ctx->added_icons[i].name = NULL;
     }
     *ctx->p_num_added_icons = snap->num_added_icons;
@@ -410,7 +411,7 @@ static TbBool tier_try_load(const char *path, SpriteCacheCtx *ctx,
         int w  = ctx->creature_table_add[i].SWidth;
         int hh = ctx->creature_table_add[i].SHeight;
         int sz = (w + 2) * (hh + 3);
-        ctx->keepersprite_add[i] = malloc(sz);
+        ctx->keepersprite_add[i] = KfxAlloc(sz);
         if (!ctx->keepersprite_add[i]) goto cleanup;
         if (ior_buf(fd, ctx->keepersprite_add[i], sz)) goto cleanup;
     }
@@ -427,9 +428,9 @@ static TbBool tier_try_load(const char *path, SpriteCacheCtx *ctx,
         uint16_t nlen;
         int32_t  num;
         if (ior_u16(fd, &nlen) || nlen >= 256) goto cleanup;
-        char *name = malloc(nlen + 1);
+        char *name = KfxAlloc(nlen + 1);
         if (!name) goto cleanup;
-        if (nlen && ior_buf(fd, name, nlen)) { free(name); goto cleanup; }
+        if (nlen && ior_buf(fd, name, nlen)) { KfxFree(name); goto cleanup; }
         name[nlen] = '\0';
         ctx->added_sprites[i].name = name;
         if (ior_i32(fd, &num)) goto cleanup;
@@ -442,11 +443,11 @@ static TbBool tier_try_load(const char *path, SpriteCacheCtx *ctx,
         uint8_t w, hh;
         if (ior_u8(fd, &w) || ior_u8(fd, &hh)) goto cleanup;
         int sz = (w + 2) * (hh + 3);
-        unsigned char *data = malloc(sz);
+        unsigned char *data = KfxAlloc(sz);
         if (!data) goto cleanup;
-        if (ior_buf(fd, data, sz)) { free(data); goto cleanup; }
+        if (ior_buf(fd, data, sz)) { KfxFree(data); goto cleanup; }
         TbBool ok = add_sprite(*ctx->pp_custom_sprites, w, hh, sz, data);
-        free(data);
+        KfxFree(data);
         if (!ok) goto cleanup;
     }
 
@@ -455,9 +456,9 @@ static TbBool tier_try_load(const char *path, SpriteCacheCtx *ctx,
         uint16_t nlen;
         int32_t  num;
         if (ior_u16(fd, &nlen) || nlen >= 256) goto cleanup;
-        char *name = malloc(nlen + 1);
+        char *name = KfxAlloc(nlen + 1);
         if (!name) goto cleanup;
-        if (nlen && ior_buf(fd, name, nlen)) { free(name); goto cleanup; }
+        if (nlen && ior_buf(fd, name, nlen)) { KfxFree(name); goto cleanup; }
         name[nlen] = '\0';
         ctx->added_icons[i].name = name;
         if (ior_i32(fd, &num)) goto cleanup;

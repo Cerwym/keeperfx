@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config.h"
 
@@ -1437,7 +1438,7 @@ unsigned char *load_data_file_to_buffer(int32_t *ldsize, short fgroup, const cha
        WARNMSG("File \"%s\" doesn't exist or is too small.", fname);
        return NULL;
   }
-  unsigned char* buf = calloc(fsize + 16, 1);
+  unsigned char* buf = KfxCalloc(fsize + 16, 1);
   if (buf == NULL)
   {
     WARNMSG("Can't allocate %ld bytes to load \"%s\".",fsize,fname);
@@ -1447,7 +1448,7 @@ unsigned char *load_data_file_to_buffer(int32_t *ldsize, short fgroup, const cha
   if (fsize < *ldsize)
   {
     WARNMSG("Reading file \"%s\" failed.",fname);
-    free(buf);
+    KfxFree(buf);
     return NULL;
   }
   memset(buf+fsize, '\0', 15);
@@ -1685,7 +1686,7 @@ TbBool setup_campaign_credits_data(struct GameCampaign *campgn)
     ERRORLOG("Campaign Credits file \"%s\" does not exist or can't be opened",campgn->credits_fname);
     return false;
   }
-  campgn->credits_data = (char *)calloc(filelen + 256, 1);
+  campgn->credits_data = (char *)KfxCalloc(filelen + 256, 1);
   if (campgn->credits_data == NULL)
   {
     ERRORLOG("Can't allocate memory for Campaign Credits file \"%s\"",campgn->credits_fname);

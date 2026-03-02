@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "net_resync.h"
 #include "bflib_network_internal.h"
@@ -161,7 +162,7 @@ static TbBool send_resync_data(const void * buffer, size_t total_length) {
     data_crc = crc32(data_crc, (const Bytef*)buffer, total_length);
 
     uLongf compressed_size = compressBound(total_length);
-    char * compressed_buffer = (char *) malloc(compressed_size);
+    char * compressed_buffer = (char *) KfxAlloc(compressed_size);
     if (!compressed_buffer) {
         ERRORLOG("Failed to allocate buffer for compression (bound: %lu bytes)", (unsigned long)compressed_size);
         return false;
@@ -170,7 +171,7 @@ static TbBool send_resync_data(const void * buffer, size_t total_length) {
     int compress_result = compress((Bytef*)compressed_buffer, &compressed_size, (const Bytef*)buffer, total_length);
     if (compress_result != Z_OK) {
         ERRORLOG("Compression failed: zlib error %d", compress_result);
-        free(compressed_buffer);
+        KfxFree(compressed_buffer);
         return false;
     }
 
@@ -186,10 +187,10 @@ static TbBool send_resync_data(const void * buffer, size_t total_length) {
     header.data_checksum = (unsigned int)data_crc;
 
     size_t message_size = sizeof(ResyncHeader) + compressed_size;
-    char * message_buffer = (char *) malloc(message_size);
+    char * message_buffer = (char *) KfxAlloc(message_size);
     if (!message_buffer) {
         ERRORLOG("Failed to allocate message buffer");
-        free(compressed_buffer);
+        KfxFree(compressed_buffer);
         return false;
     }
 
@@ -204,8 +205,8 @@ static TbBool send_resync_data(const void * buffer, size_t total_length) {
         netstate.sp->sendmsg_single(netstate.users[user_index].id, message_buffer, message_size);
     }
 
-    free(compressed_buffer);
-    free(message_buffer);
+    KfxFree(compressed_buffer);
+    KfxFree(message_buffer);
     return true;
 }
 
@@ -221,7 +222,7 @@ static TbBool receive_resync_data(void * destination_buffer, size_t expected_tot
         }
 
         size_t max_message_size = sizeof(ResyncHeader) + compressBound(expected_total_length);
-        char * message_buffer = (char *) malloc(max_message_size);
+        char * message_buffer = (char *) KfxAlloc(max_message_size);
         if (!message_buffer) {
             ERRORLOG("Failed to allocate message buffer");
             return false;
@@ -230,7 +231,7 @@ static TbBool receive_resync_data(void * destination_buffer, size_t expected_tot
         size_t received_size = netstate.sp->readmsg(SERVER_ID, message_buffer, max_message_size);
         if (received_size < sizeof(ResyncHeader)) {
             ERRORLOG("Received message too small: %lu bytes", (unsigned long)received_size);
-            free(message_buffer);
+            KfxFree(message_buffer);
             continue;
         }
 
@@ -239,20 +240,20 @@ static TbBool receive_resync_data(void * destination_buffer, size_t expected_tot
 
         if (header.message_type != NETMSG_RESYNC_DATA) {
             MULTIPLAYER_LOG("Received wrong message type: %d", header.message_type);
-            free(message_buffer);
+            KfxFree(message_buffer);
             continue;
         }
 
         if (header.original_length != expected_total_length) {
             ERRORLOG("Received data with wrong size: %lu != %lu", (unsigned long)header.original_length, (unsigned long)expected_total_length);
-            free(message_buffer);
+            KfxFree(message_buffer);
             continue;
         }
 
         if (received_size != sizeof(ResyncHeader) + header.compressed_length) {
             ERRORLOG("Received message size mismatch: %lu != %lu + %lu",
                    (unsigned long)received_size, (unsigned long)sizeof(ResyncHeader), (unsigned long)header.compressed_length);
-            free(message_buffer);
+            KfxFree(message_buffer);
             continue;
         }
 
@@ -266,7 +267,7 @@ static TbBool receive_resync_data(void * destination_buffer, size_t expected_tot
         if (uncompress_result != Z_OK || dest_len != expected_total_length) {
             ERRORLOG("Decompression failed: zlib error %d, expected %lu bytes, got %lu bytes",
                    uncompress_result, (unsigned long)expected_total_length, (unsigned long)dest_len);
-            free(message_buffer);
+            KfxFree(message_buffer);
             return false;
         }
 
@@ -274,11 +275,11 @@ static TbBool receive_resync_data(void * destination_buffer, size_t expected_tot
         verify_crc = crc32(verify_crc, (const Bytef*)destination_buffer, expected_total_length);
         if ((unsigned long)verify_crc != header.data_checksum) {
             ERRORLOG("Resync data checksum mismatch");
-            free(message_buffer);
+            KfxFree(message_buffer);
             return false;
         }
 
-        free(message_buffer);
+        KfxFree(message_buffer);
         NETLOG("Client: Resync data received successfully");
         return true;
     }

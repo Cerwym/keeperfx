@@ -1,3 +1,4 @@
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config_keeperfx.h"
 #include "cdrom.h"

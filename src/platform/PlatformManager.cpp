@@ -174,6 +174,11 @@ extern "C" void PlatformManager_WorkTick()
     if (p) p->WorkTick();
 }
 
+extern "C" size_t PlatformManager_GetScratchSize()
+{
+    return PlatformManager::Get()->GetScratchSize();
+}
+
 IAudioPlatform* PlatformManager_GetAudio()
 {
     IPlatform* p = PlatformManager::Get();

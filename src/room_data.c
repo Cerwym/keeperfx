@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "room_data.h"
 #include "globals.h"
@@ -3923,7 +3924,7 @@ void destroy_room_leaving_unclaimed_ground(struct Room *room, TbBool create_rubb
 {
     unsigned long k = 0;
     unsigned long count = room->slabs_count;
-    SlabCodedCoords* slbs = malloc(count * sizeof(SlabCodedCoords));
+    SlabCodedCoords* slbs = KfxAlloc(count * sizeof(SlabCodedCoords));
     SlabCodedCoords i = room->slabs_list;
     while (i != 0)
     {
@@ -3946,7 +3947,7 @@ void destroy_room_leaving_unclaimed_ground(struct Room *room, TbBool create_rubb
         }
         delete_room_slab(slb_x, slb_y, 1); // Note that this function might also delete the whole room
     }
-    free(slbs);
+    KfxFree(slbs);
 }
 
 void destroy_dungeon_heart_room(PlayerNumber plyr_idx, const struct Thing *heartng)

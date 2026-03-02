@@ -1,3 +1,4 @@
+#include "kfx_memory.h"
 #include "pre_inc.h"
 
 #include <lua.h>
@@ -233,7 +234,7 @@ const char* lua_get_serialised_data(size_t *len)
         }
 		const char *data = lua_tolstring(Lvl_script, -1, len);  // Get the result
         if (data) {
-            lua_serialized_data = (char*)malloc(*len);
+            lua_serialized_data = (char*)KfxAlloc(*len);
             memcpy(lua_serialized_data, data, *len);
             lua_pop(Lvl_script, 1);  // Pop the result
             return lua_serialized_data;
@@ -272,7 +273,7 @@ void lua_set_serialised_data(const char *data, size_t len)
 
 void cleanup_serialized_data() {
     if (lua_serialized_data != NULL) {
-        free(lua_serialized_data);
+        KfxFree(lua_serialized_data);
         lua_serialized_data = NULL;
     }
 }

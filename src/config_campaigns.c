@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config_campaigns.h"
 
@@ -138,14 +139,14 @@ struct CampaignsList mappacks_list;
  */
 TbBool free_campaign(struct GameCampaign *campgn)
 {
-  free(campgn->lvinfos);
-  free(campgn->hiscore_table);
+  KfxFree(campgn->lvinfos);
+  KfxFree(campgn->hiscore_table);
   for (int i=0; i<campgn->strings_data_count; i++)
   {
-    free(campgn->strings_data_list[i]);
+    KfxFree(campgn->strings_data_list[i]);
   }
   campgn->strings_data_count = 0;
-  free(campgn->credits_data);
+  KfxFree(campgn->credits_data);
   return true;
 }
 
@@ -361,8 +362,8 @@ struct LevelInformation *new_level_info_entry(struct GameCampaign *campgn, Level
 TbBool init_level_info_entries(struct GameCampaign *campgn, long num_entries)
 {
     if (campgn->lvinfos != NULL)
-      free(campgn->lvinfos);
-    campgn->lvinfos = (struct LevelInformation *)calloc(num_entries, sizeof(struct LevelInformation));
+      KfxFree(campgn->lvinfos);
+    campgn->lvinfos = (struct LevelInformation *)KfxCalloc(num_entries, sizeof(struct LevelInformation));
     if (campgn->lvinfos == NULL)
     {
       WARNMSG("Can't allocate memory for LevelInformation list.");
@@ -381,7 +382,7 @@ TbBool grow_level_info_entries(struct GameCampaign *campgn, long add_entries)
 {
     long i = campgn->lvinfos_count;
     long num_entries = campgn->lvinfos_count + add_entries;
-    campgn->lvinfos = (struct LevelInformation*)realloc(campgn->lvinfos, num_entries * sizeof(struct LevelInformation));
+    campgn->lvinfos = (struct LevelInformation*)KfxRealloc(campgn->lvinfos, num_entries * sizeof(struct LevelInformation));
     if (campgn->lvinfos == NULL)
     {
         WARNMSG("Can't enlarge memory for LevelInformation list.");
@@ -400,7 +401,7 @@ TbBool grow_level_info_entries(struct GameCampaign *campgn, long add_entries)
 short parse_campaign_common_blocks(struct GameCampaign *campgn,char *buf,long len, const char* config_textname)
 {
   // Initialize block data in campaign
-  free(campgn->hiscore_table);
+  KfxFree(campgn->hiscore_table);
   campgn->hiscore_table = NULL;
   campgn->hiscore_count = VISIBLE_HIGH_SCORES_COUNT;
   campgn->human_player = 0;
@@ -1102,7 +1103,7 @@ TbBool load_campaign(const char *cmpgn_fname,struct GameCampaign *campgn,unsigne
         WARNMSG("Campaign file \"%s\" is too large.",cmpgn_fname);
         return false;
     }
-    char* buf = (char*)calloc(len + 256, 1);
+    char* buf = (char*)KfxCalloc(len + 256, 1);
     if (buf == NULL)
       return false;
     // Loading file data
@@ -1133,7 +1134,7 @@ TbBool load_campaign(const char *cmpgn_fname,struct GameCampaign *campgn,unsigne
           WARNMSG("Parsing campaign file \"%s\" map blocks failed.",cmpgn_fname);
     }
     //Freeing and exiting
-    free(buf);
+    KfxFree(buf);
     if ((flags & CnfLd_ListOnly) == 0)
     {
         setup_campaign_strings_data(campgn);
@@ -1201,8 +1202,8 @@ TbBool is_campaign_loaded(void)
 TbBool init_campaigns_list_entries(struct CampaignsList *clist, long num_entries)
 {
     if (clist->items != NULL)
-        free(clist->items);
-    clist->items = (struct GameCampaign *)calloc(num_entries, sizeof(struct GameCampaign));
+        KfxFree(clist->items);
+    clist->items = (struct GameCampaign *)KfxCalloc(num_entries, sizeof(struct GameCampaign));
     if (clist->items == NULL)
     {
         WARNMSG("Can't allocate memory for GameCampaigns list.");
@@ -1224,7 +1225,7 @@ TbBool grow_campaigns_list_entries(struct CampaignsList *clist, long add_entries
 {
     long i = clist->items_count;
     long num_entries = clist->items_count + add_entries;
-    clist->items = (struct GameCampaign *)realloc(clist->items, num_entries*sizeof(struct GameCampaign));
+    clist->items = (struct GameCampaign *)KfxRealloc(clist->items, num_entries*sizeof(struct GameCampaign));
     if (clist->items == NULL)
     {
         WARNMSG("Can't enlarge memory for GameCampaigns list.");
@@ -1326,11 +1327,11 @@ void sort_campaigns(struct CampaignsList *clist,const char* sort_fname)
         ERRORLOG("failed to read %s",sort_fname);
         return;
     }
-    char *fbuf = (char *)malloc((size_t)fsize + 1);
+    char *fbuf = (char *)KfxAlloc((size_t)fsize + 1);
     if (!fbuf) { LbFileClose(fp); return; }
     long rlen = (long)LbFileRead(fp, fbuf, (unsigned long)fsize);
     LbFileClose(fp);
-    if (rlen <= 0) { free(fbuf); return; }
+    if (rlen <= 0) { KfxFree(fbuf); return; }
     fbuf[rlen] = '\0';
     unsigned long beg = 0;
     char *pos = fbuf;
@@ -1364,7 +1365,7 @@ void sort_campaigns(struct CampaignsList *clist,const char* sort_fname)
         }
         pos = nl ? nl + 1 : end;
     }
-    free(fbuf);
+    KfxFree(fbuf);
     sort_campaigns_quicksort(clist, beg, clist->items_num);
 }
 

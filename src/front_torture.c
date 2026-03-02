@@ -18,6 +18,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "front_torture.h"
 #include "bflib_network.h"

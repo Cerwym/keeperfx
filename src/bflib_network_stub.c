@@ -25,6 +25,7 @@
 #include "net_redundant_packets.h"
 #include "net_received_packets.h"
 #include "packets.h"
+#include "player_data.h"
 
 #include "post_inc.h"
 
@@ -75,9 +76,9 @@ void LbNetwork_TimesyncBarrier(void) {}
 void animate_resync_progress_bar(int current_phase, int total_phases) { (void)current_phase; (void)total_phases; }
 void resync_game(void) {}
 
-/* net_input_lag.c stubs */
+/* net_input_lag.c stubs — no networking means no input lag; return local packet directly */
 void clear_input_lag_queue(void) {}
-struct Packet* get_local_input_lag_packet_for_turn(GameTurn target_turn) { (void)target_turn; return NULL; }
+struct Packet* get_local_input_lag_packet_for_turn(GameTurn target_turn) { (void)target_turn; return get_packet_direct(my_player_number); }
 void  store_local_packet_in_input_lag_queue(PlayerNumber my_packet_num) { (void)my_packet_num; }
 TbBool input_lag_skips_initial_processing(void) { return 0; }
 unsigned short calculate_skip_input(void) { return 0; }

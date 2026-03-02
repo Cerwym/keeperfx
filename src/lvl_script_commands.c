@@ -11,6 +11,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include <math.h>
 #include <string.h>
@@ -4966,7 +4967,7 @@ static void set_player_colour_process(struct ScriptContext *context)
 
 static void set_game_rule_check(const struct ScriptLine* scline)
 {
-    char* rulevalue_str = strdup(scline->tp[1]);
+    char* rulevalue_str = KfxStrDup(scline->tp[1]);
     PlayerNumber plyr_idx;
     if (scline->tp[2][0] == '\0')
     {
@@ -4980,7 +4981,7 @@ static void set_game_rule_check(const struct ScriptLine* scline)
             if (!parameter_is_number(scline->tp[2]))
             {
                 SCRPTERRLOG("Invalid player: %s", scline->tp[1]);
-                free(rulevalue_str);
+                KfxFree(rulevalue_str);
                 return;
             }
             plyr_idx = ALL_PLAYERS;
@@ -5006,7 +5007,7 @@ static void set_game_rule_check(const struct ScriptLine* scline)
             break;
         }
     }
-    free(rulevalue_str);
+    KfxFree(rulevalue_str);
     if (ruledesc == -1)
     {
         SCRPTERRLOG("Unknown Game Rule '%s'.", rulename);

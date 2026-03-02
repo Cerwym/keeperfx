@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_netsp.hpp"
 
@@ -500,7 +501,7 @@ TbError ServiceProvider::Receive(unsigned long flags)
           }
 
           msgLen = dataLen + 4;
-          somePtr = calloc(msgLen, 1); //TODO NET check that this is freed somewhere...
+          somePtr = KfxCalloc(msgLen, 1); //TODO NET check that this is freed somewhere...
           ReadMessage(&playerId, somePtr, &msgLen);
           recvCallbacks->unhandledMessageTypeCallback(playerId, somePtr);
 

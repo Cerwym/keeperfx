@@ -11,6 +11,7 @@
  *     palette-lookup path is used.  Otherwise falls back to SDL2 blit.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "renderer/RendererVita.h"
 
@@ -124,12 +125,12 @@ extern "C" void vita_vitagl_preinit(void)
         if (cdram_big >= 0) sceKernelFreeMemBlock(cdram_big);
 
         // Heap headroom before vitaGL allocates
-        void* heap_probe_128 = malloc(100 * 1024 * 1024);
-        fprintf(_diag, "malloc(100MB) = %s\n", heap_probe_128 ? "OK" : "FAIL");
-        if (heap_probe_128) free(heap_probe_128);
-        void* heap_probe_32 = malloc(32 * 1024 * 1024);
-        fprintf(_diag, "malloc(32MB) = %s\n", heap_probe_32 ? "OK" : "FAIL");
-        if (heap_probe_32) free(heap_probe_32);
+        void* heap_probe_128 = KfxAlloc(100 * 1024 * 1024);
+        fprintf(_diag, "KfxAlloc(100MB) = %s\n", heap_probe_128 ? "OK" : "FAIL");
+        if (heap_probe_128) KfxFree(heap_probe_128);
+        void* heap_probe_32 = KfxAlloc(32 * 1024 * 1024);
+        fprintf(_diag, "KfxAlloc(32MB) = %s\n", heap_probe_32 ? "OK" : "FAIL");
+        if (heap_probe_32) KfxFree(heap_probe_32);
 
         fclose(_diag);
     }
@@ -194,11 +195,11 @@ static GLuint load_shader_binary(GLenum type, const char* path)
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
     rewind(f);
-    void* buf = malloc((size_t)sz);
+    void* buf = KfxAlloc((size_t)sz);
     fread(buf, 1, (size_t)sz, f);
     fclose(f);
     glShaderBinary(1, &sh, 0, buf, (GLsizei)sz);
-    free(buf);
+    KfxFree(buf);
     return sh;
 }
 #else
@@ -359,7 +360,7 @@ void RendererVita::Shutdown()
     }
 #endif
 
-    free(m_rgbaBuffer);  m_rgbaBuffer = nullptr;
+    KfxFree(m_rgbaBuffer);  m_rgbaBuffer = nullptr;
     m_surfW = 0;  m_surfH = 0;
     if (m_texture)  { SDL_DestroyTexture(m_texture);   m_texture  = nullptr; }
     if (m_renderer) { SDL_DestroyRenderer(m_renderer); m_renderer = nullptr; }
@@ -444,7 +445,7 @@ bool RendererVita::EnsureSurface(int w, int h)
 {
     if (w == m_surfW && h == m_surfH) return true;
 
-    free(m_rgbaBuffer);  m_rgbaBuffer = nullptr;
+    KfxFree(m_rgbaBuffer);  m_rgbaBuffer = nullptr;
     if (m_texture) { SDL_DestroyTexture(m_texture); m_texture = nullptr; }
 
     m_texture = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA32,
@@ -454,7 +455,7 @@ bool RendererVita::EnsureSurface(int w, int h)
         return false;
     }
 
-    m_rgbaBuffer = (uint8_t*)malloc((size_t)w * h * 4);
+    m_rgbaBuffer = (uint8_t*)KfxAlloc((size_t)w * h * 4);
     if (!m_rgbaBuffer) {
         ERRORLOG("RendererVita: failed to allocate RGBA buffer %dx%d", w, h);
         SDL_DestroyTexture(m_texture);  m_texture = nullptr;

@@ -1,3 +1,4 @@
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "platform/Platform3DS.h"
 #include <stdio.h>
@@ -50,7 +51,7 @@ TbFileHandle Platform3DS::FileOpen(const char* fname, unsigned char accmode)
     }
     FILE* fp = fopen(fname, mode);
     if (!fp) return nullptr;
-    auto h = static_cast<TbFileInfo*>(malloc(sizeof(TbFileInfo)));
+    auto h = static_cast<TbFileInfo*>(KfxAlloc(sizeof(TbFileInfo)));
     if (!h) { fclose(fp); return nullptr; }
     h->fp = fp;
     return h;
@@ -61,7 +62,7 @@ int Platform3DS::FileClose(TbFileHandle handle)
     if (!handle) return -1;
     auto h = static_cast<TbFileInfo*>(handle);
     int r = fclose(h->fp);
-    free(h);
+    KfxFree(h);
     return r ? -1 : 0;
 }
 

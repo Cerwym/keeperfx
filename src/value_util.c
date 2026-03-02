@@ -2,6 +2,7 @@
 // Free implementation of Bullfrog's Dungeon Keeper strategy game.
 // Created by Sim on 12/31/22.
 
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "value_util.h"
 #include "config.h"
@@ -28,7 +29,7 @@ TbBool load_toml_file(const char *fname,VALUE *value, unsigned short flags)
             WARNMSG("file \"%s\" doesn't exist or is too small.",fname);
         return false;
     }
-    char* buf = (char*)calloc(len + 256, 1);
+    char* buf = (char*)KfxCalloc(len + 256, 1);
     if (!buf) return false;
     // Loading file data
     long fsize = LbFileLoadAt(fname, buf);
@@ -36,7 +37,7 @@ TbBool load_toml_file(const char *fname,VALUE *value, unsigned short flags)
     if (fsize < len)
     {
         WARNMSG("failed to read file \"%s\".",fname);
-        free(buf);
+        KfxFree(buf);
         return false;
     }
 
@@ -45,10 +46,10 @@ TbBool load_toml_file(const char *fname,VALUE *value, unsigned short flags)
     if (toml_parse((char*)buf, err, sizeof(err), value))
     {
         WARNMSG("Unable to load %s file\n %s", fname, err);
-        free(buf);
+        KfxFree(buf);
         return false;
     }
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 

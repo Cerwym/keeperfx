@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_network.h"
 
@@ -97,7 +98,7 @@ static TbBool clear_peer(NetUserId id)
                     SDLNet_TCP_Close(spstate.peers[i].socket);
                 }
 
-                free(spstate.peers[i].msg.buffer);
+                KfxFree(spstate.peers[i].msg.buffer);
                 memset(&spstate.peers[i], 0, sizeof(spstate.peers[i]));
 
                 return 1;
@@ -112,7 +113,7 @@ static TbBool clear_peer(NetUserId id)
             spstate.socket = NULL; //assume disconnected
         }
 
-        free(spstate.servermsg.buffer);
+        KfxFree(spstate.servermsg.buffer);
         memset(&spstate.servermsg, 0, sizeof(spstate.servermsg));
 
         return 1;
@@ -194,7 +195,7 @@ static void inflate_msg(struct Msg * msg)
 
     if (msg->msg_size > msg->buffer_size) {
         msg->buffer_size = msg->msg_size;
-        msg->buffer = (char*) realloc(msg->buffer, msg->buffer_size);
+        msg->buffer = (char*) KfxRealloc(msg->buffer, msg->buffer_size);
     }
 }
 
@@ -318,12 +319,12 @@ static void tcpSP_exit(void)
         for (unsigned int i = 0; i < MAX_N_PEERS; ++i)
         {
             SDLNet_TCP_Close(spstate.peers[i].socket);
-            free(spstate.peers[i].msg.buffer);
+            KfxFree(spstate.peers[i].msg.buffer);
         }
     }
 
     SDLNet_TCP_Close(spstate.socket);
-    free(spstate.servermsg.buffer);
+    KfxFree(spstate.servermsg.buffer);
 
     SDLNet_FreeSocketSet(spstate.socketset);
 
@@ -367,7 +368,7 @@ static TbError tcpSP_join(const char * session, void * options)
     NETDBG(4, "Creating TCP client SP for session %s", session);
 
     size_t size = strlen(session) + 1;
-    char* hostname = (char*)calloc(size, 1);
+    char* hostname = (char*)KfxCalloc(size, 1);
     snprintf(hostname, size, "%s", session);
 
     char* portstr = hostname;
@@ -385,10 +386,10 @@ static TbError tcpSP_join(const char * session, void * options)
     spstate.socket = SDLNet_TCP_Open(&addr);
     if (spstate.socket == NULL) {
         NETMSG("Failed to initialize TCP client socket to host %s and port %s", hostname, portstr);
-        free(hostname);
+        KfxFree(hostname);
         return Lb_FAIL;
     }
-    free(hostname);
+    KfxFree(hostname);
 
     spstate.socketset = SDLNet_AllocSocketSet(1);
     SDLNet_TCP_AddSocket(spstate.socketset, spstate.socket);

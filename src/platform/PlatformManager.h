@@ -48,6 +48,7 @@ void        PlatformManager_LogWrite(const char* message);
  *  (e.g. prevent screen blanking on Vita via sceKernelPowerTick). */
 void        PlatformManager_FrameTick(void);
 void        PlatformManager_WorkTick(void);
+size_t      PlatformManager_GetScratchSize(void);
 
 #ifdef __cplusplus
 } // extern "C"

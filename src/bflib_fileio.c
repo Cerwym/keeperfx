@@ -18,6 +18,7 @@
  *     the Free Software Foundation; either version 2 of the License, or
  *     (at your option) any later version.
  */
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_fileio.h"
 
@@ -45,7 +46,7 @@ int LbFilePosition(TbFileHandle handle)
 int create_directory_for_file(const char * fname)
 {
   const int size = strlen(fname) + 1;
-  char * tmp = (char *) malloc(size);
+  char * tmp = (char *) KfxAlloc(size);
   char * separator = strchr(fname, '/');
 
   while (separator != NULL) {
@@ -53,13 +54,13 @@ int create_directory_for_file(const char * fname)
     tmp[separator - fname] = 0;
     if (PlatformManager_MakeDirectory(tmp) != 0) {
       if (errno != EEXIST) {
-        free(tmp);
+        KfxFree(tmp);
         return 0;
       }
     }
     separator = strchr(++separator, '/');
   }
-  free(tmp);
+  KfxFree(tmp);
   return 1;
 }
 

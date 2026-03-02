@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "creature_instances.h"
 
@@ -592,11 +593,11 @@ CrInstance process_creature_ranged_buff_spell_casting(struct Thing* creatng)
 
             // Apply the spell instance to the first one since we have no group buff yet.
             set_creature_instance(creatng, i, target->index, NULL);
-            free(targets);
+            KfxFree(targets);
             break; // No need to check the next spell instance.
 
         }
-        free(targets);
+        KfxFree(targets);
     }
 
     return (i < game.conf.crtr_conf.instances_count) ? i : CrInst_NULL;
@@ -1647,7 +1648,7 @@ TbBool search_target_generic
 
     TbBool ok = true;
     // To improve performance, use a smaller number than CREATURES_COUNT.
-    ThingIndex* results = (ThingIndex*)malloc(MAX_CREATURES_SEARCHED * sizeof(ThingIndex));
+    ThingIndex* results = (ThingIndex*)KfxAlloc(MAX_CREATURES_SEARCHED * sizeof(ThingIndex));
     memset(results, 0, MAX_CREATURES_SEARCHED * sizeof(ThingIndex));
     *found_count = 0;
     // Note that we only support buff right now, so we only search source's owner's creature.

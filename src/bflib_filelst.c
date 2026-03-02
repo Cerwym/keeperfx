@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "globals.h"
 #include "bflib_filelst.h"
@@ -53,7 +54,7 @@ short LbDataFree(struct TbLoadFiles *load_file)
 //#ifdef __DEBUG
         LbJustLog("LbDataFree: freeing \"%s\"...",load_file->FName);
 //#endif
-        free(*data);
+        KfxFree(*data);
         (*data) = NULL;
 //#ifdef __DEBUG
         LbJustLog("done\n");
@@ -99,7 +100,7 @@ int LbDataLoad(struct TbLoadFiles *load_file, LoadFilesGetSizeFunc get_size_fn, 
 #ifdef __DEBUG
       LbJustLog("LbDataLoad: * in fname \"%s\"\n",fname);
 #endif
-    *(load_file->Start) = calloc(load_file->SLength, 1);
+    *(load_file->Start) = KfxCalloc(load_file->SLength, 1);
     if ( (*(load_file->Start)) == NULL )
         return -100;
   } else
@@ -115,7 +116,7 @@ int LbDataLoad(struct TbLoadFiles *load_file, LoadFilesGetSizeFunc get_size_fn, 
     }
     if (!is_static)
     {
-        *(load_file->Start) = calloc(load_file->SLength + 512, 1);
+        *(load_file->Start) = KfxCalloc(load_file->SLength + 512, 1);
     }
     if ((*(load_file->Start)) == NULL)
         return -100;

@@ -18,6 +18,7 @@
  */
 /******************************************************************************/
 #define INTERNAL
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_dernc.h"
 
@@ -471,7 +472,7 @@ long UnpackM1(void * buffer, ulong bufsize)
     header.packed_crc32 = ntohs(header.packed_crc32);
     header.unpacked_size = ntohl(header.unpacked_size);
     header.unpacked_crc32 = ntohs(header.unpacked_crc32);
-    void * unpacked = calloc(header.unpacked_size, 1);
+    void * unpacked = KfxCalloc(header.unpacked_size, 1);
     if (unpacked==NULL) return -1;
     retcode = rnc_unpack(buffer, unpacked, 0);
     if (header.unpacked_size > bufsize) {
@@ -479,7 +480,7 @@ long UnpackM1(void * buffer, ulong bufsize)
     } else {
         memcpy(buffer, unpacked, header.unpacked_size);
     }
-    free(unpacked);
+    KfxFree(unpacked);
     return retcode;
 }
 

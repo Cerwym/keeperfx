@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_sprfnt.h"
 
@@ -1228,14 +1229,14 @@ TbBool LbTextDraw(int posx, int posy, const char *text)
  */
 TbBool LbTextDrawResizedFmt(int posx, int posy, int units_per_px, const char *fmt, ...)
 {
-    char * text = (char *)malloc(8192);
+    char * text = (char *)KfxAlloc(8192);
     if (text == NULL) return false;
     va_list val;
     va_start(val, fmt);
     vsnprintf(text, TEXT_DRAW_MAX_LEN, fmt, val);
     va_end(val);
     TbBool result = LbTextDrawResized(posx, posy, units_per_px, text);
-    free(text);
+    KfxFree(text);
     return result;
 }
 
@@ -1878,7 +1879,7 @@ void dbc_shutdown(void)
     active_dbcfont = &dbcfonts[i];
     if (active_dbcfont->data != NULL)
     {
-      free(active_dbcfont->data);
+      KfxFree(active_dbcfont->data);
       active_dbcfont->data = NULL;
     }
   }
@@ -1900,7 +1901,7 @@ char * prepare_font_filename(const char * fpath, const char * fname) {
     // current folder, copy font filename as-is
     const int fname_len = strlen(fname);
     const int buffer_size = fname_len + 1;
-    char * buffer = malloc(buffer_size);
+    char * buffer = KfxAlloc(buffer_size);
     if (buffer == NULL)
     {
       return NULL;
@@ -1911,7 +1912,7 @@ char * prepare_font_filename(const char * fpath, const char * fname) {
   const int fpath_len = strlen(fpath);
   const int fname_len = strlen(fname);
   const int buffer_size = fpath_len + fname_len + 2;
-  char * buffer = malloc(buffer_size);
+  char * buffer = KfxAlloc(buffer_size);
   if (buffer == NULL)
   {
     return NULL;
@@ -1937,11 +1938,11 @@ short load_font_file(struct AsianFont * dbcfont, const char * fpath) {
     return 2;
   }
   // Allocate memory for the font, dbc_shutdown will free this memory later
-  dbcfont->data = calloc(dbcfont->data_length, 1);
+  dbcfont->data = KfxCalloc(dbcfont->data_length, 1);
   if (dbcfont->data == NULL)
   {
     ERRORLOG("Can't allocate memory for font %s", dbcfont->fname);
-    free(fname);
+    KfxFree(fname);
     return 2;
   }
   // Load font file
@@ -1950,17 +1951,17 @@ short load_font_file(struct AsianFont * dbcfont, const char * fpath) {
   if (!fhandle)
   {
     ERRORLOG("Cannot open \"%s\"", fname);
-    free(fname);
+    KfxFree(fname);
     return 1;
   }
   if (LbFileRead(fhandle, dbcfont->data, dbcfont->data_length) != (long) dbcfont->data_length)
   {
       ERRORLOG("Error reading %ld bytes from \"%s\"", dbcfont->data_length, fname);
-      free(fname);
+      KfxFree(fname);
       return 3;
   }
   LbFileClose(fhandle);
-  free(fname);
+  KfxFree(fname);
   return 0;
 }
 

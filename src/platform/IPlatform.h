@@ -117,6 +117,11 @@ public:
      *  Default is a no-op. */
     virtual void WorkTick() {}
 
+    /** Size of the scratch/arena allocator pool in bytes.
+     *  Called once at startup by KfxMemInit().
+     *  Default (desktop): 4 MB.  Override to tune for constrained platforms. */
+    virtual size_t GetScratchSize() const { return 4 * 1024 * 1024; }
+
     // ----- Audio sub-interface -----
     /** Returns the platform audio implementation, or nullptr if the platform
      *  has no native audio path (desktop CI, headless builds).

@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_server_tcp.hpp"
 #include "post_inc.h"
@@ -70,7 +71,7 @@ void TCP_NetServer::recvThreadFunc(RecvThreadArg * arg)
 
 			//pass it on
 			const size_t bufferLen = sizeof(header) + msgDataLen;
-			char * const buffer = reinterpret_cast<char *> (malloc(bufferLen));
+			char * const buffer = reinterpret_cast<char *> (KfxAlloc(bufferLen));
 			if (buffer == NULL) {
 				ERRORLOG("Memory alloc error");
 				break;
@@ -78,7 +79,7 @@ void TCP_NetServer::recvThreadFunc(RecvThreadArg * arg)
 
 			memcpy(buffer, header, sizeof(header));
 			if (!receiveOnSocket(sock, buffer + sizeof(header), msgDataLen)) {
-				free(buffer);
+				KfxFree(buffer);
 				svr->removeRemoteSocket(sock);
 				break;
 			}

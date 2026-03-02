@@ -8,6 +8,7 @@
  *     Blit-based: 8-bit indexed framebuffer → RGBA8 → C3D texture → fullscreen quad.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "renderer/Renderer3DS.h"
 
@@ -58,7 +59,7 @@ bool Renderer3DS::Init()
                               GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8));
 
     // Allocate CPU-side framebuffer
-    m_framebuffer = (uint8_t*)malloc(m_width * m_height);
+    m_framebuffer = (uint8_t*)KfxAlloc(m_width * m_height);
     m_rgbaBuffer  = (uint8_t*)linearAlloc(m_width * m_height * 4);  // linearAlloc for DMA
     if (!m_framebuffer || !m_rgbaBuffer) {
         ERRORLOG("Renderer3DS: failed to allocate framebuffers");
@@ -80,7 +81,7 @@ void Renderer3DS::Shutdown()
 
     C3D_TexDelete(&s_fbTexture);
     if (s_renderTarget) { C3D_RenderTargetDelete(s_renderTarget); s_renderTarget = NULL; }
-    free(m_framebuffer);      m_framebuffer = nullptr;
+    KfxFree(m_framebuffer);      m_framebuffer = nullptr;
     linearFree(m_rgbaBuffer); m_rgbaBuffer  = nullptr;
     C3D_Fini();
     gfxExit();

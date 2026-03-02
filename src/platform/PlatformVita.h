@@ -58,6 +58,7 @@ public:
     void SystemInit() override;
     void FrameTick() override;
     void WorkTick() override;
+    size_t GetScratchSize() const override;
 
     IAudioPlatform* GetAudio() override;
 

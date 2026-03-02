@@ -17,6 +17,7 @@
  */
 /******************************************************************************/
 
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "globals.h"
 #include "bflib_planar.h"

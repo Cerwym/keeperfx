@@ -20,6 +20,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "game_legacy.h"
 #include "kjm_input.h"

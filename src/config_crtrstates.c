@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config_crtrstates.h"
 #include "globals.h"
@@ -165,7 +166,7 @@ static TbBool load_creaturestates_config_file(const char *fname, unsigned short 
             WARNMSG("file \"%s\" doesn't exist or is too small.",fname);
         return false;
     }
-    char* buf = (char*)calloc(len + 256, 1);
+    char* buf = (char*)KfxCalloc(len + 256, 1);
     if (buf == NULL)
         return false;
     // Loading file data
@@ -175,7 +176,7 @@ static TbBool load_creaturestates_config_file(const char *fname, unsigned short 
     parse_named_field_blocks(buf, len, fname, flags, &crstates_states_named_fields_set);
 
     //Freeing and exiting
-    free(buf);
+    KfxFree(buf);
     return result;
 }
 
