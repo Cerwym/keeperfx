@@ -37,7 +37,7 @@
  * 96 MB heap is sufficient for SDL2, LuaJIT GC, and runtime C++ objects.
  * All large game data structures (Game, block_mem, poly_pool) are static BSS,
  * so they do not consume heap space at runtime. */
-int _newlib_heap_size_user  = 96 * 1024 * 1024; // 96 MB heap
+int _newlib_heap_size_user  = 192 * 1024 * 1024; // 192 MB heap — matches VitaQuake1/2
 int sceUserMainThreadStackSize = 4 * 1024 * 1024; // 4 MB main thread stack
 
 // TbFileFind is defined here; it is an opaque type to all callers.

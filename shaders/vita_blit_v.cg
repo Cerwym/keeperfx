@@ -1,0 +1,13 @@
+/* vita_blit_v.cg — Vita palette-blit vertex shader
+ * Passes a full-screen quad from clip-space positions [-1,1] to fragment stage.
+ * Compiled at build time with: psp2cgc -profile sce_vp_psp2 -Wperf -O2
+ */
+void main(
+    float2 aPos : POSITION,
+    float2 aUV  : TEXCOORD0,
+    out float4 oPos : POSITION,
+    out float2 oUV  : TEXCOORD0
+) {
+    oPos = float4(aPos.x, aPos.y, 0.0f, 1.0f);
+    oUV = aUV;
+}

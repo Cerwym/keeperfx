@@ -26,8 +26,6 @@
 
 #ifdef VITA_HAVE_VITAGL
 #include <psp2/gxm.h>
-#include <psp2/kernel/clib.h>
-#include <psp2/io/fcntl.h>
 #endif
 
 #include "post_inc.h"
@@ -43,45 +41,69 @@ static bool s_vitagl_ready = false;
 
 extern "C" bool vita_is_vitagl_ready(void) { return s_vitagl_ready; }
 
+// ---------------------------------------------------------------------------
+// Preinit step log — strncat entries here during preinit (before keeperfx.log
+// is open), then SYNCLOG the full string in RendererVita::Init().
+// ---------------------------------------------------------------------------
+#define PREINIT_LOG_MAX 256
+static char s_preinit_log[PREINIT_LOG_MAX];
+
 extern "C" void vita_vitagl_preinit(void)
 {
     if (s_vitagl_ready) return;
 
-    // Write a step-by-step log we can FTP even if the game crashes before
-    // the main logger starts.  Uses raw sceIo so it works at any init stage.
-    SceUID logfd = sceIoOpen("ux0:data/keeperfx/vitagl_preinit.log",
-                              SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
-#define PREINIT_LOG(msg) do { \
-    sceClibPrintf("KeeperFX vitagl: " msg "\n"); \
-    if (logfd >= 0) { sceIoWrite(logfd, msg "\n", sizeof(msg)); } } while(0)
+    s_preinit_log[0] = '\0';
+    strncat(s_preinit_log, "start;", PREINIT_LOG_MAX - 1);
 
-    PREINIT_LOG("starting vita_vitagl_preinit");
+    // VitaQuake1/2 pattern: set vertex pool (64 MB) and VDM buffer before
+    // vglInitExtended.  First param 0x1400000 = 20 MB internal GXM command
+    // buffer, matching both Quake ports exactly.
+    vglSetVertexPoolSize(64 * 1024 * 1024);
+    strncat(s_preinit_log, " vertPool;", PREINIT_LOG_MAX - 1);
 
-    // vitaGL initialises vitashark internally — do NOT call shark_init() here.
-    // VitaQuake2 reference: vglSetVDMBufferSize then vglInitExtended only.
     vglSetVDMBufferSize(1024 * 1024);
+    strncat(s_preinit_log, " vdmBuf;", PREINIT_LOG_MAX - 1);
 
-    PREINIT_LOG("calling vglInitExtended(0, 960, 544, 16MB, NONE)");
-    if (logfd >= 0) sceIoClose(logfd);  // flush before potentially crashing
+    vglInitExtended(0x1400000, 960, 544, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
+    strncat(s_preinit_log, " vglInit;", PREINIT_LOG_MAX - 1);
 
-    GLboolean ok = vglInitExtended(0, 960, 544, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
+    // Mirror VitaQuake2: route all textures through VRAM.
+    vglUseVram(GL_TRUE);
+    strncat(s_preinit_log, " vram;", PREINIT_LOG_MAX - 1);
 
-    logfd = sceIoOpen("ux0:data/keeperfx/vitagl_preinit.log",
-                      SCE_O_WRONLY | SCE_O_APPEND, 0777);
-    if (ok) {
-        PREINIT_LOG("vglInitExtended OK — vitaGL ready");
-        s_vitagl_ready = true;
-    } else {
-        PREINIT_LOG("vglInitExtended FAILED");
-    }
-    if (logfd >= 0) sceIoClose(logfd);
-#undef PREINIT_LOG
+    s_vitagl_ready = true;
+    strncat(s_preinit_log, " ready", PREINIT_LOG_MAX - 1);
 }
 
 // ---------------------------------------------------------------------------
-// Cg shader sources (compiled at runtime by vitashark)
+// Shader loading: pre-compiled .gxp (when psp2cgc is available at build time)
+// OR inline Cg compiled by vitashark at runtime (fallback when psp2cgc absent).
+// Both VitaQuake1 and VitaQuake2 use the pre-compiled path (glShaderBinary).
 // ---------------------------------------------------------------------------
 
+#ifdef VITA_USE_PRECOMPILED_SHADERS
+static GLuint load_shader_binary(GLenum type, const char* path)
+{
+    GLuint sh = glCreateShader(type);
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        ERRORLOG("RendererVita: cannot open shader binary: %s", path);
+        glDeleteShader(sh);
+        return 0;
+    }
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    rewind(f);
+    void* buf = malloc((size_t)sz);
+    fread(buf, 1, (size_t)sz, f);
+    fclose(f);
+    glShaderBinary(1, &sh, 0, buf, (GLsizei)sz);
+    free(buf);
+    return sh;
+}
+#else
+// Inline Cg source strings — compiled at runtime by vitashark.
+// Switch to the pre-compiled path by installing psp2cgc (official Sony SDK).
 static const char* k_vert_src =
     "void main("
     "    float2 aPos : POSITION,"
@@ -104,12 +126,7 @@ static const char* k_frag_src =
     "    fragColor = tex2D(paletteTex, float2(idx, 0.5f));"
     "}";
 
-static const float k_quad_pos[4][2] = {
-    { -1.0f,  1.0f },
-    {  1.0f,  1.0f },
-    { -1.0f, -1.0f },
-    {  1.0f, -1.0f },
-};
+#include <vitashark.h>
 
 static GLuint compile_shader(GLenum type, const char* src)
 {
@@ -125,6 +142,14 @@ static GLuint compile_shader(GLenum type, const char* src)
     }
     return s;
 }
+#endif
+
+static const float k_quad_pos[4][2] = {
+    { -1.0f,  1.0f },
+    {  1.0f,  1.0f },
+    { -1.0f, -1.0f },
+    {  1.0f, -1.0f },
+};
 
 #endif // VITA_HAVE_VITAGL
 
@@ -140,8 +165,12 @@ bool RendererVita::Init()
     if (m_initialized) return true;
 
 #ifdef VITA_HAVE_VITAGL
+    // Log preinit steps and report ready state.
+    SYNCLOG("[vitaGL] preinit steps: %s", s_preinit_log);
+    SYNCLOG("[vitaGL] ready: %s", s_vitagl_ready ? "yes" : "no");
+
     if (s_vitagl_ready) {
-        SYNCLOG("RendererVita: vitaGL preinit OK — palette shader path active");
+        SYNCLOG("Init: RendererVita: vitaGL ready — GPU palette path active");
         // vitaGL context is up — set up GL resources.
         glGenTextures(1, &m_index_tex);
         glBindTexture(GL_TEXTURE_2D, m_index_tex);
@@ -151,6 +180,7 @@ bool RendererVita::Init()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, k_gameW, k_gameH, 0,
                      GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
+        { GLenum _e = glGetError(); if (_e != GL_NO_ERROR) ERRORLOG("[vitaGL] GL error 0x%x after index glTexImage2D", _e); }
 
         glGenTextures(1, &m_palette_tex);
         glBindTexture(GL_TEXTURE_2D, m_palette_tex);
@@ -160,9 +190,15 @@ bool RendererVita::Init()
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 1, 0,
                      GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        { GLenum _e = glGetError(); if (_e != GL_NO_ERROR) ERRORLOG("[vitaGL] GL error 0x%x after palette glTexImage2D", _e); }
 
+#ifdef VITA_USE_PRECOMPILED_SHADERS
+        m_vert_shader = load_shader_binary(GL_VERTEX_SHADER,   "app0:shaders/vita_blit_v.gxp");
+        m_frag_shader = load_shader_binary(GL_FRAGMENT_SHADER, "app0:shaders/vita_blit_f.gxp");
+#else
         m_vert_shader = compile_shader(GL_VERTEX_SHADER,   k_vert_src);
         m_frag_shader = compile_shader(GL_FRAGMENT_SHADER, k_frag_src);
+#endif
         if (!m_vert_shader || !m_frag_shader) {
             Shutdown();
             return false;
@@ -182,6 +218,7 @@ bool RendererVita::Init()
             Shutdown();
             return false;
         }
+        { GLenum _e = glGetError(); if (_e != GL_NO_ERROR) ERRORLOG("[vitaGL] GL error 0x%x after glLinkProgram", _e); }
 
         m_loc_index   = glGetUniformLocation(m_program, "indexTex");
         m_loc_palette = glGetUniformLocation(m_program, "paletteTex");
