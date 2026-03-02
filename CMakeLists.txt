@@ -317,43 +317,14 @@ if(PLATFORM_VITA)
             target_link_libraries(keeperfx       PRIVATE ${VITAGL_LIB} ${VITASHARK_LIB} ${MATHNEON_LIB})
             target_link_libraries(keeperfx_hvlog PRIVATE ${VITAGL_LIB} ${VITASHARK_LIB} ${MATHNEON_LIB})
 
-            # Pre-compile blit shaders with psp2cgc (avoids runtime vitashark/SceShaccCgExt call).
-            # Mirrors VitaQuake1/2 which load pre-compiled .gxp binaries via glShaderBinary().
-            find_program(PSP2CGC psp2cgc HINTS "$ENV{VITASDK}/bin")
-            if(PSP2CGC)
-                file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shaders")
-                add_custom_command(
-                    OUTPUT  "${CMAKE_CURRENT_BINARY_DIR}/shaders/vita_blit_v.gxp"
-                    COMMAND ${PSP2CGC} -profile sce_vp_psp2
-                            "${CMAKE_SOURCE_DIR}/shaders/vita_blit_v.cg"
-                            -Wperf -O2
-                            -o "${CMAKE_CURRENT_BINARY_DIR}/shaders/vita_blit_v.gxp"
-                    DEPENDS "${CMAKE_SOURCE_DIR}/shaders/vita_blit_v.cg"
-                    COMMENT "Compiling vita_blit_v.cg")
-                add_custom_command(
-                    OUTPUT  "${CMAKE_CURRENT_BINARY_DIR}/shaders/vita_blit_f.gxp"
-                    COMMAND ${PSP2CGC} -profile sce_fp_psp2
-                            "${CMAKE_SOURCE_DIR}/shaders/vita_blit_f.cg"
-                            -Wperf -O2
-                            -o "${CMAKE_CURRENT_BINARY_DIR}/shaders/vita_blit_f.gxp"
-                    DEPENDS "${CMAKE_SOURCE_DIR}/shaders/vita_blit_f.cg"
-                    COMMENT "Compiling vita_blit_f.cg")
-                add_custom_target(vita_shaders DEPENDS
-                    "${CMAKE_CURRENT_BINARY_DIR}/shaders/vita_blit_v.gxp"
-                    "${CMAKE_CURRENT_BINARY_DIR}/shaders/vita_blit_f.gxp")
-                add_dependencies(keeperfx       vita_shaders)
-                add_dependencies(keeperfx_hvlog vita_shaders)
-                set(VITA_SHADER_VPK_FILES
-                    "${CMAKE_CURRENT_BINARY_DIR}/shaders/vita_blit_v.gxp" "shaders/vita_blit_v.gxp"
-                    "${CMAKE_CURRENT_BINARY_DIR}/shaders/vita_blit_f.gxp" "shaders/vita_blit_f.gxp")
-                # Use pre-compiled .gxp binaries at runtime (glShaderBinary path).
-                add_compile_definitions(VITA_USE_PRECOMPILED_SHADERS=1)
-                message(STATUS "psp2cgc found: ${PSP2CGC} — shaders will be pre-compiled")
-            else()
-                message(WARNING "psp2cgc not found — vitaGL shaders cannot be pre-compiled. "
-                                "Ensure VITASDK is installed and $ENV{VITASDK}/bin is in PATH.")
-                set(VITA_SHADER_VPK_FILES "")
-            endif()
+            # .gxp shader binaries are pre-compiled manually with tools/psp2cgc.exe and committed.
+            # To recompile: tools\psp2cgc.exe -profile sce_vp_psp2 -Wperf -O2 shaders\vita_blit_v.cg -o shaders\vita_blit_v.gxp
+            #               tools\psp2cgc.exe -profile sce_fp_psp2 -Wperf -O2 shaders\vita_blit_f.cg -o shaders\vita_blit_f.gxp
+            set(VITA_SHADER_VPK_FILES
+                "${CMAKE_SOURCE_DIR}/shaders/vita_blit_v.gxp" "shaders/vita_blit_v.gxp"
+                "${CMAKE_SOURCE_DIR}/shaders/vita_blit_f.gxp" "shaders/vita_blit_f.gxp")
+            add_compile_definitions(VITA_USE_PRECOMPILED_SHADERS=1)
+            message(STATUS "vitaGL: using pre-compiled .gxp shaders from shaders/")
         else()
             message(STATUS "vitaGL/vitashark/mathneon not found — GPU palette shader disabled.")
             message(STATUS "  Install: sudo bash -c 'VITASDK=/usr/local/vitasdk /usr/local/vitasdk/bin/vdpm vitaGL vitashark'")
