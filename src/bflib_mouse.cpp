@@ -135,7 +135,8 @@ TbResult LbMouseSetPosition(long x, long y)
       }
       window = lbWindow;
   }
-  SDL_WarpMouseInWindow(window, x, y);
+  if (window != NULL)
+      SDL_WarpMouseInWindow(window, x, y);
   return Lb_SUCCESS;
 }
 

@@ -41,6 +41,8 @@
 
 static bool s_vitagl_ready = false;
 
+extern "C" bool vita_is_vitagl_ready(void) { return s_vitagl_ready; }
+
 extern "C" void vita_vitagl_preinit(void)
 {
     if (s_vitagl_ready) return;

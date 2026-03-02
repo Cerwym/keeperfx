@@ -69,6 +69,10 @@ volatile TbBool lbInteruptMouse;
 volatile unsigned long lbIconIndex = 0;
 SDL_Window *lbWindow = NULL;
 
+#if defined(PLATFORM_VITA) && defined(VITA_HAVE_VITAGL)
+extern bool vita_is_vitagl_ready(void);
+#endif
+
 TbDisplayStruct lbDisplay;
 
 
@@ -514,6 +518,14 @@ TbResult LbScreenInitialize(void)
     extern void vita_vitagl_preinit(void);
     vita_vitagl_preinit();
 #endif
+#if defined(PLATFORM_VITA) && defined(VITA_HAVE_VITAGL)
+    if (vita_is_vitagl_ready()) {
+        // vitaGL owns GXM — SDL video would conflict.
+        // Audio is sceAudioOut (audio_vita.c), input is sceCtrl (input_vita.c).
+        // Init SDL bare-minimum so SDL utility calls (SDL_Quit, timers) are safe.
+        SDL_Init(0);
+    } else
+#endif
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_JOYSTICK) < 0) {
         ERRORLOG("SDL init: %s",SDL_GetError());
         return Lb_FAIL;
@@ -598,12 +610,17 @@ TbResult LbScreenSetup(TbScreenMode mode, TbScreenCoord width, TbScreenCoord hei
         }
     }
     // If the game window doesn't yet exists
-    if (lbWindow == NULL) {
-        lbWindow = SDL_CreateWindow(lbDrawAreaTitle, mdinfo->window_pos_x, mdinfo->window_pos_y, mdinfo->Width, mdinfo->Height, mdinfo->sdlFlags);
-    }
-    if (lbWindow == NULL) {
-        ERRORLOG("SDL_CreateWindow failed for mode %d (%s): %s", (int)mode, mdinfo->Desc, SDL_GetError());
-        return Lb_FAIL;
+#if defined(PLATFORM_VITA) && defined(VITA_HAVE_VITAGL)
+    if (!vita_is_vitagl_ready())
+#endif
+    {
+        if (lbWindow == NULL) {
+            lbWindow = SDL_CreateWindow(lbDrawAreaTitle, mdinfo->window_pos_x, mdinfo->window_pos_y, mdinfo->Width, mdinfo->Height, mdinfo->sdlFlags);
+        }
+        if (lbWindow == NULL) {
+            ERRORLOG("SDL_CreateWindow failed for mode %d (%s): %s", (int)mode, mdinfo->Desc, SDL_GetError());
+            return Lb_FAIL;
+        }
     }
     // Always create the game draw surface as a standalone off-screen buffer.
     // The active renderer's Init() is responsible for connecting it to the display
@@ -647,7 +664,8 @@ TbResult LbScreenSetup(TbScreenMode mode, TbScreenCoord width, TbScreenCoord hei
         }
         if (!IsMouseInsideWindow())
         {
-            SDL_WarpMouseInWindow(lbWindow, mdinfo->Width / 2, mdinfo->Height / 2);
+            if (lbWindow != NULL)
+                SDL_WarpMouseInWindow(lbWindow, mdinfo->Width / 2, mdinfo->Height / 2);
         }
     }
 
