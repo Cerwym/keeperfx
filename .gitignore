@@ -9,6 +9,10 @@
 /tools/po2ngdat
 /tools/rnctools
 /tools/sndbanker
+/tools/psp2cgc.exe
+/tools/psp2cgc.dll
+/tools/psp2core-*.bin.txt
+psp2core-*.bin.txt
 /config/fxdata/*.dat
 /config/fxdata/*.fon
 .vs/
