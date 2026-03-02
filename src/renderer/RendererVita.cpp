@@ -25,7 +25,6 @@
 #include "globals.h"
 
 #ifdef VITA_HAVE_VITAGL
-#include <vitashark.h>
 #include <psp2/gxm.h>
 #include <psp2/kernel/clib.h>
 #include <psp2/io/fcntl.h>
@@ -41,7 +40,6 @@
 #ifdef VITA_HAVE_VITAGL
 
 static bool s_vitagl_ready = false;
-static int  s_shark_ret    = 0;  // captured for deferred logging
 
 extern "C" void vita_vitagl_preinit(void)
 {
@@ -57,21 +55,14 @@ extern "C" void vita_vitagl_preinit(void)
 
     PREINIT_LOG("starting vita_vitagl_preinit");
 
-    s_shark_ret = shark_init(NULL);
-    {
-        char buf[64];
-        sceClibSnprintf(buf, sizeof(buf), "shark_init returned: %d (0x%08X)\n",
-                        s_shark_ret, (unsigned)s_shark_ret);
-        sceClibPrintf("KeeperFX vitagl: %s", buf);
-        if (logfd >= 0) sceIoWrite(logfd, buf, sceClibStrnlen(buf, sizeof(buf)));
-    }
-    // Negative means shark failed; still attempt vglInitExtended — vitaGL can
-    // run without Cg compilation (shader compile will fail later if needed).
+    // vitaGL initialises vitashark internally — do NOT call shark_init() here.
+    // VitaQuake2 reference: vglSetVDMBufferSize then vglInitExtended only.
+    vglSetVDMBufferSize(1024 * 1024);
 
-    PREINIT_LOG("calling vglInitExtended(0, 960, 544, 8MB, NONE)");
+    PREINIT_LOG("calling vglInitExtended(0, 960, 544, 16MB, NONE)");
     if (logfd >= 0) sceIoClose(logfd);  // flush before potentially crashing
 
-    GLboolean ok = vglInitExtended(0, 960, 544, 0x800000, SCE_GXM_MULTISAMPLE_NONE);
+    GLboolean ok = vglInitExtended(0, 960, 544, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
 
     logfd = sceIoOpen("ux0:data/keeperfx/vitagl_preinit.log",
                       SCE_O_WRONLY | SCE_O_APPEND, 0777);
@@ -148,7 +139,7 @@ bool RendererVita::Init()
 
 #ifdef VITA_HAVE_VITAGL
     if (s_vitagl_ready) {
-        SYNCLOG("RendererVita: vitaGL preinit OK (shark_init=%d)", s_shark_ret);
+        SYNCLOG("RendererVita: vitaGL preinit OK — palette shader path active");
         // vitaGL context is up — set up GL resources.
         glGenTextures(1, &m_index_tex);
         glBindTexture(GL_TEXTURE_2D, m_index_tex);
@@ -203,7 +194,7 @@ bool RendererVita::Init()
         SYNCLOG("RendererVita: vitaGL palette shader initialised (%dx%d -> 960x544)", k_gameW, k_gameH);
         return true;
     }
-    WARNLOG("RendererVita: vitaGL preinit failed (shark_init=%d) — falling back to SDL2 blit", s_shark_ret);
+    WARNLOG("RendererVita: vitaGL preinit failed — falling back to SDL2 blit");
 #endif // VITA_HAVE_VITAGL
 
     // SDL2 blit path (fallback or non-vitaGL build).
