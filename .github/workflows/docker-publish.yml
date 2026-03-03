@@ -6,6 +6,7 @@ on:
       - master
       - dev
       - "release/**"
+      - "feature/renderer-abstraction-cicd"
     paths:
       - "docker/**"
       - "vcpkg.json"
