@@ -255,7 +255,7 @@ if ($deployedCount -gt 0) {
     Write-Host "⚠️  No files deployed" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "Tips:" -ForegroundColor Yellow
-    Write-Host "  - Compile first: wsl make all" -ForegroundColor White
+    Write-Host "  - Compile first: docker compose -f docker/compose.yml run --rm mingw32 bash -c "cmake --preset windows-x86-release && cmake --build --preset windows-x86-release"" -ForegroundColor White
     Write-Host "  - Specify what to deploy: -DeployGraphics, -DeploySounds, etc." -ForegroundColor White
 }
 Write-Host "=" * 80 -ForegroundColor Green

@@ -87,6 +87,32 @@
         },
 
         {
+            "name": "linux-base",
+            "displayName": "Linux Base",
+            "description": "Base for Linux native builds (no vcpkg toolchain; uses system packages)",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
+            }
+        },
+
+        {
+            "name": "cross-base",
+            "displayName": "Cross-Compile Base",
+            "description": "Base for Docker/Linux cross-compile builds (no vcpkg; toolchain set per-preset)",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}"
+            }
+        },
+
+        {
             "name": "MingGW32-Base",
             "hidden": true,
             "inherits": "base",
@@ -122,10 +148,23 @@
             }
         },
         {
-            "name": "windows-x64-release",
-            "displayName": "Windows x64 Release",
-            "inherits": [ "MingGW32-Base", "x86", "Release" ],
+            "name": "windows-x86-release",
+            "displayName": "Windows x86 Release (Docker/Linux cross-compile)",
+            "description": "Cross-compile for Windows x86 from Linux using i686-w64-mingw32. Designed for use inside the keeperfx-build-mingw32 Docker image.",
+            "inherits": [ "cross-base", "Release" ],
             "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/mingw32.cmake",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
+        },
+
+        {
+            "name": "windows-x64-release",
+            "displayName": "Windows x64 Release (Docker/Linux cross-compile)",
+            "description": "Cross-compile for Windows x64 from Linux using x86_64-w64-mingw32. Designed for use inside the keeperfx-build-mingw64 Docker image.",
+            "inherits": [ "cross-base", "Release" ],
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/mingw64.cmake",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -133,10 +172,9 @@
         {
             "name": "linux-x64-release",
             "displayName": "Linux x64 Release",
-            "description": "Linux native build",
-            "inherits": "base",
+            "description": "Linux native build using system packages",
+            "inherits": [ "linux-base", "Release" ],
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -316,6 +354,13 @@
             "inherits": "HeavyLog",
             "configurePreset": "x86-MinGW32-Release"
         },
+        {
+            "name": "windows-x86-release",
+            "displayName": "Windows x86 Release",
+            "inherits": "StandardLog",
+            "configurePreset": "windows-x86-release"
+        },
+
         {
             "name": "windows-x64-release",
             "displayName": "Windows x64 Release",

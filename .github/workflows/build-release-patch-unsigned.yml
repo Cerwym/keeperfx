@@ -16,36 +16,58 @@ jobs:
 
     name: "Build Release Patch (Unsigned)"
     runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/keeperfx-build-mingw32:latest
+      options: --user root
 
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        
+
+    - name: Mark git directory as safe
+      run: git config --global --add safe.directory '*'
+
+    - name: Install packaging tools
+      run: |
+        set -eux
+        apt-get update -qq
+        apt-get install -y --no-install-recommends 7zip make
+
     - uses: dkfans/setup-cpp@master
 
-    - name: Update system
+    - name: Set build variables
       run: |
-        set -eux
-        sudo apt update
-        sudo apt install -y build-essential g++-mingw-w64-i686 libpng16-16t64 7zip
+        echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+        echo "PACKAGE_SUFFIX=" >> "$GITHUB_ENV"
 
-    - name: Build gfx
+    - name: Build (CMake)
       run: |
         set -eux
-        BUILD_NUMBER=$(git rev-list --count HEAD)
-        PACKAGE_SUFFIX=
+        cmake --preset windows-x86-release
+        cmake --build --preset windows-x86-release
+      env:
+        CMAKE_BUILD_PARALLEL_LEVEL: 4
+
+    - name: Package graphics data
+      run: |
+        set -eux
         make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX pkg-enginegfx
 
-    - name: Build
+    - name: Copy SDL2 DLLs for packaging
       run: |
         set -eux
-        BUILD_NUMBER=$(git rev-list --count HEAD)
-        PACKAGE_SUFFIX=
-        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX heavylog DEBUG=1 -k
-        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX standard
+        mkdir -p sdl/for_final_package
+        cp /usr/i686-w64-mingw32/bin/SDL2.dll       sdl/for_final_package/
+        cp /usr/i686-w64-mingw32/bin/SDL2_mixer.dll  sdl/for_final_package/
+        cp /usr/i686-w64-mingw32/bin/SDL2_image.dll  sdl/for_final_package/
+        cp /usr/i686-w64-mingw32/bin/SDL2_net.dll    sdl/for_final_package/
+
+    - name: Create release package
+      run: |
+        set -eux
         make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX package
-        echo "ZIP_NAME=$(basename -s .7z pkg/keeperfx*.7z)" >> $GITHUB_ENV
+        echo "ZIP_NAME=$(basename -s .7z pkg/keeperfx*.7z)" >> "$GITHUB_ENV"
         rm pkg/keeperfx*.7z
 
     - name: Upload artifact

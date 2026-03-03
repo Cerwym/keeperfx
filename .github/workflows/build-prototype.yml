@@ -2,92 +2,67 @@ name: Test Prototypes
 
 on:
   pull_request:
-    types: [ready_for_review, review_requested]
+    types: [opened, synchronize, ready_for_review, review_requested]
+    branches: [ "**" ]
 
 jobs:
   build-prototype:
-    name: "Build Prototype Windows x86"
-    runs-on: ubuntu-24.04
+    name: "Prototype ${{ matrix.name }}"
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.container }}
+      options: --user root
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x86
+            container: ghcr.io/${{ github.repository_owner }}/keeperfx-build-mingw32:latest
+            preset: windows-x86-release
+
+          - name: Windows x64
+            container: ghcr.io/${{ github.repository_owner }}/keeperfx-build-mingw64:latest
+            preset: windows-x64-release
+
+          - name: Linux x64
+            container: ghcr.io/${{ github.repository_owner }}/keeperfx-build-linux:latest
+            preset: linux-x64-release
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        
-    - uses: dkfans/setup-cpp@master
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
 
-    - name: Update system
-      run: |
-        set -eux
-        sudo apt update
-        sudo apt install -y build-essential g++-mingw-w64-i686 libpng16-16t64 7zip
+      - name: Mark git directory as safe
+        run: git config --global --add safe.directory '*'
 
-    - name: Build
-      run: |
-        set -eux
-        BUILD_NUMBER=$(git rev-list --count origin/master)
-        GITHUB_SHA=$(cat $GITHUB_EVENT_PATH | jq -r .pull_request.head.sha)
-        PACKAGE_SUFFIX=Prototype_$(git rev-parse --short=7 "$GITHUB_SHA")
-        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX heavylog DEBUG=1 -k
-        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX standard
-        make BUILD_NUMBER=$BUILD_NUMBER PACKAGE_SUFFIX=$PACKAGE_SUFFIX package
-        echo "ZIP_NAME=$(basename -s .7z pkg/keeperfx*.7z)" >> $GITHUB_ENV
-        rm pkg/keeperfx*.7z
+      - name: Set prototype suffix
+        run: |
+          GITHUB_SHA=$(cat "$GITHUB_EVENT_PATH" | python3 -c "import sys,json; print(json.load(sys.stdin)['pull_request']['head']['sha'])")
+          echo "PACKAGE_SUFFIX=Prototype_$(git rev-parse --short=7 $GITHUB_SHA)" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$(git rev-list --count origin/master)" >> "$GITHUB_ENV"
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.ZIP_NAME }}
-        path: pkg/**
+      - name: Configure CMake
+        run: cmake --preset ${{ matrix.preset }} -DPACKAGE_SUFFIX=${{ env.PACKAGE_SUFFIX }} -DBUILD_NUMBER=${{ env.BUILD_NUMBER }}
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
 
-  build-prototype-linux:
-    name: "Build Prototype Linux x86_64"
-    runs-on: ubuntu-24.04
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
 
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Upload prototype artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: keeperfx-prototype-${{ matrix.preset }}-${{ env.PACKAGE_SUFFIX }}
+          path: |
+            out/build/${{ matrix.preset }}/keeperfx*
+            out/build/${{ matrix.preset }}/*.exe
+            out/build/${{ matrix.preset }}/*.dll
+            out/build/${{ matrix.preset }}/*.map
+          if-no-files-found: warn
 
-    - name: Update system
-      run: |
-        set -eux
-        sudo apt update
-        sudo apt install -y \
-          build-essential \
-          pkg-config \
-          curl \
-          libavcodec-dev \
-          libavformat-dev \
-          libavutil-dev \
-          libopenal-dev \
-          libluajit-5.1-dev \
-          libminizip-dev \
-          libnatpmp-dev \
-          libspng-dev \
-          libsdl2-dev \
-          libsdl2-image-dev \
-          libsdl2-mixer-dev \
-          libsdl2-net-dev \
-          libswresample-dev \
-          libminiupnpc-dev \
-          zlib1g-dev
-
-    - name: Build
-      run: |
-        set -eux
-        VER_MAJOR=$(grep -E '^VER_MAJOR=' version.mk | cut -d= -f2)
-        VER_MINOR=$(grep -E '^VER_MINOR=' version.mk | cut -d= -f2)
-        VER_RELEASE=$(grep -E '^VER_RELEASE=' version.mk | cut -d= -f2)
-        BUILD_NUMBER=$(git rev-list --count origin/master)
-        GITHUB_SHA=$(cat $GITHUB_EVENT_PATH | jq -r .pull_request.head.sha)
-        PACKAGE_SUFFIX=Prototype_$(git rev-parse --short=7 "$GITHUB_SHA")
-        LINUX_ARTIFACT_NAME=keeperfx-linux_x86_64-${VER_MAJOR}_${VER_MINOR}_${VER_RELEASE}_${BUILD_NUMBER}_${PACKAGE_SUFFIX}-patch
-        echo "LINUX_ARTIFACT_NAME=$LINUX_ARTIFACT_NAME" >> $GITHUB_ENV
-        make BUILD_NUMBER=$BUILD_NUMBER VER_SUFFIX=$PACKAGE_SUFFIX -f linux.mk
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.LINUX_ARTIFACT_NAME }}
-        path: bin/keeperfx

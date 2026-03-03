@@ -1,226 +1,162 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Creates a layered deployment environment using Windows junctions and hard links.
+    Creates a Docker-native layered deployment environment for local testing.
 
 .DESCRIPTION
-    Initializes a .deploy/ directory with:
-    - Layer 0 (Base): Junctions to clean master directories (read-only view)
-    - Layer 1 (Overlay): Hard links to files that may be modified
-    - Layer 2 (Modified): Space for your changed files (exe, DATs, configs)
-    
-    Result: Full game installation view with 95% disk savings (20MB vs 500MB).
+    Initializes the .deploy/ directory by assembling all layers via Docker:
 
-.PARAMETER CleanMasterPath
-    Path to clean KeeperFX installation (e.g., C:\Users\peter\source\repos\keeperfx-clean\1.3.1)
+    Layer 0 (DK originals)  — extracted from keeperfx-dk-originals:local image
+    Layer 1 (SDL2 DLLs)     — extracted from keeperfx-build-mingw32:latest image
+    Layer 2 (KFX gfx data)  — built by Docker and extracted to .deploy/data/ + .deploy/ldata/
+    Layer 3 (Repo assets)   — Windows junctions → live edits in VS Code instant in .deploy/
+    Layer 4 (Executable)    — populated by compile task on each build
+
+    The DK originals image is built once per machine by init_dk_layer.ps1.
+    If not present, this script will run it automatically.
+
+    No clean master directory needed. No per-worktree prompts.
 
 .EXAMPLE
-    .\init_layered_deploy.ps1 -CleanMasterPath "C:\Users\peter\source\repos\keeperfx-clean\1.3.1"
+    .\.vscode\init_layered_deploy.ps1
 #>
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)]
-    [string]$CleanMasterPath,
-    
+    [string]$WorkspaceFolder = (Split-Path -Parent $PSScriptRoot),
+
     [Parameter(Mandatory=$false)]
-    [string]$WorkspaceFolder
+    [switch]$Force
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Set default workspace folder if not provided
-if (-not $WorkspaceFolder) {
-    $WorkspaceFolder = Split-Path -Parent $PSScriptRoot
+$script:C = @{
+    Reset  = "`e[0m"; Green  = "`e[32m"; Yellow = "`e[33m"
+    Blue   = "`e[34m"; Red   = "`e[31m"; Cyan   = "`e[36m"; Gray = "`e[90m"
+}
+function Write-C([string]$Msg, [string]$Color = 'Reset') {
+    Write-Host "$($script:C[$Color])$Msg$($script:C.Reset)"
 }
 
-# ANSI color codes for output
-$script:Colors = @{
-    Reset = "`e[0m"
-    Green = "`e[32m"
-    Yellow = "`e[33m"
-    Blue = "`e[34m"
-    Red = "`e[31m"
-    Cyan = "`e[36m"
-}
+$DEPLOY      = Join-Path $WorkspaceFolder ".deploy"
+$DK_IMAGE    = "keeperfx-dk-originals:local"
+$MINGW_IMAGE = "ghcr.io/dkfans/keeperfx-build-mingw32:latest"
 
-function Write-ColorOutput {
-    param([string]$Message, [string]$ColorCode = 'Reset')
-    Write-Host "$($script:Colors[$ColorCode])$Message$($script:Colors.Reset)" -NoNewline
-    Write-Host ""
-}
+# Read DOCKER_ORG from env if set (matches compose.yml)
+if ($env:DOCKER_ORG) { $MINGW_IMAGE = "ghcr.io/$($env:DOCKER_ORG)/keeperfx-build-mingw32:latest" }
 
-function Test-AdminPrivileges {
-    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
-    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-}
+Write-C "=== KeeperFX Layered Deploy Init ===" 'Cyan'
+Write-Host ""
 
-# Main script
-Write-ColorOutput "=== KeeperFX Layered Deployment Initializer ===" 'Cyan'
-
-# Get or validate clean master path
-if (-not $CleanMasterPath) {
-    $settingsPath = Join-Path $WorkspaceFolder ".vscode\settings.json"
-    if (Test-Path $settingsPath) {
-        $settings = Get-Content $settingsPath -Raw | ConvertFrom-Json
-        $CleanMasterPath = $settings.'keeperfx.cleanMasterPath'
+# Handle existing deploy directory
+if (Test-Path $DEPLOY) {
+    if (-not $Force) {
+        Write-C "Deployment already exists at: $DEPLOY" 'Yellow'
+        $r = Read-Host "Delete and recreate? (y/N)"
+        if ($r -ne 'y') { Write-C "Aborted." 'Yellow'; exit 0 }
     }
-}
-
-if (-not $CleanMasterPath) {
-    Write-ColorOutput "ERROR: Clean master path not specified." 'Red'
-    Write-ColorOutput "Run setup_clean_master.ps1 first or provide -CleanMasterPath parameter." 'Yellow'
-    exit 1
-}
-
-if (-not (Test-Path $CleanMasterPath)) {
-    Write-ColorOutput "ERROR: Clean master not found at: $CleanMasterPath" 'Red'
-    exit 1
-}
-
-Write-ColorOutput "Clean master: $CleanMasterPath" 'Blue'
-
-# Verify clean master has expected structure
-$requiredFiles = @('keeperfx.exe', 'data', 'ldata', 'levels', 'fxdata')
-foreach ($item in $requiredFiles) {
-    $itemPath = Join-Path $CleanMasterPath $item
-    if (-not (Test-Path $itemPath)) {
-        Write-ColorOutput "ERROR: Clean master missing: $item" 'Red'
-        exit 1
-    }
-}
-
-# Setup deployment directory
-$deployPath = Join-Path $WorkspaceFolder ".deploy"
-if (Test-Path $deployPath) {
-    Write-ColorOutput "Deployment already exists at: $deployPath" 'Yellow'
-    $response = Read-Host "Delete and recreate? (y/N)"
-    if ($response -ne 'y') {
-        Write-ColorOutput "Aborted." 'Yellow'
-        exit 0
-    }
-    
-    Write-ColorOutput "Removing existing deployment..." 'Yellow'
+    Write-C "Removing existing deployment..." 'Yellow'
     & "$PSScriptRoot\reset_layered_deploy.ps1" -Force
 }
 
-Write-ColorOutput "Creating deployment directory..." 'Green'
-New-Item -ItemType Directory -Path $deployPath -Force | Out-Null
+New-Item -ItemType Directory -Path $DEPLOY -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $DEPLOY "data")  -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $DEPLOY "sound") -Force | Out-Null
 
-# Create metadata directory
-$metadataPath = Join-Path $deployPath ".overlay"
-New-Item -ItemType Directory -Path $metadataPath -Force | Out-Null
+# ── Layer 0: DK originals ─────────────────────────────────────────────────────
+Write-C "`nLayer 0: DK original files" 'Green'
 
-# Layer 0: Create junctions for large read-only directories
-Write-ColorOutput "`nLayer 0: Creating junctions (base directories)..." 'Green'
+$imageExists = docker image inspect $DK_IMAGE 2>$null
+if ($LASTEXITCODE -ne 0) {
+    Write-C "  Image '$DK_IMAGE' not found. Running one-time setup..." 'Yellow'
+    & "$PSScriptRoot\init_dk_layer.ps1" -WorkspaceFolder $WorkspaceFolder
+    if ($LASTEXITCODE -ne 0) { Write-C "ERROR: DK layer setup failed." 'Red'; exit 1 }
+}
 
-$junctionDirs = @('ldata', 'levels', 'fxdata', 'lang', 'campgns', 'sound', 'music')
-foreach ($dir in $junctionDirs) {
-    $sourcePath = Join-Path $CleanMasterPath $dir
-    $targetPath = Join-Path $deployPath $dir
-    
-    if (Test-Path $sourcePath) {
-        Write-Host "  Junction: $dir -> " -NoNewline
-        cmd /c mklink /J "$targetPath" "$sourcePath" 2>&1 | Out-Null
+$cid = docker create $DK_IMAGE 2>&1
+docker cp "${cid}:/dk/data/."  (Join-Path $DEPLOY "data")  | Out-Null
+docker cp "${cid}:/dk/sound/." (Join-Path $DEPLOY "sound") | Out-Null
+docker rm $cid | Out-Null
+Write-C "  ✓ 16 original DK files extracted" 'Green'
+
+# ── Layer 1: SDL2 DLLs ────────────────────────────────────────────────────────
+Write-C "`nLayer 1: SDL2 DLLs" 'Green'
+
+Write-C "  Pulling $MINGW_IMAGE ..." 'Gray'
+docker pull $MINGW_IMAGE | Out-Null
+
+$cid = docker create $MINGW_IMAGE 2>&1
+docker cp "${cid}:/usr/i686-w64-mingw32/bin/SDL2.dll"       (Join-Path $DEPLOY "SDL2.dll")       | Out-Null
+docker cp "${cid}:/usr/i686-w64-mingw32/bin/SDL2_mixer.dll"  (Join-Path $DEPLOY "SDL2_mixer.dll")  | Out-Null
+docker cp "${cid}:/usr/i686-w64-mingw32/bin/SDL2_image.dll"  (Join-Path $DEPLOY "SDL2_image.dll")  | Out-Null
+docker cp "${cid}:/usr/i686-w64-mingw32/bin/SDL2_net.dll"    (Join-Path $DEPLOY "SDL2_net.dll")    | Out-Null
+docker rm $cid | Out-Null
+Write-C "  ✓ SDL2*.dll extracted" 'Green'
+
+# ── Layer 2: KFX generated gfx data ──────────────────────────────────────────
+Write-C "`nLayer 2: KFX generated graphics data" 'Green'
+Write-C "  Building pkg-gfx via Docker (may take a few minutes first time)..." 'Yellow'
+
+docker compose -f (Join-Path $WorkspaceFolder "docker\compose.yml") `
+    run --rm linux bash -c "make pkg-gfx"
+
+# Copy generated data files into .deploy/
+$pkgData  = Join-Path $WorkspaceFolder "pkg\data"
+$pkgLdata = Join-Path $WorkspaceFolder "pkg\ldata"
+
+if (Test-Path $pkgData) {
+    Copy-Item (Join-Path $pkgData "*") (Join-Path $DEPLOY "data") -Force
+    Write-C "  ✓ pkg/data/ deployed" 'Green'
+} else {
+    Write-C "  ⚠  pkg/data/ not found — run make pkg-gfx manually if needed" 'Yellow'
+}
+
+if (Test-Path $pkgLdata) {
+    New-Item -ItemType Directory -Path (Join-Path $DEPLOY "ldata") -Force | Out-Null
+    Copy-Item (Join-Path $pkgLdata "*") (Join-Path $DEPLOY "ldata") -Force
+    Write-C "  ✓ pkg/ldata/ deployed" 'Green'
+}
+
+# ── Layer 3: Repo assets (Windows junctions — live edits) ─────────────────────
+Write-C "`nLayer 3: Repo asset junctions (live editing)" 'Green'
+
+$junctions = @{
+    "campgns" = "campgns"
+    "levels"  = "levels"
+    "lang"    = "lang"
+    "fxdata"  = "fxdata"
+    "config"  = "config"
+}
+
+foreach ($pair in $junctions.GetEnumerator()) {
+    $src  = Join-Path $WorkspaceFolder $pair.Value
+    $dest = Join-Path $DEPLOY $pair.Key
+    if (Test-Path $src) {
+        cmd /c mklink /J "$dest" "$src" 2>&1 | Out-Null
         if ($LASTEXITCODE -eq 0) {
-            Write-ColorOutput "OK" 'Green'
+            Write-C "  ✓ $($pair.Key) -> repo/$($pair.Value)" 'Green'
         } else {
-            Write-ColorOutput "FAILED" 'Red'
+            Write-C "  ✗ Failed to create junction for $($pair.Key)" 'Red'
         }
-    }
-}
-
-# Layer 1: Create hard links for all data/ files (frequently modified)
-Write-ColorOutput "`nLayer 1: Creating hard links (modifiable files)..." 'Green'
-
-$dataSourcePath = Join-Path $CleanMasterPath "data"
-$dataTargetPath = Join-Path $deployPath "data"
-New-Item -ItemType Directory -Path $dataTargetPath -Force | Out-Null
-
-$dataFiles = Get-ChildItem -Path $dataSourcePath -File
-foreach ($file in $dataFiles) {
-    $sourcePath = $file.FullName
-    $targetPath = Join-Path $dataTargetPath $file.Name
-    
-    Write-Host "  Hardlink: data\$($file.Name) -> " -NoNewline
-    cmd /c mklink /H "$targetPath" "$sourcePath" 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
-        Write-ColorOutput "OK" 'Green'
     } else {
-        Write-ColorOutput "FAILED" 'Red'
+        Write-C "  ⚠  $($pair.Value) not found in repo — skipping junction" 'Yellow'
     }
 }
 
-# Copy keeperfx.exe (will be overwritten by builds)
-Write-ColorOutput "`nCopying executable and DLLs..." 'Green'
-$exeSource = Join-Path $CleanMasterPath "keeperfx.exe"
-$exeTarget = Join-Path $deployPath "keeperfx.exe"
-Copy-Item $exeSource $exeTarget -Force
-Write-ColorOutput "  keeperfx.exe copied" 'Green'
-
-# Copy DLLs
-$dllFiles = Get-ChildItem -Path $CleanMasterPath -Filter "*.dll" -File
-foreach ($dll in $dllFiles) {
-    $dllTarget = Join-Path $deployPath $dll.Name
-    Copy-Item $dll.FullName $dllTarget -Force
-    Write-ColorOutput "  $($dll.Name) copied" 'Green'
+# Placeholder keeperfx.cfg at root (game expects it there)
+$cfgSrc = Join-Path $WorkspaceFolder "config\keeperfx.cfg"
+if (Test-Path $cfgSrc) {
+    cmd /c mklink /H (Join-Path $DEPLOY "keeperfx.cfg") "$cfgSrc" 2>&1 | Out-Null
+    Write-C "  ✓ keeperfx.cfg (hard link)" 'Green'
 }
 
-# Copy config files to root (keeperfx expects them there)
-Write-ColorOutput "`nCopying configuration files..." 'Green'
-
-# Copy keeperfx.cfg to root
-$configSource = Join-Path $CleanMasterPath "keeperfx.cfg"
-if (Test-Path $configSource) {
-    Copy-Item $configSource (Join-Path $deployPath "keeperfx.cfg") -Force
-    Write-ColorOutput "  keeperfx.cfg copied to root" 'Green'
-}
-
-# Copy mods/ directory to root
-$modsSource = Join-Path $CleanMasterPath "mods"
-if (Test-Path $modsSource) {
-    Copy-Item $modsSource (Join-Path $deployPath "mods") -Recurse -Force
-    
-    # Create load_order.cfg if only _load_order.cfg exists (disabled by default)
-    $modsTarget = Join-Path $deployPath "mods"
-    $loadOrderFile = Join-Path $modsTarget "load_order.cfg"
-    $disabledLoadOrder = Join-Path $modsTarget "_load_order.cfg"
-    if (-not (Test-Path $loadOrderFile) -and (Test-Path $disabledLoadOrder)) {
-        Copy-Item -Path $disabledLoadOrder -Destination $loadOrderFile -Force
-        Write-ColorOutput "  load_order.cfg created from template" 'DarkGray'
-    }
-    
-    Write-ColorOutput "  mods/ copied to root" 'Green'
-}
-
-# Copy creatrs/ directory to root
-$creatrsSource = Join-Path $CleanMasterPath "creatrs"
-if (Test-Path $creatrsSource) {
-    Copy-Item $creatrsSource (Join-Path $deployPath "creatrs") -Recurse -Force
-    Write-ColorOutput "  creatrs/ copied to root" 'Green'
-}
-
-# Create manifest
-$manifest = @{
-    created = Get-Date -Format "yyyy-MM-ddTHH:mm:ss"
-    cleanMaster = $CleanMasterPath
-    workspace = $WorkspaceFolder
-    branch = (git branch --show-current 2>$null)
-    junctions = $junctionDirs
-    hardlinks = $dataFiles.Name
-}
-
-$manifestPath = Join-Path $metadataPath "manifest.json"
-$manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath -Encoding UTF8
-
-Write-ColorOutput "`n=== Deployment Ready ===" 'Cyan'
-Write-ColorOutput "Location: $deployPath" 'Blue'
-Write-ColorOutput "Disk usage: ~20MB (junctions + hard links)" 'Green'
-Write-ColorOutput "`nTo deploy your builds:" 'Yellow'
-Write-ColorOutput "  1. Build: wsl make" 'Yellow'
-Write-ColorOutput "  2. Deploy: .\.vscode\deploy_assets.ps1" 'Yellow'
-Write-ColorOutput "  3. Run: .\.vscode\launch_deploy.ps1" 'Yellow'
-Write-ColorOutput "`nManifest saved to: .deploy\.overlay\manifest.json" 'Blue'
-
+# ── Done ──────────────────────────────────────────────────────────────────────
+Write-Host ""
+Write-C "=== Deployment Ready ===" 'Cyan'
+Write-C "Location: $DEPLOY" 'Blue'
+Write-C "Disk usage: ~25MB (junctions + Docker-extracted files)" 'Green'
+Write-Host ""
+Write-C "Next: press Ctrl+Shift+B in VS Code to build and deploy keeperfx.exe" 'Yellow'

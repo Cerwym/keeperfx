@@ -26,6 +26,11 @@ jobs:
             container: gnuton/vitasdk-docker:latest
             artifact-name: keeperfx-vita
 
+          - name: PS Vita Debug (vitaGL)
+            preset: vita-debug
+            container: gnuton/vitasdk-docker:latest
+            artifact-name: keeperfx-vita-debug
+
           - name: Nintendo Switch
             preset: switch-release
             container: devkitpro/devkita64:latest
@@ -91,6 +96,28 @@ jobs:
             --disable-network
           make -j$(nproc)
           make install
+
+      # PS Vita Debug: install vitashark + mathneon (vitaGL compile/link deps) via vdpm.
+      # vitaGL itself is built from source by CMake's ExternalProject_Add (flags live
+      # in CMakeLists.txt).  Cache the ExternalProject output so CI doesn't re-clone
+      # and rebuild vitaGL on every run; cache key includes CMakeLists.txt so it
+      # invalidates automatically when the debug flags change.
+      - name: Install vitaGL dependencies (vitashark, mathneon)
+        if: matrix.preset == 'vita-debug'
+        run: |
+          set -eux
+          $VITASDK/bin/vdpm vitashark mathneon
+
+      - name: Cache vitaGL (ExternalProject build)
+        if: matrix.preset == 'vita-debug'
+        uses: actions/cache@v4
+        with:
+          path: |
+            out/build/vita-debug/_deps/vitagl-src
+            out/build/vita-debug/_deps/vitagl-src-stamp
+            /usr/local/vitasdk/arm-vita-eabi/lib/libvitaGL.a
+            /usr/local/vitasdk/arm-vita-eabi/include/vitaGL.h
+          key: vitagl-externalproject-${{ hashFiles('CMakeLists.txt') }}
 
       - name: Setup CMake and Ninja
         uses: lukka/get-cmake@latest

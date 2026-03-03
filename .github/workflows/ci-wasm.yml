@@ -9,8 +9,11 @@ on:
 jobs:
   build-wasm:
     name: Build WebAssembly
-    runs-on: ubuntu-24.04
-    
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/keeperfx-build-wasm:latest
+      options: --user root
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -18,38 +21,18 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Setup Emscripten
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: 'latest'
-
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: '9558037875497b9db8cf38fcd7db68ec661bffe7'
-
-      - name: Cache vcpkg packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ github.workspace }}/vcpkg
-            ~/.cache/vcpkg
-          key: vcpkg-wasm-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
-          restore-keys: |
-            vcpkg-wasm-
-
-      - name: Setup CMake and Ninja
-        uses: lukka/get-cmake@latest
+      - name: Mark git directory as safe
+        run: git config --global --add safe.directory '*'
 
       - name: Configure CMake
-        uses: lukka/run-cmake@v10
-        with:
-          configurePreset: wasm-release
+        run: cmake --preset wasm-release
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
 
       - name: Build
-        uses: lukka/run-cmake@v10
-        with:
-          buildPreset: wasm-release
+        run: cmake --build --preset wasm-release
+        env:
+          CMAKE_BUILD_PARALLEL_LEVEL: 4
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -60,3 +43,4 @@ jobs:
             out/build/wasm-release/*.js
             out/build/wasm-release/*.html
           if-no-files-found: warn
+

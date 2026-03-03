@@ -1,0 +1,83 @@
+name: Publish Docker Images
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+      - "release/**"
+    paths:
+      - "docker/**"
+      - "vcpkg.json"
+      - "vcpkg-configuration.json"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  ORG: ${{ github.repository_owner }}
+
+jobs:
+  build-and-push:
+    name: Build & push ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mingw32
+            image: keeperfx-build-mingw32
+            context: .
+            dockerfile: docker/mingw32/Dockerfile
+
+          - name: mingw64
+            image: keeperfx-build-mingw64
+            context: .
+            dockerfile: docker/mingw64/Dockerfile
+
+          - name: linux
+            image: keeperfx-build-linux
+            context: .
+            dockerfile: docker/linux/Dockerfile
+
+          - name: wasm
+            image: keeperfx-build-wasm
+            context: .
+            dockerfile: docker/wasm/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.image }}:latest
+          cache-to: type=inline

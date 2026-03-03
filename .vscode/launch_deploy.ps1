@@ -30,7 +30,7 @@ if (-not (Test-Path $deployPath)) {
 
 if (-not (Test-Path $exePath)) {
     Write-Host "ERROR: keeperfx.exe not found at: $exePath" -ForegroundColor Red
-    Write-Host "Build and deploy first with: wsl make && .\.vscode\deploy_assets.ps1 -All" -ForegroundColor Yellow
+    Write-Host "Build and deploy first with: Ctrl+Shift+B to build, then .\.vscode\deploy_assets.ps1 -All" -ForegroundColor Yellow
     exit 1
 }
 

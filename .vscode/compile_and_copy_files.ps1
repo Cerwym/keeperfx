@@ -1,172 +1,82 @@
-# receive params for script (must be first line in file, other than comments)
-Param( $workspaceFolder, $launchJsonFile, $compileSettingsFile )
+#!/usr/bin/env pwsh
+# Called by the "Compile, Copy Files" VS Code task (triggered by launch.json F5 debugger).
+# Builds keeperfx.exe via Docker and deploys it to .deploy/.
 
-# show param inputs
-Write-Host "workspaceFolder: '$workspaceFolder'" -ForegroundColor DarkGray
-Write-Host "launchJsonFile: '$launchJsonFile'" -ForegroundColor DarkGray
-Write-Host "compileSettingsFile: '$compileSettingsFile'" -ForegroundColor DarkGray
+Param(
+    [string]$workspaceFolder,
+    [string]$launchJsonFile,
+    [string]$compileSettingsFile
+)
 
-# validate param inputs
-if( -not (Test-Path $workspaceFolder))
-{
-    Write-Host "Invalid workspaceFolder '$workspaceFolder'. Something went wrong." -ForegroundColor Red;
-    exit;
-}
-if( -not (Test-Path $launchJsonFile))
-{
-    Write-Host "Invalid launchJsonFile '$launchJsonFile'. Something went wrong." -ForegroundColor Red;
-    exit;
-}
-if( -not (Test-Path $compileSettingsFile))
-{
-    Write-Host "Invalid compileSettingsFile '$compileSettingsFile'. Something went wrong." -ForegroundColor Red;
-    exit;
-}
+Write-Host "workspaceFolder:    '$workspaceFolder'"    -ForegroundColor DarkGray
+Write-Host "launchJsonFile:     '$launchJsonFile'"     -ForegroundColor DarkGray
+Write-Host "compileSettingsFile:'$compileSettingsFile'" -ForegroundColor DarkGray
 
-# inform user of relevant information
-Write-Host ('Source Code directory: ' + "${workspaceFolder}".Replace('\\', '/')) -ForegroundColor White;
+if (-not (Test-Path $workspaceFolder))    { Write-Host "Invalid workspaceFolder." -ForegroundColor Red; exit 1 }
+if (-not (Test-Path $launchJsonFile))     { Write-Host "Invalid launchJsonFile."  -ForegroundColor Red; exit 1 }
+if (-not (Test-Path $compileSettingsFile)){ Write-Host "Invalid compileSettingsFile." -ForegroundColor Red; exit 1 }
 
-# grab game directory via regex
-$regexPattern = '\"cwd\"\s*:\s*\"(.*?)\"';
-Write-Host "regexPattern: '$regexPattern'" -ForegroundColor DarkGray;
+# ── Parse debug / package-suffix flags ───────────────────────────────────────
+$debugFlag      = 'DEBUG=0'
+$debugFlagFTest = 'FTEST_DEBUG=0'
+$cmakeExtraArgs = @()
 
-$regexResult = (Get-Content -Raw "$launchJsonFile" | Select-String -Pattern $regexPattern);
+$compileSetting = (Get-Content "$compileSettingsFile" -Raw).Trim()
 
-if( -not $regexResult.Matches -or $regexResult.Matches.Length -le 0 -or -not $regexResult.Matches.Groups -or $regexResult.Matches.Groups.Length -le 1 )
-{
-    Write-Host "The current working directory `"cwd`" could not be found in '$launchJsonFile', please edit the file and update it." -ForegroundColor Red;
-    Write-Host "Example: `"cwd`": `"D:/Games/DungeonKeeper/`" (be sure to use forward slashes)." -ForegroundColor Red;
-    exit;
+if ($compileSetting -like '*DEBUG=1*') {
+    $debugFlag = 'DEBUG=1'
+    $cmakeExtraArgs += '-DDEBUG=1'
+    Write-Host 'Compiling with DEBUG=1' -ForegroundColor Yellow
+} else {
+    Write-Host 'Compiling with DEBUG=0' -ForegroundColor Green
 }
 
-$gameDir = $regexResult.Matches[0].Groups[1].Value.Replace('\\', '/');
-
-# Expand VS Code variables
-$gameDir = $gameDir.Replace('${workspaceFolder}', $workspaceFolder.Replace('\', '/'));
-
-Write-Host "Found current working directory (cwd): '$gameDir' in '$launchJsonFile'" -ForegroundColor White;
-if( -not (Test-Path $gameDir) )
-{
-    Write-Host "Directory '$gameDir' invalid, make sure it exists on-disk and the path is spelled correctly." -ForegroundColor Red;
-    Write-Host "Example: `"cwd`": `"D:/Games/DungeonKeeper/`" (be sure to use forward slashes)." -ForegroundColor Red;
-    exit;
-}
-else
-{
-    Write-Host "Directory '$gameDir' valid, exists on-disk" -ForegroundColor DarkGray;
+if ($compileSetting -like '*FTEST_DEBUG=1*') {
+    $debugFlagFTest = 'FTEST_DEBUG=1'
+    $cmakeExtraArgs += '-DFTEST_DEBUG=1'
+    Write-Host 'Compiling with FTEST_DEBUG=1' -ForegroundColor Magenta
 }
 
-$debugFlag      = 'DEBUG=0';
-$debugFlagFTest = 'FTEST_DEBUG=0';
-$packageSuffix  = '';
+# ── Build via Docker ──────────────────────────────────────────────────────────
+$PRESET  = 'windows-x86-release'
+$COMPOSE = Join-Path $workspaceFolder 'docker\compose.yml'
 
-$compileSetting = (Get-Content "$compileSettingsFile" -Raw).Trim();
-if ($compileSetting -like '*DEBUG=1*')
-{
-    $debugFlag = 'DEBUG=1';
-}
-if ($compileSetting -like '*FTEST_DEBUG=1*')
-{
-    $debugFlagFTest = 'FTEST_DEBUG=1';
-}
-if ($compileSetting -match 'PACKAGE_SUFFIX\s*=\s*(.+)')
-{
-    $customSuffix = $Matches[1].Trim();
-    $branchName = wsl git rev-parse --abbrev-ref HEAD 2>$null;
-    if ($branchName) {
-        $branchName = $branchName.Trim();
-        # Replace forward slashes and other special characters with hyphens
-        $branchName = $branchName -replace '[/\\:]', '-';
-        $packageSuffix = "PACKAGE_SUFFIX=$customSuffix-$branchName";
-    } else {
-        $packageSuffix = "PACKAGE_SUFFIX=$customSuffix";
-    }
+$cmakeConfigArgs = "cmake --preset $PRESET" + (($cmakeExtraArgs | ForEach-Object { " $_" }) -join '')
+$cmakeBuildArgs  = "cmake --build --preset $PRESET"
+
+Write-Host ""
+Write-Host "Building via Docker (preset: $PRESET)..." -ForegroundColor Cyan
+
+docker compose -f $COMPOSE run --rm mingw32 bash -c "$cmakeConfigArgs && $cmakeBuildArgs"
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Compilation failed!" -ForegroundColor Red
+    exit 1
 }
 
-if ($debugFlag -eq 'DEBUG=1')
-{
-    Write-Host 'Compiling with DEBUG=1' -ForegroundColor Yellow;
-}
-else
-{
-    Write-Host 'Compiling with DEBUG=0' -ForegroundColor Green;
-}
+Write-Host "Compilation successful!" -ForegroundColor Green
 
-if ($debugFlagFTest -eq 'FTEST_DEBUG=1')
-{
-    Write-Host 'Compiling with FTEST_DEBUG=1' -ForegroundColor Magenta;
-}
-if ($packageSuffix)
-{
-    Write-Host "Compiling with $packageSuffix" -ForegroundColor Cyan;
-}
-wsl make all -j`nproc` $debugFlag $debugFlagFTest $packageSuffix;
-if ($?) {
-    Write-Host 'Compilation successful!' -ForegroundColor Green;
-}
-else
-{
-    Write-Host 'Compilation failed!' -ForegroundColor Red;
-    exit 1;
-}
-
-# Deploy to .deploy/ directory instead of copying to game directory
+# ── Deploy to .deploy/ ────────────────────────────────────────────────────────
 $deployPath = Join-Path $workspaceFolder ".deploy"
 
-# Initialize .deploy/ if it doesn't exist
 if (-not (Test-Path $deployPath)) {
-    Write-Host 'Initializing layered deployment (.deploy/)...' -ForegroundColor Cyan;
-    $initScript = Join-Path $workspaceFolder ".vscode\init_layered_deploy.ps1"
-    if (Test-Path $initScript) {
-        & $initScript
-        if (-not $?) {
-            Write-Host 'Failed to initialize deployment!' -ForegroundColor Red;
-            exit 1;
-        }
-    } else {
-        Write-Host 'ERROR: init_layered_deploy.ps1 not found!' -ForegroundColor Red;
-        exit 1;
-    }
+    Write-Host "Initializing layered deployment (.deploy/)..." -ForegroundColor Cyan
+    & "$PSScriptRoot\init_layered_deploy.ps1" -WorkspaceFolder $workspaceFolder
+    if ($LASTEXITCODE -ne 0) { Write-Host "Deployment init failed!" -ForegroundColor Red; exit 1 }
 }
 
-# Deploy compiled assets
-Write-Host 'Deploying assets to .deploy/...' -ForegroundColor Cyan;
-Copy-Item -Path "${workspaceFolder}\\bin\\keeperfx.exe" -Destination $deployPath -Force;
-Copy-Item -Path "${workspaceFolder}\\bin\\*.dll" -Destination $deployPath -Force -ErrorAction SilentlyContinue;
-
-# Deploy config files to root (keeperfx expects them there, not in config/)
-Write-Host 'Deploying config files to root...' -ForegroundColor Cyan;
-
-# Copy keeperfx.cfg to root
-$sourceConfigFile = Join-Path $workspaceFolder "config\\keeperfx.cfg"
-if (Test-Path $sourceConfigFile) {
-    Copy-Item -Path $sourceConfigFile -Destination (Join-Path $deployPath "keeperfx.cfg") -Force
-    Write-Host '  keeperfx.cfg deployed to root' -ForegroundColor DarkGray
+$exeSrc = Join-Path $workspaceFolder "out\build\$PRESET\keeperfx.exe"
+if (Test-Path $exeSrc) {
+    Copy-Item $exeSrc (Join-Path $deployPath "keeperfx.exe") -Force
+    Write-Host "Deployed: keeperfx.exe" -ForegroundColor Green
+} else {
+    Write-Host "WARNING: keeperfx.exe not found at expected path: $exeSrc" -ForegroundColor Yellow
 }
 
-# Copy mods/ directory to root
-$sourceModsPath = Join-Path $workspaceFolder "config\\mods"
-$targetModsPath = Join-Path $deployPath "mods"
-if (Test-Path $sourceModsPath) {
-    Copy-Item -Path $sourceModsPath -Destination $targetModsPath -Recurse -Force
-    
-    # Create load_order.cfg if only _load_order.cfg exists (disabled by default)
-    $loadOrderFile = Join-Path $targetModsPath "load_order.cfg"
-    $disabledLoadOrder = Join-Path $targetModsPath "_load_order.cfg"
-    if (-not (Test-Path $loadOrderFile) -and (Test-Path $disabledLoadOrder)) {
-        Copy-Item -Path $disabledLoadOrder -Destination $loadOrderFile -Force
-        Write-Host '  Created load_order.cfg from template' -ForegroundColor DarkGray
-    }
-    
-    Write-Host '  mods/ deployed to root' -ForegroundColor DarkGray
+$hvlogSrc = Join-Path $workspaceFolder "out\build\$PRESET\keeperfx_hvlog.exe"
+if (Test-Path $hvlogSrc) {
+    Copy-Item $hvlogSrc (Join-Path $deployPath "keeperfx_hvlog.exe") -Force
+    Write-Host "Deployed: keeperfx_hvlog.exe" -ForegroundColor DarkGray
 }
 
-# Copy creatrs/ directory to root
-$sourceCreatrsPath = Join-Path $workspaceFolder "config\\creatrs"
-$targetCreatrsPath = Join-Path $deployPath "creatrs"
-if (Test-Path $sourceCreatrsPath) {
-    Copy-Item -Path $sourceCreatrsPath -Destination $targetCreatrsPath -Recurse -Force
-    Write-Host '  creatrs/ deployed to root' -ForegroundColor DarkGray
-}
-
-Write-Host 'Deployment complete!' -ForegroundColor Green;
+Write-Host "Deployment complete!" -ForegroundColor Green
