@@ -49,6 +49,11 @@ jobs:
             context: .
             dockerfile: docker/wasm/Dockerfile
 
+          - name: vitasdk
+            image: keeperfx-build-vitasdk
+            context: .
+            dockerfile: docker/vitasdk/Dockerfile
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4

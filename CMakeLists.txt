@@ -410,6 +410,12 @@ if(PLATFORM_VITA)
     # is only needed to satisfy the linker symbol reference in vitashark itself.
     # If libSceShaccCgExt_stub.a is missing: arm-vita-eabi-gcc-ar rcs .../libSceShaccCgExt_stub.a stub.o
     find_library(SCESHACCCGEXT_STUB SceShaccCgExt_stub HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+    if(SCESHACCCGEXT_STUB)
+        target_link_libraries(keeperfx       PRIVATE ${SCESHACCCGEXT_STUB})
+        target_link_libraries(keeperfx_hvlog PRIVATE ${SCESHACCCGEXT_STUB})
+    else()
+        message(WARNING "SceShaccCgExt_stub not found — vitashark sceShaccCgExt symbols may be unresolved")
+    endif()
     target_link_libraries(keeperfx       PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub)
     target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub)
     # VITA_SCE_DIAG: compile-in taiHEN import hooks for SCE subsystem tracing.
