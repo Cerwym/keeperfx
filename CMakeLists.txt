@@ -400,22 +400,19 @@ if(PLATFORM_VITA)
             "${CMAKE_SOURCE_DIR}/shaders/vita_blit_f.gxp" "shaders/vita_blit_f.gxp")
         add_compile_definitions(VITA_USE_PRECOMPILED_SHADERS=1)
         message(STATUS "vitaGL: using pre-compiled .gxp shaders from shaders/")
+        # SceShaccCgExt_stub: vitashark references sceShaccCgExt{Enable,Disable}Extensions at
+        # link time.  These are never called when using pre-compiled .gxp shaders, but the
+        # linker still requires the symbols.  Build a minimal stub rather than depend on the
+        # library being present in the vitasdk container.
+        add_library(sceshacccgext_stubs STATIC
+            "${CMAKE_SOURCE_DIR}/deps/sceshacccgext-stubs/sceshacccgext_stubs.c")
+        target_link_libraries(keeperfx       PRIVATE sceshacccgext_stubs)
+        target_link_libraries(keeperfx_hvlog PRIVATE sceshacccgext_stubs)
     else()
         message(STATUS "vitaGL disabled (VITA_ENABLE_VITAGL=OFF) — using SDL2 GXM renderer path.")
         set(VITA_SHADER_VPK_FILES "")
     endif()
     # vitaGL dependency stubs — SceKernelDmacMgr for sceDmacMemcpy (used by vitaGL internally).
-    # SceShaccCgExt_stub: link-time stub for sceShaccCgExt{Enable,Disable}Extensions (vitashark dep).
-    # With pre-compiled .gxp shaders, vitashark never calls SceShaccCgExt at runtime — the stub
-    # is only needed to satisfy the linker symbol reference in vitashark itself.
-    # If libSceShaccCgExt_stub.a is missing: arm-vita-eabi-gcc-ar rcs .../libSceShaccCgExt_stub.a stub.o
-    find_library(SCESHACCCGEXT_STUB SceShaccCgExt_stub HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
-    if(SCESHACCCGEXT_STUB)
-        target_link_libraries(keeperfx       PRIVATE ${SCESHACCCGEXT_STUB})
-        target_link_libraries(keeperfx_hvlog PRIVATE ${SCESHACCCGEXT_STUB})
-    else()
-        message(WARNING "SceShaccCgExt_stub not found — vitashark sceShaccCgExt symbols may be unresolved")
-    endif()
     target_link_libraries(keeperfx       PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub)
     target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub)
     # VITA_SCE_DIAG: compile-in taiHEN import hooks for SCE subsystem tracing.
