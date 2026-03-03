@@ -148,5 +148,35 @@
 			"problemMatcher": "$gcc",
 			"group": "build",
 		},
+		{
+			"label": "Build Vita Release (VPK)",
+			"type": "shell",
+			"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-release && cmake --build --preset vita-release'",
+			"problemMatcher": "$gcc",
+			"group": "build",
+			"presentation": {
+				"clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false
+			}
+		},
+		{
+			"label": "Build Vita RelDebug (VPK)",
+			"type": "shell",
+			"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-reldebug && cmake --build --preset vita-reldebug'",
+			"problemMatcher": "$gcc",
+			"group": "build",
+			"presentation": {
+				"clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false
+			}
+		},
+		{
+			"label": "Build Vita Debug/vitaGL (VPK)",
+			"type": "shell",
+			"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-debug && cmake --build --preset vita-debug'",
+			"problemMatcher": "$gcc",
+			"group": "build",
+			"presentation": {
+				"clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false
+			}
+		},
 	],
 }
