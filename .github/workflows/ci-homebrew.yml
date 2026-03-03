@@ -16,11 +16,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Nintendo 3DS
-            preset: 3ds-release
-            container: devkitpro/devkitarm:latest
-            artifact-name: keeperfx-3ds
-
           - name: PS Vita
             preset: vita-release
             container: gnuton/vitasdk-docker:latest
@@ -30,11 +25,6 @@ jobs:
             preset: vita-debug
             container: gnuton/vitasdk-docker:latest
             artifact-name: keeperfx-vita-debug
-
-          - name: Nintendo Switch
-            preset: switch-release
-            container: devkitpro/devkita64:latest
-            artifact-name: keeperfx-switch
 
     steps:
       - name: Checkout code

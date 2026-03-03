@@ -34,7 +34,7 @@
 #if (defined(unix) && !defined(GO32)) || defined(__vita__) || defined(__3DS__) || defined(__SWITCH__)
 #include <unistd.h>
 #include <signal.h>
-#if !defined(__vita__) && !defined(__SWITCH__) && !defined(__3DS__)
+#ifndef __vita__
 #include <sys/ioctl.h>
 #include <termios.h>
 #endif
