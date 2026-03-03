@@ -207,12 +207,13 @@
         {
             "name": "vita-release",
             "displayName": "PS Vita Release",
-            "description": "PlayStation Vita build using VitaSDK",
+            "description": "PlayStation Vita release build using vitaGL",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
                 "CMAKE_BUILD_TYPE": "Release",
                 "PLATFORM_VITA": "ON",
+                "VITA_ENABLE_VITAGL": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -220,12 +221,13 @@
         {
             "name": "vita-reldebug",
             "displayName": "PS Vita RelWithDebInfo",
-            "description": "PlayStation Vita build with debug symbols for crash analysis",
+            "description": "PlayStation Vita build with debug symbols for crash analysis, using vitaGL",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "PLATFORM_VITA": "ON",
+                "VITA_ENABLE_VITAGL": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -233,14 +235,14 @@
         {
             "name": "vita-debug",
             "displayName": "PS Vita Debug (perf logging)",
-            "description": "PlayStation Vita debug build with startup timing logs in keeperfx.log",
+            "description": "PlayStation Vita debug build with startup timing logs and SCE diagnostics, using vitaGL",
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "PLATFORM_VITA": "ON",
-                "VITA_PERF_LOG": "ON",
                 "VITA_ENABLE_VITAGL": "ON",
+                "VITA_PERF_LOG": "ON",
                 "VITA_SCE_DIAG": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
