@@ -1,4 +1,5 @@
 # KeeperFX build image — Windows x86 cross-compile (i686-w64-mingw32)
+# Cross-compiles for Windows x86 from Ubuntu using i686-w64-mingw32 toolchain.
 #
 # Bakes in:
 #   - MinGW-w64 i686 cross-toolchain (posix threads)
