@@ -12,12 +12,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      registry_owner: ${{ steps.lower.outputs.owner }}
+    steps:
+      - id: lower
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
   build-alpha-patch-unsigned:
 
     name: "Build Alpha Patch (Unsigned)"
     runs-on: ubuntu-24.04
+    needs: prepare
     container:
-      image: ghcr.io/${{ github.repository_owner }}/keeperfx-build-mingw32:latest
+      image: ghcr.io/${{ needs.prepare.outputs.registry_owner }}/keeperfx-build-mingw32:latest
       options: --user root
 
     steps:
