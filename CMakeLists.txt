@@ -305,6 +305,11 @@ if(PLATFORM_VITA)
     find_package(SDL2 REQUIRED)
     target_link_libraries(keeperfx PRIVATE SDL2::SDL2)
     target_link_libraries(keeperfx_hvlog PRIVATE SDL2::SDL2)
+    # Cortex-A9 NEON: enable the SIMD unit and allow the compiler to auto-vectorise
+    # eligible loops.  -ffast-math also enables faster sin/cos/sqrt paths when
+    # mathneon is linked.  These flags are ARM/Vita-only and have no effect on desktop.
+    target_compile_options(keeperfx       PRIVATE -mcpu=cortex-a9 -mfpu=neon -ffast-math)
+    target_compile_options(keeperfx_hvlog PRIVATE -mcpu=cortex-a9 -mfpu=neon -ffast-math)
     # vitaGL palette shader renderer — disabled by default because SDL2's GXM
     # driver calls sceGxmInitialize at SDL_Init(VIDEO) time, which causes
     # vglInitExtended to fail (GXM_ERROR_ALREADY_INITIALIZED). To use vitaGL,
@@ -317,30 +322,83 @@ if(PLATFORM_VITA)
         target_compile_definitions(keeperfx PUBLIC VITA_PERF_LOG=1)
     endif()
     if(VITA_ENABLE_VITAGL)
-        find_library(VITAGL_LIB    vitaGL    HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
+        include(ExternalProject)
+        # vitashark (GLSL shader compiler) and mathneon (NEON math) must be
+        # pre-installed via vdpm; vitashark headers are also needed at vitaGL
+        # compile time.  Install once with:
+        #   $VITASDK/bin/vdpm vitashark mathneon
         find_library(VITASHARK_LIB vitashark HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
         find_library(MATHNEON_LIB  mathneon  HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
-        if(VITAGL_LIB AND VITASHARK_LIB AND MATHNEON_LIB)
-            message(STATUS "vitaGL found: ${VITAGL_LIB}")
-            message(STATUS "vitashark found: ${VITASHARK_LIB}")
-            message(STATUS "mathneon found: ${MATHNEON_LIB}")
-            add_compile_definitions(VITA_HAVE_VITAGL=1)
-            target_link_libraries(keeperfx       PRIVATE ${VITAGL_LIB} ${VITASHARK_LIB} ${MATHNEON_LIB})
-            target_link_libraries(keeperfx_hvlog PRIVATE ${VITAGL_LIB} ${VITASHARK_LIB} ${MATHNEON_LIB})
-            # .gxp shader binaries are pre-compiled manually with tools/psp2cgc.exe and committed.
-            # To recompile: tools\psp2cgc.exe -profile sce_vp_psp2 -Wperf -O2 shaders\vita_blit_v.cg -o shaders\vita_blit_v.gxp
-            #               tools\psp2cgc.exe -profile sce_fp_psp2 -Wperf -O2 shaders\vita_blit_f.cg -o shaders\vita_blit_f.gxp
-            set(VITA_SHADER_VPK_FILES
-                "${CMAKE_SOURCE_DIR}/shaders/vita_blit_v.gxp" "shaders/vita_blit_v.gxp"
-                "${CMAKE_SOURCE_DIR}/shaders/vita_blit_f.gxp" "shaders/vita_blit_f.gxp")
-            add_compile_definitions(VITA_USE_PRECOMPILED_SHADERS=1)
-            message(STATUS "vitaGL: using pre-compiled .gxp shaders from shaders/")
-        else()
-            message(STATUS "vitaGL/vitashark/mathneon not found — GPU palette shader disabled.")
-            message(STATUS "  Install: sudo bash -c 'VITASDK=/usr/local/vitasdk /usr/local/vitasdk/bin/vdpm vitaGL vitashark'")
-            message(STATUS "  Build mathneon from source: https://github.com/Rinnegatamante/math-neon")
-            set(VITA_SHADER_VPK_FILES "")
+        if(NOT VITASHARK_LIB OR NOT MATHNEON_LIB)
+            message(FATAL_ERROR
+                "vitashark/mathneon not found.\n"
+                "Install via:  $VITASDK/bin/vdpm vitashark mathneon")
         endif()
+        message(STATUS "vitashark found: ${VITASHARK_LIB}")
+        message(STATUS "mathneon found:  ${MATHNEON_LIB}")
+
+        # vitaGL is always built from source so the debug flags below are baked
+        # in.  Flags are kept in sync with .github/workflows/ci-homebrew.yml.
+        # To force a rebuild, delete: ${CMAKE_BINARY_DIR}/_deps/vitagl-src/
+        # DEBUG_GLSL_TRANSLATOR/PREPROCESSOR log GLSL→CG translation; they
+        # require HAVE_GLSL_SUPPORT=1 to activate those code paths.
+        set(VITAGL_INSTALL_LIB "$ENV{VITASDK}/arm-vita-eabi/lib/libvitaGL.a")
+        ExternalProject_Add(vitagl_external
+            GIT_REPOSITORY  https://github.com/Rinnegatamante/vitaGL.git
+            GIT_TAG         master
+            GIT_SHALLOW     TRUE
+            SOURCE_DIR      ${CMAKE_BINARY_DIR}/_deps/vitagl-src
+            BUILD_IN_SOURCE TRUE
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND
+                make
+                    LOG_ERRORS=2
+                    HAVE_PROFILING=1
+                    HAVE_DEBUGGER=1
+                    DEBUG_GLSL_TRANSLATOR=1
+                    DEBUG_GLSL_PREPROCESSOR=1
+                    HAVE_GLSL_SUPPORT=1
+            INSTALL_COMMAND
+                make install
+                    LOG_ERRORS=2
+                    HAVE_PROFILING=1
+                    HAVE_DEBUGGER=1
+                    DEBUG_GLSL_TRANSLATOR=1
+                    DEBUG_GLSL_PREPROCESSOR=1
+                    HAVE_GLSL_SUPPORT=1
+            BUILD_BYPRODUCTS "${VITAGL_INSTALL_LIB}"
+        )
+
+        add_library(vitaGL_imported STATIC IMPORTED GLOBAL)
+        set_target_properties(vitaGL_imported PROPERTIES
+            IMPORTED_LOCATION "${VITAGL_INSTALL_LIB}")
+        add_dependencies(vitaGL_imported vitagl_external)
+
+        message(STATUS "vitaGL: building from source → ${VITAGL_INSTALL_LIB}")
+        add_compile_definitions(VITA_HAVE_VITAGL=1)
+        target_link_libraries(keeperfx       PRIVATE vitaGL_imported ${VITASHARK_LIB} ${MATHNEON_LIB})
+        target_link_libraries(keeperfx_hvlog PRIVATE vitaGL_imported ${VITASHARK_LIB} ${MATHNEON_LIB})
+        add_dependencies(keeperfx       vitagl_external)
+        add_dependencies(keeperfx_hvlog vitagl_external)
+        # Route all malloc/free/calloc/realloc/memalign through vitaGL's allocator
+        # so the game heap and GPU memory pool are unified (single pool, no
+        # cross-allocator fragmentation).  Uses GCC --wrap at link time so no
+        # existing source needs changing.  Technique from d3es-vita.
+        list(APPEND KEEPERFX_SOURCES_C "src/platform/vita_malloc_wrap.c")
+        target_link_options(keeperfx       PRIVATE
+            -Wl,--wrap,malloc -Wl,--wrap,free -Wl,--wrap,calloc
+            -Wl,--wrap,realloc -Wl,--wrap,memalign)
+        target_link_options(keeperfx_hvlog PRIVATE
+            -Wl,--wrap,malloc -Wl,--wrap,free -Wl,--wrap,calloc
+            -Wl,--wrap,realloc -Wl,--wrap,memalign)
+        # .gxp shader binaries are pre-compiled manually with tools/psp2cgc.exe and committed.
+        # To recompile: tools\psp2cgc.exe -profile sce_vp_psp2 -Wperf -O2 shaders\vita_blit_v.cg -o shaders\vita_blit_v.gxp
+        #               tools\psp2cgc.exe -profile sce_fp_psp2 -Wperf -O2 shaders\vita_blit_f.cg -o shaders\vita_blit_f.gxp
+        set(VITA_SHADER_VPK_FILES
+            "${CMAKE_SOURCE_DIR}/shaders/vita_blit_v.gxp" "shaders/vita_blit_v.gxp"
+            "${CMAKE_SOURCE_DIR}/shaders/vita_blit_f.gxp" "shaders/vita_blit_f.gxp")
+        add_compile_definitions(VITA_USE_PRECOMPILED_SHADERS=1)
+        message(STATUS "vitaGL: using pre-compiled .gxp shaders from shaders/")
     else()
         message(STATUS "vitaGL disabled (VITA_ENABLE_VITAGL=OFF) — using SDL2 GXM renderer path.")
         set(VITA_SHADER_VPK_FILES "")
@@ -390,11 +448,12 @@ if(PLATFORM_VITA)
     find_library(AVUTIL_LIB    avutil      HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     find_library(SWRESAMPLE_LIB swresample HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     message(STATUS "FFmpeg-vita found: ${AVFORMAT_LIB}")
-    # libffmpeg_vita_stubs: no-op stubs for symbols missing from fish47/FFmpeg-vita build.
-    # Currently provides: ff_ac3_find_syncword (AC3 sync detection; returning -1 disables AC3 FMV audio).
-    find_library(FFMPEG_VITA_STUBS ffmpeg_vita_stubs HINTS "$ENV{VITASDK}/arm-vita-eabi/lib")
-    target_link_libraries(keeperfx       PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ${FFMPEG_VITA_STUBS} -Wl,--end-group)
-    target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ${FFMPEG_VITA_STUBS} -Wl,--end-group)
+    # ffmpeg_vita_stubs: no-op stubs for symbols absent from fish47/FFmpeg-vita build.
+    # Built from source (deps/ffmpeg-vita-stubs/) so CI doesn't need a pre-installed lib.
+    # Currently provides: ff_ac3_find_syncword (returning -1 disables AC3 FMV audio).
+    add_library(ffmpeg_vita_stubs STATIC deps/ffmpeg-vita-stubs/ffmpeg_vita_stubs.c)
+    target_link_libraries(keeperfx       PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ffmpeg_vita_stubs -Wl,--end-group)
+    target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ffmpeg_vita_stubs -Wl,--end-group)
     target_link_libraries(keeperfx PRIVATE centijson_static centitoml)
     target_link_libraries(keeperfx_hvlog PRIVATE centijson_static centitoml)
     # zlib, spng, minizip — built from source for Vita (not in vitasdk sysroot).
