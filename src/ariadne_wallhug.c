@@ -46,6 +46,8 @@ extern "C" {
 /******************************************************************************/
 static TbBool check_forward_for_prospective_hugs(struct Thing *creatng, struct Coord3d *pos_a, long angle, long side, long slab_flags, long speed, PlayerBitFlags crt_owner_flags);
 static long get_angle_of_wall_hug(struct Thing *creatng, long slab_flags, long speed, PlayerBitFlags crt_owner_flags);
+static TbBool check_for_circular_path(struct Thing *creatng);
+static void update_position_history(struct Navigation *navi, const struct Coord3d *pos);
 static void set_hugging_pos_using_blocked_flags(struct Coord3d *dstpos, struct Thing *creatng, unsigned short block_flags, int nav_radius);
 static TbBool navigation_push_towards_target(struct Navigation *navi, struct Thing *creatng, const struct Coord3d *pos, MoveSpeed speed, MoveSpeed nav_radius, PlayerBitFlags crt_owner_flags);
 static TbBool find_approach_position_to_subtile(const struct Coord3d *srcpos, MapSubtlCoord stl_x, MapSubtlCoord stl_y, MoveSpeed spacing, struct Coord3d *aproachpos);
@@ -115,6 +117,41 @@ static long get_angle_of_wall_hug(struct Thing *creatng, long slab_flags, long s
         break;
     }
     return -1;
+}
+
+static void update_position_history(struct Navigation *navi, const struct Coord3d *pos)
+{
+    navi->position_history[navi->history_index].x.val = pos->x.val;
+    navi->position_history[navi->history_index].y.val = pos->y.val;
+    navi->position_history[navi->history_index].z.val = pos->z.val;
+    navi->history_index = (navi->history_index + 1) % 8;
+}
+
+/// @brief Checks if the creature is moving in a circular path.
+/// @param creatng The creature to check.
+/// @return True if a circular path is detected, false otherwise.
+static TbBool check_for_circular_path(struct Thing *creatng)
+{
+    struct CreatureControl* cctrl = creature_control_get_from_thing(creatng);
+    struct Navigation *navi = &cctrl->navi;
+    
+    // Check if current position is close to any previous position in history
+    for (int i = 0; i < 8; i++) {
+        if (i == navi->history_index) continue; // Skip current position slot
+        
+        MapCoordDelta dx = abs(creatng->mappos.x.val - navi->position_history[i].x.val);
+        MapCoordDelta dy = abs(creatng->mappos.y.val - navi->position_history[i].y.val);
+        
+        // If within threshold distance of a previous position
+        if (dx < 256 && dy < 256) { // 1 subtile threshold
+            navi->loop_counter++;
+            if (navi->loop_counter > 3) {
+                return true; // Circle detected, trigger reset.
+            }
+            break;
+        }
+    }
+    return false;
 }
 
 static int hug_round_sub(struct Thing *creatng, MapSubtlCoord *current_position_x, MapSubtlCoord *current_position_y,
@@ -1789,41 +1826,16 @@ long get_next_position_and_angle_required_to_tunnel_creature_to(struct Thing *cr
               }
           }
         }
-        if (((angle + DEGREES_90) & ANGLE_MASK) == navi->angle)
-        {
-            if (navi->wallhug_state == WallhugCurrentState_Right)
-            {
-                navi->wallhug_retry_counter++;
-            } else
-            {
-                navi->wallhug_state = WallhugCurrentState_Right;
-                navi->wallhug_retry_counter = 1;
-            }
-        } else
-        if (((angle - DEGREES_90) & ANGLE_MASK) == navi->angle)
-        {
-          if (navi->wallhug_state == WallhugCurrentState_Left)
-          {
-              navi->wallhug_retry_counter++;
-          } else
-          {
-              navi->wallhug_state = WallhugCurrentState_Left;
-              navi->wallhug_retry_counter = 1;
-          }
-        } else
-        {
-          navi->wallhug_retry_counter = 0;
-          navi->wallhug_state = WallhugCurrentState_None;
-        }
-        if (navi->wallhug_retry_counter >= 4)
-        {
-            navi->navstate = NavS_WallhugInProgress;
-            navi->pos_final.x.val = pos->x.val;
-            navi->pos_final.y.val = pos->y.val;
-            navi->pos_final.z.val = pos->z.val;
+        // Update position history and check for circular movement
+        update_position_history(navi, &creatng->mappos);
+        
+        // Check for circular path using position history
+        if (check_for_circular_path(creatng)) {
+            navi->side = (navi->side == 1) ? 2 : 1;  // Flip side
             navi->wallhug_state = WallhugCurrentState_None;
-            navi->wallhug_retry_counter = 0;
-            navi->push_counter = 0;
+            navi->loop_counter = 0;
+            // Clear position history
+            navi->history_index = 0;
             return 1;
         }
         navi->angle = angle;
