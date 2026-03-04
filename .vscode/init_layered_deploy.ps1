@@ -85,22 +85,49 @@ Write-C "`nLayer 1: SDL2 DLLs — skipped (statically linked)" 'Gray'
 
 # ── Layer 2: KFX generated gfx data ──────────────────────────────────────────
 Write-C "`nLayer 2: KFX generated graphics data" 'Green'
-Write-C "  Building pkg-gfx via Docker (may take a few minutes first time)..." 'Yellow'
 
-docker compose -f (Join-Path $WorkspaceFolder "docker\compose.yml") `
-    run --rm linux bash -c "make pkg-gfx"
-
-# Copy generated data files into .deploy/
 $pkgData  = Join-Path $WorkspaceFolder "pkg\data"
 $pkgLdata = Join-Path $WorkspaceFolder "pkg\ldata"
+$hashFile = Join-Path $WorkspaceFolder "pkg\.gfx-hash"
 
+# Ensure gfx submodule is initialized
+$subStatus = (git -C $WorkspaceFolder submodule status gfx 2>&1)
+if ($subStatus -match '^-') {
+    Write-C "  Initializing gfx submodule..." 'Yellow'
+    git -C $WorkspaceFolder submodule update --init gfx 2>&1 | Out-Null
+    $subStatus = (git -C $WorkspaceFolder submodule status gfx 2>&1)
+}
+
+# Parse current submodule commit hash (works whether initialized or not)
+$currentHash = if ($subStatus -match '^\s*[-+]?([0-9a-f]{40})\s') { $Matches[1] } else { $null }
+$cachedHash  = if (Test-Path $hashFile) { (Get-Content $hashFile -Raw).Trim() } else { "" }
+
+if (-not $currentHash) {
+    Write-C "  ⚠  gfx submodule not available — SSH key may be required" 'Yellow'
+    Write-C "     Run: git submodule update --init gfx  then re-run this init" 'Yellow'
+} elseif ((Test-Path $pkgData) -and ($currentHash -eq $cachedHash)) {
+    Write-C "  ✓ gfx data up to date (hash $($currentHash.Substring(0,8)))" 'Green'
+} else {
+    $reason = if (-not (Test-Path $pkgData)) { "no cached output" } else { "submodule changed ($($currentHash.Substring(0,8)))" }
+    Write-C "  Building pkg-gfx ($reason)..." 'Yellow'
+    docker compose -f (Join-Path $WorkspaceFolder "docker\compose.yml") `
+        run --rm linux bash -c "make pkg-gfx"
+    if ($LASTEXITCODE -eq 0) {
+        New-Item -ItemType Directory -Path (Split-Path $hashFile) -Force | Out-Null
+        Set-Content $hashFile $currentHash
+        Write-C "  ✓ pkg-gfx built (hash $($currentHash.Substring(0,8)))" 'Green'
+    } else {
+        Write-C "  ⚠  pkg-gfx build failed" 'Yellow'
+    }
+}
+
+# Deploy whatever is available
 if (Test-Path $pkgData) {
     Copy-Item (Join-Path $pkgData "*") (Join-Path $DEPLOY "data") -Force
     Write-C "  ✓ pkg/data/ deployed" 'Green'
 } else {
-    Write-C "  ⚠  pkg/data/ not found — run make pkg-gfx manually if needed" 'Yellow'
+    Write-C "  ⚠  pkg/data/ not found — Layer 2 incomplete" 'Yellow'
 }
-
 if (Test-Path $pkgLdata) {
     New-Item -ItemType Directory -Path (Join-Path $DEPLOY "ldata") -Force | Out-Null
     Copy-Item (Join-Path $pkgLdata "*") (Join-Path $DEPLOY "ldata") -Force

@@ -114,6 +114,21 @@
 },
 
 {
+// Rebuild Layer 2 (GFX): re-runs make pkg-gfx if gfx submodule has changed,
+// then redeploys pkg/data and pkg/ldata into .deploy/.
+// Run this after pulling gfx submodule changes.
+"label": "Rebuild GFX Layer",
+"type": "shell",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\.vscode\\rebuild_gfx_layer.ps1' -WorkspaceFolder '${workspaceFolder}'"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+
+{
 "label": "View Game Log",
 "type": "shell",
 "command": "tail -f '${workspaceFolder}/.deploy/keeperfx.log'",
