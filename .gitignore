@@ -43,9 +43,25 @@ res/keeperfx_icon.ico
 /cppcheck.cache
 /src/ver_defs.h
 keeperfx.log
+keeperfx_vita.log
 crash_log.txt
+tools/*.log
 .local/
 .deploy/
+custom.worktrees/
+
+# Dependency build outputs
+/deps/include/
+/deps/libjson.a
+
+# Generated campaign level rendering assets (palette, raw image, video frames)
+campgns/*_lnd/rgmap*.pal
+campgns/*_lnd/rgmap*.raw
+campgns/*_lnd/viframe*.dat
+
+# Local-only development planning docs (not for publishing)
+docs/PHASE1_COMPLETION_SUMMARY.md
+docs/PHASE2_ASSET_PROCESSING.md
 
 # DK2 campaign symlinks (local testing only)
 /campgns/dk2_cfg
