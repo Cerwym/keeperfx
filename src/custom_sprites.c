@@ -50,6 +50,14 @@ static uint8_t * rgb_to_pal_table = NULL;
 static short next_free_sprite = 0;
 static short next_free_icon = 0;
 
+// Casino room custom sprite indices (initialized at runtime)
+short GPS_room_casino_std_l = 0;
+short GPS_room_casino_dis_l = 0;
+short GPS_room_casino_std_s = 0;
+short GPS_room_casino_dis_s = 0;
+short GPS_message_rpanel_msg_jackpot_act = 0;
+short GPS_message_rpanel_msg_jackpot_std = 0;
+
 struct TbSpriteSheet * gui_panel_sprites = NULL;
 struct TbSpriteSheet * custom_sprites = NULL;
 struct NamedCommand *anim_names = NULL;
@@ -465,6 +473,13 @@ void init_custom_sprites(LevelNumber lvnum)
         load_sprites_for_mod_list(lvnum, mods_conf.after_map_item, mods_conf.after_map_cnt);
     }
 
+    // Initialize casino sprite indices from custom sprites
+    GPS_room_casino_std_l = get_icon_id("room_casino_std_l");
+    GPS_room_casino_dis_l = get_icon_id("room_casino_dis_l");
+    GPS_room_casino_std_s = get_icon_id("room_casino_std_s");
+    GPS_room_casino_dis_s = get_icon_id("room_casino_dis_s");
+    GPS_message_rpanel_msg_jackpot_act = get_icon_id("message_rpanel_msg_jackpot_act");
+    GPS_message_rpanel_msg_jackpot_std = get_icon_id("message_rpanel_msg_jackpot_std");
 }
 
 /**
@@ -2177,6 +2192,9 @@ const struct TbSprite *get_new_icon_sprite(short sprite_idx)
 
 const struct TbSprite *get_panel_sprite(short sprite_idx)
 {
+    const short original_idx = sprite_idx;
+
+    
     if ((sprite_idx >= 0) && (sprite_idx < num_sprites(gui_panel_sprites))) {
         return get_sprite(gui_panel_sprites, sprite_idx);
     }
@@ -2184,6 +2202,8 @@ const struct TbSprite *get_panel_sprite(short sprite_idx)
     if ((sprite_idx >= 0) && (sprite_idx < num_sprites(custom_sprites))) {
         return get_sprite(custom_sprites, sprite_idx);
     }
+    WARNLOG("Sprite index %d out of bounds (gui_panel: %ld, custom: %ld), returning bad_icon", 
+            original_idx, num_sprites(gui_panel_sprites), num_sprites(custom_sprites));
     return &bad_icon;
 }
 

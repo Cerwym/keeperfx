@@ -29,6 +29,7 @@
 #include "player_utils.h"
 #include "game_merge.h"
 #include "thing_creature.h"
+#include "map_events.h"
 
 /******************************************************************************/
 
@@ -215,6 +216,18 @@ TbBool resolve_gambling_outcome(struct Thing* creatng, struct Room* room, GoldAm
             cctrl->current_gold_held += payout;
             // House loses
             record_casino_profit(room, -payout);
+            
+            // Trigger jackpot event for big wins (>= 1000 gold)
+            // Will use game.conf.casino_jackpot_threshold when config is added
+            if (payout >= 1000) {
+                event_create_event_or_update_nearby_existing_event(
+                    creatng->mappos.x.val, 
+                    creatng->mappos.y.val, 
+                    EvKind_CasinoJackpot, 
+                    creatng->owner, 
+                    creatng->index
+                );
+            }
         }
     } else {
         // Creature loses bet

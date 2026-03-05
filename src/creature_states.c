@@ -304,6 +304,7 @@ const struct NamedCommand process_func_commands[] = {
     {"good_arrived_at_attack_dungeon_heart",       134},
     {"creature_drop_unconscious_in_lair",          135},
     {"creature_save_unconscious_creature",         136},
+    {"creature_gambling",                          137},
     {NULL,                                           0},
 };
 

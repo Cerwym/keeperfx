@@ -757,6 +757,15 @@ enum GUIPanelSprite {
     GUI_PANEL_SPRITES_NEW = 512,
 };
 
+// Casino room custom sprites (loaded from fxdata/casino_sprites.zip)
+// These are initialized at runtime via get_icon_id()
+extern short GPS_room_casino_std_l;
+extern short GPS_room_casino_dis_l;
+extern short GPS_room_casino_std_s;
+extern short GPS_room_casino_dis_s;
+extern short GPS_message_rpanel_msg_jackpot_act;
+extern short GPS_message_rpanel_msg_jackpot_std;
+
 // Based on frontend-64/filelist_frontbit.txt
 enum GUIFrontendSprite {
     GFS_cursor_horny = 1,
