@@ -35,11 +35,11 @@ CAMPAIGNS = $(patsubst campgns/%.cfg,%,$(wildcard campgns/*.cfg))
 MAPPACKS   = $(patsubst levels/%.cfg,%,$(filter-out %/personal.cfg,$(wildcard levels/*.cfg)))
 LANGS      = eng chi cht cze dut fre ger ita jpn kor lat pol rus spa swe
 
-include version.mk
+include build/make/version.mk
 
 VER_STRING = $(VER_MAJOR).$(VER_MINOR).$(VER_RELEASE).$(BUILD_NUMBER) $(PACKAGE_SUFFIX)
 
-include prebuilds.mk
+include build/make/prebuilds.mk
 
 PNGTOICO   = tools/png2ico/png2ico
 PNGTORAW   = tools/pngpal2raw/bin/pngpal2raw
@@ -51,16 +51,16 @@ DERNC      = tools/rnctools/bin/dernc
 
 .PHONY: package clean-package
 
-include tool_png2ico.mk
-include tool_pngpal2raw.mk
-include tool_png2bestpal.mk
-include tool_po2ngdat.mk
-include tool_sndbanker.mk
-include tool_rnctools.mk
+include build/make/tool_png2ico.mk
+include build/make/tool_pngpal2raw.mk
+include build/make/tool_png2bestpal.mk
+include build/make/tool_po2ngdat.mk
+include build/make/tool_sndbanker.mk
+include build/make/tool_rnctools.mk
 
-include pkg_lang.mk
-include pkg_gfx.mk
-include pkg_sfx.mk
-include package.mk
+include build/make/pkg_lang.mk
+include build/make/pkg_gfx.mk
+include build/make/pkg_sfx.mk
+include build/make/package.mk
 
 export RM CP MKDIR MV ECHO

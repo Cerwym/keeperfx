@@ -1,4 +1,4 @@
-﻿{
+{
     "version": 3,
     "configurePresets": [
         {
@@ -153,7 +153,7 @@
             "description": "Cross-compile for Windows x86 from Linux using i686-w64-mingw32. Designed for use inside the keeperfx-build-mingw32 Docker image.",
             "inherits": [ "cross-base", "Release" ],
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/mingw32.cmake",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/build/cmake/mingw32.cmake",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on",
                 "CMAKE_BUILD_TYPE": "Release"
             }
@@ -165,7 +165,7 @@
             "description": "Cross-compile for Windows x86 from Linux using i686-w64-mingw32, with full debug symbols. For use inside the keeperfx-build-mingw32 Docker image.",
             "inherits": [ "cross-base", "Debug" ],
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/mingw32.cmake",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/build/cmake/mingw32.cmake",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -176,7 +176,7 @@
             "description": "Cross-compile for Windows x64 from Linux using x86_64-w64-mingw32. Designed for use inside the keeperfx-build-mingw64 Docker image.",
             "inherits": [ "cross-base", "Release" ],
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/mingw64.cmake",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/build/cmake/mingw64.cmake",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on",
                 "CMAKE_BUILD_TYPE": "Release"
             }
@@ -415,21 +415,24 @@
             "name": "vita-release",
             "displayName": "PS Vita Release Build",
             "inherits": "StandardLog",
-            "configurePreset": "vita-release"
+            "configurePreset": "vita-release",
+            "targets": ["keeperfx.vpk"]
         },
 
         {
             "name": "vita-reldebug",
             "displayName": "PS Vita RelWithDebInfo Build",
             "inherits": "StandardLog",
-            "configurePreset": "vita-reldebug"
+            "configurePreset": "vita-reldebug",
+            "targets": ["keeperfx.vpk"]
         },
 
         {
             "name": "vita-debug",
             "displayName": "PS Vita Debug Build (perf logging)",
             "inherits": "StandardLog",
-            "configurePreset": "vita-debug"
+            "configurePreset": "vita-debug",
+            "targets": ["keeperfx.vpk"]
         },
 
         {

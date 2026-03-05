@@ -18,7 +18,7 @@ set(VER_STRING      "${VER_MAJOR}.${VER_MINOR}.${VER_RELEASE}.${VER_BUILD} ${PAC
 set(PACKAGE_SUFFIX  "")
 
 # CMAKE_BINARY_DIR is defined in CMakePresets.json.
-set(KEEPERFX_VER_DEFS_H_IN ${CMAKE_SOURCE_DIR}/ver_defs.h.in)
+set(KEEPERFX_VER_DEFS_H_IN ${CMAKE_SOURCE_DIR}/build/ver_defs.h.in)
 set(KEEPERFX_VER_DEFS_H_OUT ${CMAKE_SOURCE_DIR}/src/ver_defs.h)
 configure_file(${KEEPERFX_VER_DEFS_H_IN} ${KEEPERFX_VER_DEFS_H_OUT})
 
@@ -51,10 +51,20 @@ endif()
 
 # Dependencies: platform SDKs provide their own; desktop uses vcpkg or find_package
 if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
+    # When cross-compiling for Windows with MinGW, force static SDL2 libs so the
+    # final exe doesn't require SDL2*.dll at runtime.
+    if(MINGW OR CMAKE_CROSSCOMPILING)
+        set(SDL2_USE_STATIC_LIBS ON)
+        set(SDL2IMAGE_STATIC ON)
+        set(SDL2MIXER_STATIC ON)
+        set(SDL2NET_STATIC ON)
+    endif()
     find_package(SDL2 CONFIG REQUIRED)
     find_package(SDL2_image CONFIG REQUIRED)
     find_package(SDL2_mixer CONFIG REQUIRED)
-    find_package(SDL2_net CONFIG REQUIRED)
+    if(KEEPERFX_NETWORKING)
+        find_package(SDL2_net CONFIG REQUIRED)
+    endif()
 
     # Optional: OpenGL renderer backend (requires glad via vcpkg)
     option(KEEPERFX_RENDERER_OPENGL "Enable the OpenGL renderer backend" ON)
@@ -95,8 +105,11 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
     set(KEEPERFX_NETWORKING OFF CACHE BOOL "Networking disabled on homebrew" FORCE)
 endif()
 
-if(NOT KEEPERFX_NETWORKING)
-    # Exclude real networking source files (api.c kept — provides api_event used by game code)
+if(KEEPERFX_NETWORKING)
+    add_compile_definitions("KEEPERFX_NETWORKING=1")
+else()
+    # Exclude all networking source files including API server (stubs provided in platform_shims.c)
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/api\\.c$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_tcpsp\\.c$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_base_tcp\\.c$")
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/bflib_client_tcp\\.c$")
@@ -356,15 +369,17 @@ if(PLATFORM_VITA)
         set(VITAGL_INSTALL_LIB "$ENV{VITASDK}/arm-vita-eabi/lib/libvitaGL.a")
         ExternalProject_Add(vitagl_external
             GIT_REPOSITORY  https://github.com/Rinnegatamante/vitaGL.git
-            GIT_TAG         master
-            GIT_SHALLOW     TRUE
+            GIT_TAG         e6011789a48be7f483b840e5e276f50253c06604  # 2026-02-16: "Add support for partial uniform array uploads" — last commit before vglDrawObjects moved behind ENABLE_LEGACY_PIPELINE
+            GIT_SHALLOW     FALSE  # shallow clone requires a branch/tag; disabled when pinning to a commit hash
             SOURCE_DIR      ${CMAKE_BINARY_DIR}/_deps/vitagl-src
             BUILD_IN_SOURCE TRUE
             CONFIGURE_COMMAND ""
+            # Remove any pre-installed vitaGL first to avoid version conflicts
             BUILD_COMMAND
+                rm -f $ENV{VITASDK}/arm-vita-eabi/lib/libvitaGL.a $ENV{VITASDK}/arm-vita-eabi/include/vitaGL.h $ENV{VITASDK}/arm-vita-eabi/include/imgui_impl_vitagl.h &&
                 make
                     LOG_ERRORS=2
-                    HAVE_PROFILING=1
+                    HAVE_PROFILING=0
                     HAVE_DEBUGGER=1
                     DEBUG_GLSL_TRANSLATOR=1
                     DEBUG_GLSL_PREPROCESSOR=1
@@ -372,7 +387,7 @@ if(PLATFORM_VITA)
             INSTALL_COMMAND
                 make install
                     LOG_ERRORS=2
-                    HAVE_PROFILING=1
+                    HAVE_PROFILING=0
                     HAVE_DEBUGGER=1
                     DEBUG_GLSL_TRANSLATOR=1
                     DEBUG_GLSL_PREPROCESSOR=1
@@ -462,13 +477,14 @@ if(PLATFORM_VITA)
     find_library(AVCODEC_LIB   avcodec     HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     find_library(AVUTIL_LIB    avutil      HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     find_library(SWRESAMPLE_LIB swresample HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
+    find_library(MP3LAME_LIB   mp3lame    HINTS "$ENV{VITASDK}/arm-vita-eabi/lib" REQUIRED)
     message(STATUS "FFmpeg-vita found: ${AVFORMAT_LIB}")
     # ffmpeg_vita_stubs: no-op stubs for symbols absent from fish47/FFmpeg-vita build.
     # Built from source (deps/ffmpeg-vita-stubs/) so CI doesn't need a pre-installed lib.
     # Currently provides: ff_ac3_find_syncword (returning -1 disables AC3 FMV audio).
     add_library(ffmpeg_vita_stubs STATIC deps/ffmpeg-vita-stubs/ffmpeg_vita_stubs.c)
-    target_link_libraries(keeperfx       PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ffmpeg_vita_stubs -Wl,--end-group)
-    target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} pthread SceAudiodec_stub ffmpeg_vita_stubs -Wl,--end-group)
+    target_link_libraries(keeperfx       PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} ${MP3LAME_LIB} pthread SceAudiodec_stub ffmpeg_vita_stubs -Wl,--end-group)
+    target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${AVFORMAT_LIB} ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWRESAMPLE_LIB} ${MP3LAME_LIB} pthread SceAudiodec_stub ffmpeg_vita_stubs -Wl,--end-group)
     target_link_libraries(keeperfx PRIVATE centijson_static centitoml)
     target_link_libraries(keeperfx_hvlog PRIVATE centijson_static centitoml)
     # zlib, spng, minizip — built from source for Vita (not in vitasdk sysroot).
@@ -544,7 +560,7 @@ if(PLATFORM_VITA)
     target_link_libraries(keeperfx PRIVATE -Wl,--start-group ${LUAJIT_LIB} taihen_stub taihenModuleUtils_stub SceSblSsMgr_stub dl -Wl,--end-group)
     target_link_libraries(keeperfx_hvlog PRIVATE -Wl,--start-group ${LUAJIT_LIB} taihen_stub taihenModuleUtils_stub SceSblSsMgr_stub dl -Wl,--end-group)
 
-    # VPK packaging — requires: cmake --build --target keeperfx.vpk
+    # VPK packaging — built automatically via build preset targets
     include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
     set(VITA_APP_NAME "KeeperFX")
     set(VITA_TITLEID  "KFXV00001")
@@ -567,36 +583,33 @@ elseif(PLATFORM_SWITCH)
     target_link_libraries(keeperfx PRIVATE nx)
     target_link_libraries(keeperfx_hvlog PRIVATE nx)
 else()
-    target_link_libraries(keeperfx
-        PRIVATE
-        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
-    target_link_libraries(keeperfx
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
-    target_link_libraries(keeperfx
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
-    target_link_libraries(keeperfx
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+    # When cross-compiling for Windows (MinGW), always use static SDL2 targets to
+    # produce a self-contained exe that doesn't need SDL2*.dll at runtime.
+    if(MINGW OR CMAKE_CROSSCOMPILING)
+        set(_SDL2_LINK SDL2::SDL2-static)
+        set(_SDL2_IMAGE_LINK SDL2_image::SDL2_image-static)
+        set(_SDL2_MIXER_LINK SDL2_mixer::SDL2_mixer-static)
+        if(KEEPERFX_NETWORKING)
+            set(_SDL2_NET_LINK SDL2_net::SDL2_net-static)
+        endif()
+    else()
+        set(_SDL2_LINK $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
+        set(_SDL2_IMAGE_LINK $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+        set(_SDL2_MIXER_LINK $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
+        if(KEEPERFX_NETWORKING)
+            set(_SDL2_NET_LINK $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
+        endif()
+    endif()
 
-    target_link_libraries(keeperfx_hvlog
-        PRIVATE
-        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
-    target_link_libraries(keeperfx_hvlog
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
-    target_link_libraries(keeperfx_hvlog
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
-    target_link_libraries(keeperfx_hvlog
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
-
-    # Link test executable with SDL2 libraries
-    target_link_libraries(tests
-        PRIVATE
-        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>)
-    target_link_libraries(tests
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>)
-    target_link_libraries(tests
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_net::SDL2_net>,SDL2_net::SDL2_net,SDL2_net::SDL2_net-static>)
-    target_link_libraries(tests
-        PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
+    foreach(_kfx_target keeperfx keeperfx_hvlog tests)
+        target_link_libraries(${_kfx_target} PRIVATE
+            ${_SDL2_LINK}
+            ${_SDL2_IMAGE_LINK}
+            ${_SDL2_MIXER_LINK})
+        if(KEEPERFX_NETWORKING)
+            target_link_libraries(${_kfx_target} PRIVATE ${_SDL2_NET_LINK})
+        endif()
+    endforeach()
 endif()
 
 # OpenGL renderer backend
