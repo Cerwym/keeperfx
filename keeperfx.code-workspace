@@ -12,6 +12,9 @@
         "cmake.configureOnOpen": false,
         "cmake.autoSelectActiveFolder": false,
         "cmake.showOptionsMovedNotification": false,
+        // Use c_cpp_properties.json for IntelliSense — not cmake-tools (Docker builds only)
+        "C_Cpp.intelliSenseEngine": "default",
+        "cmake.useCMakePresets": "always",
         "files.associations": {
             "game_legacy.h": "c",
             "globals.h": "c",
@@ -176,6 +179,17 @@
             "xloctime": "c",
             "format": "c",
             "xstring": "c"
-        }
+        },
+        "powershell.cwd": "vita-hardware-acceleration"
+    },
+    "tasks": {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "echo",
+                "type": "shell",
+                "command": "echo Hello"
+            }
+        ]
     }
 }
