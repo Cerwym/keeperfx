@@ -100,6 +100,22 @@ unsigned long saturate_set_unsigned(unsigned long long val,unsigned short nbits)
 /******************************************************************************/
 const char *log_file_name=DEFAULT_LOG_FILENAME;
 
+const char* LbSafeStr(const char* str)
+{
+  if (str == NULL) {
+    return "(null)";
+  }
+#ifdef PLATFORM_VITA
+  {
+    uintptr_t addr = (uintptr_t)str;
+    if (addr < 0x80000000u) {
+      return "(badptr)";
+    }
+  }
+#endif
+  return str;
+}
+
 /**
  * Appends a string to the end of a buffer.
  * Returns the total length of the resulting string.
@@ -489,12 +505,18 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
   }
 
   // Write formatted message to the array
-  write_log_to_array_for_live_viewing(fmt_str, arg, log->prefix);
+    va_list array_args;
+  va_copy(array_args, arg);
+  write_log_to_array_for_live_viewing(fmt_str, array_args, log->prefix);
+  va_end(array_args);
 
   // Format the line into a buffer so we can write to the file and also
   // route to the platform's secondary log channel (e.g. sceClibPrintf on Vita).
   char linebuf[2048];
-  vsnprintf(linebuf, sizeof(linebuf), fmt_str, arg);
+  va_list line_args;
+  va_copy(line_args, arg);
+  vsnprintf(linebuf, sizeof(linebuf), fmt_str, line_args);
+  va_end(line_args);
   LbFileWrite(file, linebuf, strlen(linebuf));
   if (log->prefix[0] != '\0') {
       // Build prefixed message for platform routing
