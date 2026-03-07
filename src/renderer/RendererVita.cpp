@@ -29,15 +29,14 @@
 #ifdef VITA_HAVE_VITAGL
 #include <psp2/io/stat.h>    // sceIoMkdir
 #include <psp2/kernel/sysmem.h>  // sceKernelAllocMemBlock probe
-#include <psp2/kernel/processmgr.h>  // sceKernelExitProcess
-#include <psp2/ctrl.h>
 extern "C" {
-#include "platform/debugscreen/debugScreen.h"
 #include "platform/vita_sce_diag.h"
 }
 #endif
 
 #include "post_inc.h"
+
+int msaa = 0, postfx = 0, scr_width = 960, scr_height = 544;
 
 /******************************************************************************/
 // vitaGL pre-initialisation (VITA_HAVE_VITAGL path)
@@ -49,40 +48,6 @@ extern "C" {
 static bool s_vitagl_ready = false;
 
 extern "C" bool vita_is_vitagl_ready(void) { return s_vitagl_ready; }
-
-// ---------------------------------------------------------------------------
-// Show an on-screen error message using the debug framebuffer (no vitaGL needed)
-// and wait for the user to press a button before exiting cleanly.
-// If CDRAM allocation fails (e.g. after a partial vitaGL init), the message is
-// written to kfx_fatal.log so it isn't silently lost, then the process exits.
-static void vita_fatal_dialog(const char* msg)
-{
-    // Always persist the message to a log first, in case screen init fails.
-    FILE* lf = fopen("ux0:data/keeperfx/kfx_fatal.log", "w");
-    if (lf) { fprintf(lf, "KeeperFX Fatal Error:\n%s\n", msg); fclose(lf); }
-
-    if (psvDebugScreenInit() < 0) {
-        // CDRAM unavailable (likely leaked by a partial vitaGL init).
-        // Message is in kfx_fatal.log; exit cleanly without crashing.
-        sceKernelExitProcess(1);
-        return;
-    }
-
-    psvDebugScreenSetFgColor(0xFF4040); // red text
-    psvDebugScreenPrintf("\n\n  KeeperFX -- Fatal Error\n\n");
-    psvDebugScreenSetFgColor(0xFFFFFF); // white body
-    psvDebugScreenPrintf("  %s\n\n", msg);
-    psvDebugScreenSetFgColor(0xAAAAAA); // grey hint
-    psvDebugScreenPrintf("  Press any button to exit.\n");
-
-    sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG);
-    SceCtrlData pad;
-    // Drain any held-down buttons first, then wait for a fresh press.
-    do { sceCtrlReadBufferPositive(0, &pad, 1); } while (pad.buttons != 0);
-    do { sceCtrlReadBufferPositive(0, &pad, 1); } while (pad.buttons == 0);
-
-    sceKernelExitProcess(0);
-}
 
 // ---------------------------------------------------------------------------
 // Preinit step log — strncat entries here during preinit (before keeperfx.log
@@ -146,22 +111,28 @@ extern "C" void vita_vitagl_preinit(void)
 #ifdef VITA_SCE_DIAG
     vita_diag_install_hooks();
 #endif
-    GLboolean vgl_ok = vglInitExtended(0, 960, 544, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
+
+// Todo: cfg.
+GLboolean vgl_ok;
+switch(msaa) {
+    case 1: 
+        vgl_ok = vglInitExtended(0, scr_width, scr_height, 0x1000000, SCE_GXM_MULTISAMPLE_2X);
+        break;
+    case 4:
+        vgl_ok = vglInitExtended(0, scr_width, scr_height, 0x1000000, SCE_GXM_MULTISAMPLE_4X);
+        break;
+    default:
+        vgl_ok = vglInitExtended(0, scr_width, scr_height, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
+        break;
+}
+
+   
 #ifdef VITA_SCE_DIAG
     vita_diag_unhook_all();
     { FILE* _pf = fopen("ux0:data/keeperfx/kfx_preinit.log", "a");
       if (_pf) { fprintf(_pf, "[SCE_DIAG] vglInitExtended returned %s\n",
                          vgl_ok == GL_TRUE ? "GL_TRUE" : "GL_FALSE"); fclose(_pf); } }
 #endif
-    if (vgl_ok == GL_FALSE) {
-        PREINIT_LOG("vglInitFAILED")
-        vita_fatal_dialog(
-            "KeeperFX: GPU initialisation failed.\n\n"
-            "vitaGL (vglInitExtended) returned GL_FALSE.\n\n"
-            "Ensure ur0:data/external/libshacccg.suprx is installed\n"
-            "and that no other GXM application is running.");
-        // vita_fatal_dialog does not return.
-    }
     PREINIT_LOG("vglInit")
 
     // Mirror VitaQuake2: route all textures through VRAM.
