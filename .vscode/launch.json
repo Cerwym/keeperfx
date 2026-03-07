@@ -13,6 +13,34 @@
 "version": "0.2.0",
 "configurations": [
 {
+"name": "Vita Remote Debug (GDB)",
+"type": "cppdbg",
+"request": "launch",
+"program": "/src/out/build/vita-debug/keeperfx",
+"cwd": "/src",
+"MIMode": "gdb",
+"miDebuggerServerAddress": "${input:vitaGdbIp}:31337",
+"stopAtConnect": true,
+"pipeTransport": {
+    "debuggerPath": "/usr/local/vitasdk/bin/arm-vita-eabi-gdb",
+    "pipeProgram": "docker",
+    "pipeArgs": [
+        "compose", "-f", "${workspaceFolder}/docker/compose.yml",
+        "run", "--rm", "-T", "vitasdk"
+    ],
+    "pipeCwd": "${workspaceFolder}"
+},
+"setupCommands": [
+    { "description": "Remote timeout for WiFi latency", "text": "set remotetimeout 10", "ignoreFailures": false },
+    { "description": "Pretty print structs", "text": "set print pretty on", "ignoreFailures": true },
+    { "description": "No pagination in MI mode", "text": "set pagination off", "ignoreFailures": true },
+    { "description": "No confirm prompts", "text": "set confirm off", "ignoreFailures": true }
+],
+"sourceFileMap": { "/src": "${workspaceFolder}" },
+"preLaunchTask": "Build Vita Debug",
+"logging": { "moduleLoad": false }
+},
+{
 "name": "Debug keeperfx",
 "type": "cppdbg",
 "request": "launch",
@@ -32,6 +60,14 @@
 "externalConsole": true,
 "stopAtEntry": false,
 "logging": { "moduleLoad": false }
+}
+],
+"inputs": [
+{
+"id": "vitaGdbIp",
+"type": "promptString",
+"description": "PS Vita IP address for GDB remote debugging",
+"default": "192.168.0.66"
 }
 ]
 }
