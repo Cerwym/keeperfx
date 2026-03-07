@@ -30,21 +30,70 @@
 #include <string.h>
 #include <vitaGL.h>
 
-void *__wrap_malloc(uint32_t size)                          { return vglMalloc(size); }
-void  __wrap_free(void *addr)                               { vglFree(addr); }
+/* Forward declarations of the real allocator provided by the linker's --wrap
+ * mechanism.  When vglMalloc / vglFree / vglRealloc call stdlib internally
+ * (e.g. for their own bookkeeping), those calls are also intercepted by
+ * --wrap and re-enter __wrap_malloc.  The recursion guard detects this and
+ * routes the inner call through __real_malloc (the original libc malloc),
+ * keeping VitaGL's internals out of the VGL pool while game-code allocations
+ * still go through vglMalloc. */
+extern void *__real_malloc(uint32_t size);
+extern void  __real_free(void *addr);
+extern void *__real_realloc(void *ptr, uint32_t size);
+extern void *__real_memalign(uint32_t alignment, uint32_t size);
+
+/* Plain (non-TLS) flags: on ARM Vita _Thread_local uses emutls which
+ * allocates its per-thread slot via malloc — putting it in a malloc wrapper
+ * creates infinite recursion before the guard can even be checked.
+ * The game's rendering/allocation work is single-threaded so a plain
+ * static flag is sufficient. */
+static int _in_vgl_malloc  = 0;
+static int _in_vgl_free    = 0;
+static int _in_vgl_realloc = 0;
+
+void *__wrap_malloc(uint32_t size)
+{
+    if (_in_vgl_malloc) return __real_malloc(size);
+    _in_vgl_malloc = 1;
+    void *ptr = vglMalloc(size);
+    _in_vgl_malloc = 0;
+    return ptr;
+}
+void  __wrap_free(void *addr)
+{
+    if (_in_vgl_free) { __real_free(addr); return; }
+    _in_vgl_free = 1;
+    vglFree(addr);
+    _in_vgl_free = 0;
+}
 void *__wrap_calloc(uint32_t nmemb, uint32_t size)
 {
-    /* Do NOT call vglCalloc() here: vglCalloc() internally calls calloc(),
-     * which --wrap,calloc redirects back to __wrap_calloc → infinite recursion
-     * and a stack-overflow crash.  Replicate calloc semantics manually using
-     * vglMalloc (a direct allocator primitive that does not call calloc). */
+    /* Do NOT call vglCalloc(): it internally calls calloc() → __wrap_calloc
+     * → infinite recursion.  Use __wrap_malloc (which carries the recursion
+     * guard) and zero the block manually. */
     size_t total = (size_t)nmemb * size;
-    void *ptr = vglMalloc(total);
+    void *ptr = __wrap_malloc(total);
     if (ptr != NULL)
         memset(ptr, 0, total);
     return ptr;
 }
-void *__wrap_realloc(void *ptr, uint32_t size)              { return vglRealloc(ptr, size); }
-void *__wrap_memalign(uint32_t alignment, uint32_t size)    { return vglMemalign(alignment, size); }
+void *__wrap_realloc(void *ptr, uint32_t size)
+{
+    if (_in_vgl_realloc) return __real_realloc(ptr, size);
+    _in_vgl_realloc = 1;
+    void *p = vglRealloc(ptr, size);
+    _in_vgl_realloc = 0;
+    return p;
+}
+static int _in_vgl_memalign = 0;
+
+void *__wrap_memalign(uint32_t alignment, uint32_t size)
+{
+    if (_in_vgl_memalign) return __real_memalign(alignment, size);
+    _in_vgl_memalign = 1;
+    void *ptr = vglMemalign(alignment, size);
+    _in_vgl_memalign = 0;
+    return ptr;
+}
 
 #endif /* VITA_HAVE_VITAGL */
