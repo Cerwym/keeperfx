@@ -70,3 +70,4 @@ docs/PHASE2_ASSET_PROCESSING.md
 /campgns/dk2_media
 .git-surgery/
 keeperfx.worktrees/
+__pycache__/
