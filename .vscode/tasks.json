@@ -177,7 +177,10 @@
 {
 "label": "Parse Vita Crash Dump",
 "type": "shell",
-"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Interactive",
+"command": "bash '${workspaceFolder}/tools/vita-parse-crash.sh' --interactive && code '${workspaceFolder}/out/vita-dumps/crash_report.html'",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Interactive; if (Test-Path '${workspaceFolder}\\out\\vita-dumps\\crash_report.html') { code '${workspaceFolder}\\out\\vita-dumps\\crash_report.html' }"
+},
 "problemMatcher": [],
 "group": "build",
 "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false, "close": false }
@@ -186,7 +189,10 @@
 {
 "label": "Parse Local Crash Dump",
 "type": "shell",
-"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Dump '${input:dumpFile}'",
+"command": "bash '${workspaceFolder}/tools/vita-parse-crash.sh' --dump '${input:dumpFile}' && code '${workspaceFolder}/out/vita-dumps/crash_report.html'",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Dump '${input:dumpFile}'; if (Test-Path '${workspaceFolder}\\out\\vita-dumps\\crash_report.html') { code '${workspaceFolder}\\out\\vita-dumps\\crash_report.html' }"
+},
 "problemMatcher": [],
 "group": "build",
 "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
