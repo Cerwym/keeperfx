@@ -133,18 +133,6 @@
 "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
 },
 
-
-{
-"label": "View Game Log",
-"type": "shell",
-"command": "tail -f '${workspaceFolder}/.deploy/keeperfx.log'",
-"windows": {
-"command": "Get-Content '${workspaceFolder}\\.deploy\\keeperfx.log' -Wait -Tail 50"
-},
-"problemMatcher": [],
-"presentation": { "reveal": "always", "focus": false, "panel": "dedicated", "showReuseMessage": false }
-},
-
 // ── IntelliSense / tooling ───────────────────────────────────────────
 
 {
@@ -182,7 +170,81 @@
 },
 "problemMatcher": "$gcc",
 "group": "build"
+},
+
+// ── Vita crash analysis ──────────────────────────────────────────────
+
+{
+"label": "Parse Vita Crash Dump",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Interactive",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false, "close": false }
+},
+
+{
+"label": "Parse Local Crash Dump",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Dump '${input:dumpFile}'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+},
+
+// ── Vita debugger plugins ────────────────────────────────────────────
+
+{
+"label": "Fetch Vita Debugger Plugins",
+"type": "shell",
+"command": [
+    "$outDir = '${workspaceFolder}\\out\\vita-tools';",
+    "New-Item -ItemType Directory -Force -Path $outDir | Out-Null;",
+    "Write-Host 'Pulling kvdb OCI artifact...' -ForegroundColor Cyan;",
+    "$kvdbId = docker create ghcr.io/cerwym/vita-kvdb:latest 2>$null;",
+    "if (!$kvdbId) { Write-Host 'ERROR: Failed to pull ghcr.io/cerwym/vita-kvdb:latest' -ForegroundColor Red; exit 1 };",
+    "docker cp \"${kvdbId}:/kvdb.skprx\" \"$outDir/kvdb.skprx\";",
+    "docker rm $kvdbId | Out-Null;",
+    "Write-Host 'Pulling vdbtcp OCI artifact...' -ForegroundColor Cyan;",
+    "$vdbtcpId = docker create ghcr.io/cerwym/vita-vdbtcp:latest 2>$null;",
+    "if (!$vdbtcpId) { Write-Host 'ERROR: Failed to pull ghcr.io/cerwym/vita-vdbtcp:latest' -ForegroundColor Red; exit 1 };",
+    "docker cp \"${vdbtcpId}:/vdbtcp.suprx\" \"$outDir/vdbtcp.suprx\";",
+    "docker rm $vdbtcpId | Out-Null;",
+    "Write-Host 'Vita debugger plugins saved to out/vita-tools/' -ForegroundColor Green;",
+    "Get-ChildItem $outDir | Format-Table Name, Length;"
+],
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+},
+
+{
+"label": "Deploy Vita Debugger",
+"type": "shell",
+"command": [
+    "$vitaIp = '192.168.0.66';",
+    "$toolsDir = '${workspaceFolder}\\out\\vita-tools';",
+    "if (!(Test-Path \"$toolsDir\\kvdb.skprx\") -or !(Test-Path \"$toolsDir\\vdbtcp.suprx\")) {",
+    "  Write-Host 'ERROR: Plugins not found. Run Fetch Vita Debugger Plugins first.' -ForegroundColor Red; exit 1",
+    "};",
+    "Write-Host \"Uploading to $vitaIp via FTP...\" -ForegroundColor Cyan;",
+    "docker run --rm -v \"${toolsDir}:/data\" curlimages/curl:latest -T /data/kvdb.skprx \"ftp://${vitaIp}:1337/ur0:/tai/kvdb.skprx\" --ftp-create-dirs;",
+    "docker run --rm -v \"${toolsDir}:/data\" curlimages/curl:latest -T /data/vdbtcp.suprx \"ftp://${vitaIp}:1337/ur0:/tai/vdbtcp.suprx\" --ftp-create-dirs;",
+    "Write-Host 'Plugins deployed to ur0:/tai/ — reboot Vita to load.' -ForegroundColor Green;"
+],
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
 }
 
+],
+
+"inputs": [
+{
+    "id": "dumpFile",
+    "type": "promptString",
+    "description": "Path to local .psp2dmp crash dump file",
+    "default": "out/vita-dumps/"
+}
 ]
 }

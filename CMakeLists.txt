@@ -334,6 +334,13 @@ if(PLATFORM_VITA)
     # mathneon is linked.  These flags are ARM/Vita-only and have no effect on desktop.
     target_compile_options(keeperfx       PRIVATE -mcpu=cortex-a9 -mfpu=neon -ffast-math)
     target_compile_options(keeperfx_hvlog PRIVATE -mcpu=cortex-a9 -mfpu=neon -ffast-math)
+    # Guarantee DWARF-4 debug info for crash analysis (vita_crash tool, pyelftools)
+    # and GDB remote debugging (kvdb/vdbtcp). CMake adds -g for Debug/RelWithDebInfo
+    # but does not specify the DWARF version — make it explicit.
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_compile_options(keeperfx       PRIVATE -gdwarf-4)
+        target_compile_options(keeperfx_hvlog PRIVATE -gdwarf-4)
+    endif()
     # vitaGL palette shader renderer — disabled by default because SDL2's GXM
     # driver calls sceGxmInitialize at SDL_Init(VIDEO) time, which causes
     # vglInitExtended to fail (GXM_ERROR_ALREADY_INITIALIZED). To use vitaGL,
@@ -374,24 +381,10 @@ if(PLATFORM_VITA)
             SOURCE_DIR      ${CMAKE_BINARY_DIR}/_deps/vitagl-src
             BUILD_IN_SOURCE TRUE
             CONFIGURE_COMMAND ""
+            PATCH_COMMAND   git reset --hard HEAD && git clean -fd
             # Remove any pre-installed vitaGL first to avoid version conflicts
-            BUILD_COMMAND
-                rm -f $ENV{VITASDK}/arm-vita-eabi/lib/libvitaGL.a $ENV{VITASDK}/arm-vita-eabi/include/vitaGL.h $ENV{VITASDK}/arm-vita-eabi/include/imgui_impl_vitagl.h &&
-                make
-                    LOG_ERRORS=2
-                    HAVE_PROFILING=0
-                    HAVE_DEBUGGER=1
-                    DEBUG_GLSL_TRANSLATOR=1
-                    DEBUG_GLSL_PREPROCESSOR=1
-                    HAVE_GLSL_SUPPORT=1
-            INSTALL_COMMAND
-                make install
-                    LOG_ERRORS=2
-                    HAVE_PROFILING=0
-                    HAVE_DEBUGGER=1
-                    DEBUG_GLSL_TRANSLATOR=1
-                    DEBUG_GLSL_PREPROCESSOR=1
-                    HAVE_GLSL_SUPPORT=1
+            BUILD_COMMAND   /bin/bash -c "rm -f $ENV{VITASDK}/arm-vita-eabi/lib/libvitaGL.a $ENV{VITASDK}/arm-vita-eabi/include/vitaGL.h $ENV{VITASDK}/arm-vita-eabi/include/imgui_impl_vitagl.h && make LOG_ERRORS=2 HAVE_RAZOR=1 HAVE_PROFILING=0 HAVE_DEBUGGER=1 DEBUG_GLSL_TRANSLATOR=1 DEBUG_GLSL_PREPROCESSOR=1 HAVE_GLSL_SUPPORT=1"
+            INSTALL_COMMAND /bin/bash -c "make install LOG_ERRORS=2 HAVE_RAZOR=1 HAVE_PROFILING=0 HAVE_DEBUGGER=1 DEBUG_GLSL_TRANSLATOR=1 DEBUG_GLSL_PREPROCESSOR=1 HAVE_GLSL_SUPPORT=1"
             BUILD_BYPRODUCTS "${VITAGL_INSTALL_LIB}"
         )
 
@@ -439,8 +432,8 @@ if(PLATFORM_VITA)
         set(VITA_SHADER_VPK_FILES "")
     endif()
     # vitaGL dependency stubs — SceKernelDmacMgr for sceDmacMemcpy (used by vitaGL internally).
-    target_link_libraries(keeperfx       PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub)
-    target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub)
+    target_link_libraries(keeperfx       PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub SceRazorCapture_stub)
+    target_link_libraries(keeperfx_hvlog PRIVATE SceGxm_stub SceDisplay_stub SceCtrl_stub SceTouch_stub ScePower_stub SceAudio_stub SceShaccCg_stub SceKernelDmacMgr_stub SceRazorCapture_stub)
     # VITA_SCE_DIAG: compile-in taiHEN import hooks for SCE subsystem tracing.
     # Enabled by the vita-debug preset; compiles to nothing in reldebug/release.
     option(VITA_SCE_DIAG "Enable taiHEN SCE subsystem diagnostic hooks (vita-debug only)" OFF)
