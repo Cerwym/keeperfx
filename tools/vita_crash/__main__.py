@@ -190,12 +190,7 @@ def main():
 
 
 def _open_html_preview(html_path: str):
-    """Serve the HTML on a temporary local port and open in the browser.
-
-    In a VS Code devcontainer, $BROWSER points to a helper that opens URLs
-    in VS Code's built-in Simple Browser, giving a rendered preview rather
-    than raw HTML source.
-    """
+    """Serve the HTML on a temporary local port and open in the browser."""
     import http.server
     import threading
     import webbrowser
