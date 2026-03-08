@@ -235,11 +235,58 @@
 "problemMatcher": [],
 "group": "build",
 "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+},
+
+// ── Fork management ──────────────────────────────────────────────────
+//
+// PowerShell scripts for keeping master/develop/feature branches in sync.
+// Run "Setup Git Hooks" once, then "Sync Repos" whenever you want upstream changes.
+
+{
+"label": "Setup Git Hooks",
+"detail": "One-time: installs hooks protecting master, adds upstream remote",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\setup-hooks.ps1'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Sync Repos",
+"detail": "Fetch upstream → ff master → merge develop → rebase vita branch",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\sync-repos.ps1'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Create Upstream PR Branch",
+"detail": "Cherry-pick commits onto a clean branch off master for upstream PRs",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\upstream-pr.ps1' -Name '${input:upstreamBranchName}' -Commits ${input:cherryPickCommits}",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
 }
 
 ],
 
 "inputs": [
+{
+    "id": "upstreamBranchName",
+    "type": "promptString",
+    "description": "Name for the upstream branch (e.g. vita-crash-tool). Will be prefixed with upstream/.",
+    "default": ""
+},
+{
+    "id": "cherryPickCommits",
+    "type": "promptString",
+    "description": "Comma-separated commit hashes to cherry-pick (e.g. abc1234, def5678)",
+    "default": ""
+},
 {
     "id": "dumpFile",
     "type": "promptString",
