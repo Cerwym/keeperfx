@@ -94,11 +94,18 @@ def main():
     # Determine source root (repo root)
     source_root = args.source_root
     if not source_root:
-        # Heuristic: look for CMakeLists.txt going up from this script
-        d = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if os.path.isfile(os.path.join(d, "CMakeLists.txt")):
-            source_root = d
-        else:
+        # Walk up from this script's directory looking for root CMakeLists.txt
+        # (one containing "project(") to distinguish from subdirectory ones.
+        d = os.path.dirname(os.path.abspath(__file__))
+        while d != os.path.dirname(d):
+            d = os.path.dirname(d)
+            cml = os.path.join(d, "CMakeLists.txt")
+            if os.path.isfile(cml):
+                with open(cml) as f:
+                    if "project(" in f.read():
+                        source_root = d
+                        break
+        if not source_root:
             source_root = os.getcwd()
 
     # Get the dump file
