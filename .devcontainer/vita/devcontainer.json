@@ -54,8 +54,7 @@
 		}
 	},
 
-	// Ensure compile_commands.json has correct /workspaces/ paths for
-	// IntelliSense. Handles stale /src/ paths left by Docker Compose builds
-	// (fast sed rewrite) and missing/wrong CMake caches (full reconfigure).
-	"postStartCommand": "bash .devcontainer/fix-intellisense.sh vita-debug"
+	// Fix broken git worktree pointers (host paths don't exist in container),
+	// then ensure compile_commands.json has correct /workspaces/ paths.
+	"postStartCommand": "bash .devcontainer/fix-git-worktree.sh && bash .devcontainer/fix-intellisense.sh vita-debug"
 }
