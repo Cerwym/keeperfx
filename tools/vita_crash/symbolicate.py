@@ -366,21 +366,35 @@ def build_stack_trace(dump: CoreDump, thread: Thread, elf_path: Optional[str],
         exception_type=thread.stop_reason_str,
     )
 
-    if not thread.regs:
-        return trace
-
     code_seg = _find_code_segment(dump)
 
-    # Try DWARF unwinding first, fall back to heuristic
+    # Collect candidate return addresses.
+    # Start with the thread-info PC (the original crash/wait PC) and
+    # register PC/LR, then supplement with heuristic stack scan.
     addresses = []
-    if elf_path:
-        addresses = dwarf_stack_walk(dump, thread, elf_path, max_depth)
-    if len(addresses) < 3:
-        # DWARF didn't produce much — supplement with heuristic scan
-        heuristic = heuristic_stack_walk(dump, thread, max_depth)
-        for addr in heuristic:
-            if addr not in addresses:
-                addresses.append(addr)
+
+    # Thread-info PC is the most important address
+    if thread.pc:
+        addresses.append(thread.pc)
+
+    if thread.regs:
+        # Register PC may differ from thread-info PC (e.g. after exception
+        # dispatch), include it if distinct
+        reg_pc = thread.regs.pc
+        if reg_pc and reg_pc not in addresses:
+            addresses.append(reg_pc)
+
+        lr = thread.regs.lr & ~1  # clear Thumb bit
+        if lr and lr not in addresses:
+            addresses.append(lr)
+
+    # Heuristic stack scan for more return addresses
+    heuristic = heuristic_stack_walk(dump, thread, max_depth)
+    for addr in heuristic:
+        if addr not in addresses:
+            addresses.append(addr)
+
+    addresses = addresses[:max_depth]
 
     # Symbolicate all addresses in one batch
     symbolicated = {}
@@ -388,7 +402,7 @@ def build_stack_trace(dump: CoreDump, thread: Thread, elf_path: Optional[str],
         symbolicated = symbolicate_addresses(addresses, elf_path, addr2line)
 
     # Build frames
-    for idx, addr in enumerate(addresses[:max_depth]):
+    for idx, addr in enumerate(addresses):
         module_ref = dump.resolve_address(addr)
         offset = None
         if code_seg:
