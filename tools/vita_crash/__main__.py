@@ -86,6 +86,8 @@ def main():
                         help="Also parse on-device crash.log")
     parser.add_argument("--source-root", metavar="DIR",
                         help="Source root for context display (default: auto)")
+    parser.add_argument("--open", action="store_true",
+                        help="Open HTML report in browser/VS Code preview after generation")
     parser.add_argument("--addr2line", default="arm-vita-eabi-addr2line",
                         help="Path to addr2line (default: arm-vita-eabi-addr2line)")
 
@@ -168,6 +170,7 @@ def main():
                 f.write(crash_log_content)
         print(f"\nText report saved: {text_path}", file=sys.stderr)
 
+    html_path = None
     if args.format in ("html", "all"):
         html_content = format_html(dump, traces, source_root)
         html_path = os.path.join(args.output, "crash_report.html")
@@ -180,6 +183,47 @@ def main():
     if ct:
         print(f"\nCrash: {ct.stop_reason_str} in thread {ct.name} at PC=0x{ct.pc:08x}",
               file=sys.stderr)
+
+    # Open HTML report in browser / VS Code Simple Browser
+    if args.open and html_path and os.path.isfile(html_path):
+        _open_html_preview(html_path)
+
+
+def _open_html_preview(html_path: str):
+    """Serve the HTML on a temporary local port and open in the browser.
+
+    In a VS Code devcontainer, $BROWSER points to a helper that opens URLs
+    in VS Code's built-in Simple Browser, giving a rendered preview rather
+    than raw HTML source.
+    """
+    import http.server
+    import threading
+    import webbrowser
+
+    abs_path = os.path.abspath(html_path)
+    serve_dir = os.path.dirname(abs_path)
+    filename = os.path.basename(abs_path)
+
+    handler = http.server.SimpleHTTPRequestHandler
+    srv = http.server.HTTPServer(("127.0.0.1", 0), handler)
+    port = srv.server_address[1]
+
+    orig_dir = os.getcwd()
+    os.chdir(serve_dir)
+
+    def serve():
+        for _ in range(10):
+            srv.handle_request()
+        os.chdir(orig_dir)
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+
+    url = f"http://localhost:{port}/{filename}"
+    print(f"Opening preview: {url}", file=sys.stderr)
+    webbrowser.open(url)
+
+    thread.join(timeout=10)
 
 
 def _download_dump(args) -> Optional[str]:

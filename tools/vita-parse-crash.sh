@@ -27,6 +27,7 @@ DUMP=""
 INTERACTIVE=false
 ALL=false
 FORMAT="all"
+OPEN=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -36,6 +37,7 @@ while [[ $# -gt 0 ]]; do
         --format)    FORMAT="$2";    shift 2 ;;
         --interactive) INTERACTIVE=true; shift ;;
         --all)       ALL=true;       shift ;;
+        --open)      OPEN=true;      shift ;;
         -h|--help)
             echo "Usage: $(basename "$0") [OPTIONS]"
             echo ""
@@ -46,6 +48,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --format FORMAT    Output: text, html, or all (default: all)"
             echo "  --interactive      Select dump from FTP listing"
             echo "  --all              Show all dumps, not just eboot.bin ones"
+            echo "  --open             Open HTML report in browser/VS Code preview"
             echo "  -h, --help         Show this help"
             exit 0
             ;;
@@ -66,6 +69,7 @@ fi
 
 $INTERACTIVE && TOOL_ARGS+=("--interactive")
 $ALL && TOOL_ARGS+=("--all")
+$OPEN && TOOL_ARGS+=("--open")
 
 # --- Detect native Vita SDK environment ---
 if command -v arm-vita-eabi-addr2line &>/dev/null && command -v python3 &>/dev/null; then
