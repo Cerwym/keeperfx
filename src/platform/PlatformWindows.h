@@ -15,6 +15,8 @@ public:
     void ErrorParachuteInstall() override;
     void ErrorParachuteUpdate() override;
 
+    void VideoInit() override;
+
     TbFileFind* FileFindFirst(const char* filespec, TbFileEntry* entry) override;
     int32_t     FileFindNext(TbFileFind* handle, TbFileEntry* entry) override;
     void        FileFindEnd(TbFileFind* handle) override;

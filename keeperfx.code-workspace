@@ -2,6 +2,14 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"name": "d3es-vita",
+			"path": "/workspaces/d3es-vita"
+		},
+		{
+			"name": "vitaQuakeIII",
+			"path": "/workspaces/vitaQuakeIII"
 		}
 	],
     "settings": {

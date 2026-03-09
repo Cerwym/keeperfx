@@ -196,6 +196,18 @@ extern "C" size_t PlatformManager_GetPolyPoolSize()
     return PlatformManager::Get()->GetPolyPoolSize();
 }
 
+extern "C" TbBool PlatformManager_ForcesAllModesAvailable()
+{
+    IPlatform* p = PlatformManager::Get();
+    return p ? p->ForcesAllModesAvailable() : false;
+}
+
+extern "C" TbBool PlatformManager_OwnsDisplay()
+{
+    IPlatform* p = PlatformManager::Get();
+    return p ? p->OwnsDisplay() : false;
+}
+
 IAudioPlatform* PlatformManager_GetAudio()
 {
     IPlatform* p = PlatformManager::Get();

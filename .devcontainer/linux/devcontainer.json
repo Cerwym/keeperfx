@@ -41,6 +41,13 @@
 		}
 	},
 
+	// Bind-mount sibling Vita reference repos from the Windows host.
+	// These are read-only references and are not committed to SCM.
+	"mounts": [
+		"source=C:/Users/peter/source/repos/vita/d3es-vita,target=/workspaces/d3es-vita,type=bind,readonly",
+		"source=C:/Users/peter/source/repos/vita/vitaQuakeIII,target=/workspaces/vitaQuakeIII,type=bind,readonly"
+	],
+
 	// Fix broken git worktree pointers (host paths don't exist in container),
 	// then ensure compile_commands.json has correct /workspaces/ paths.
 	"postStartCommand": "bash .devcontainer/fix-git-worktree.sh && bash .devcontainer/fix-intellisense.sh linux-x64-release"
