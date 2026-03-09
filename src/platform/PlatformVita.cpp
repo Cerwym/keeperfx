@@ -8,6 +8,7 @@
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/clib.h>
 #include <psp2/kernel/sysmem.h>
+#include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/threadmgr.h>
 #include <psp2/power.h>
 #include <psp2/rtc.h>
@@ -22,11 +23,30 @@
 #include "bflib_filelst.h"
 #include "config.h"
 #include "audio/audio_vita.h"
+#include "audio/audio_interface.h"
 #include "platform/kfx_breadcrumb.h"
+#include <vitaGL.h>
+#include <SDL2/SDL.h>
+extern "C" {
+#include "platform/vita_sce_diag.h"
+}
+extern "C" void input_vita_initialize(void);
 #endif
 #include "post_inc.h"
 
 #ifdef PLATFORM_VITA
+
+// ---------------------------------------------------------------------------
+// vitaGL / display subsystem state — owned here, not in the renderer.
+// ---------------------------------------------------------------------------
+static bool s_vita_video_ready = false;
+
+// Display config (matches 960×544 native Vita resolution; MSAA=0 → NONE).
+static int s_vita_msaa       = 0;
+static int s_vita_scr_width  = 960;
+static int s_vita_scr_height = 544;
+
+extern "C" bool vita_is_vitagl_ready(void) { return s_vita_video_ready; }
 
 /* Link-time heap and stack declarations required by vitasdk.
  * These are read by the linker/loader before main() runs.
@@ -465,10 +485,107 @@ extern "C" const char *vita_modify_load_filename(const char *input)
     return resolved;
 }
 
+void PlatformVita::VideoInit()
+{
+    if (s_vita_video_ready) return;
+
+#define _VGL_LOG(step) \
+    { FILE* _pf = fopen("ux0:data/keeperfx/kfx_preinit.log", "a"); \
+      if (_pf) { fprintf(_pf, step "\n"); fclose(_pf); } }
+
+    sceIoMkdir("ux0:data/keeperfx", 0777);
+    { FILE* _tr = fopen("ux0:data/keeperfx/kfx_preinit.log", "w"); if (_tr) fclose(_tr); }
+    _VGL_LOG("VideoInit:start")
+
+    // Diagnostic: log available CDRAM and heap headroom before vglInit.
+    FILE* _diag = fopen("ux0:data/keeperfx/kfx_preinit.log", "a");
+    if (_diag) {
+        SceUID cdram = sceKernelAllocMemBlock("probe_cdram",
+            SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, 256*1024, NULL);
+        fprintf(_diag, "CDRAM probe uid=0x%08X\n", (unsigned)cdram);
+        if (cdram >= 0) sceKernelFreeMemBlock(cdram);
+
+        void* hp = KfxAlloc(32 * 1024 * 1024);
+        fprintf(_diag, "KfxAlloc(32MB) = %s\n", hp ? "OK" : "FAIL");
+        if (hp) KfxFree(hp);
+        fclose(_diag);
+    }
+    _VGL_LOG("VideoInit:probed")
+
+#ifdef VITA_SCE_DIAG
+    vita_diag_install_hooks();
+#endif
+
+    // Use pool_size=0 (auto, matches d3es/vitaQuakeIII pattern).
+    // RAM pool: 0x1000000 (16 MB) without MSAA, 0x1800000 (24 MB) with 4×.
+    GLboolean vgl_ok;
+    switch (s_vita_msaa) {
+        case 2:
+            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x1800000, SCE_GXM_MULTISAMPLE_2X);
+            break;
+        case 4:
+            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x1800000, SCE_GXM_MULTISAMPLE_4X);
+            break;
+        default:
+            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
+            break;
+    }
+
+#ifdef VITA_SCE_DIAG
+    vita_diag_unhook_all();
+    _VGL_LOG("VideoInit:vglInit-diag")
+#endif
+    _VGL_LOG("VideoInit:vglInit")
+
+    // Route all textures through VRAM (matches vitaQuakeIII/d3es pattern).
+    vglUseVram(GL_TRUE);
+    _VGL_LOG("VideoInit:vram")
+
+    // vglInitExtended returns res_fallback (GL_TRUE = resolution was clamped,
+    // GL_FALSE = exact resolution used).  It does NOT return GL_FALSE on failure —
+    // neither vitaQuakeIII nor d3es-vita check the return value at all.
+    // A real init failure would leave sceGxmCreateContext with a null context,
+    // which we log from VITA_SCE_DIAG above; absent that, assume success.
+    (void)vgl_ok;
+    s_vita_video_ready = GL_TRUE;
+    SYNCLOG("[vitaGL] VideoInit: %s (msaa=%d %dx%d)",
+            s_vita_video_ready ? "OK" : "FAILED",
+            s_vita_msaa, s_vita_scr_width, s_vita_scr_height);
+
+    // Initialise SDL input subsystems only — VIDEO is owned by vitaGL/GXM.
+    SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
+    atexit(SDL_Quit);
+    _VGL_LOG("VideoInit:sdl")
+
+#undef _VGL_LOG
+}
+
+void PlatformVita::InputInit()
+{
+    input_vita_initialize();
+}
+
+void PlatformVita::AudioInit()
+{
+    audio_vita_initialize();
+}
+
 void PlatformVita::SystemInit()
 {
 #define _SYSI_LOG(msg) do { FILE* _f = fopen("ux0:data/keeperfx/kfx_boot.log", "a"); if (_f) { fprintf(_f, "sysinit:" msg "\n"); fclose(_f); } } while(0)
     _SYSI_LOG("enter");
+    // libshacccg.suprx is intentionally NOT pre-loaded here.
+    //
+    // Loading it before vglInitExtended causes SCE_KERNEL_ERROR_MODULEMGR_OLD_LIB
+    // when vitaGL's internal vitaSHARK subsequently tries to load the same path:
+    // the kernel version-checks the in-memory module against vitaSHARK's import
+    // stubs and rejects it if the on-disk copy is below the required library
+    // version.  First-time loads by vitaSHARK skip this check.
+    //
+    // vitaGL's startShaderCompiler() loads libshacccg during vglInitExtended;
+    // our own custom shark_init() is called after that from VitaShaderProgram
+    // and falls back to the already-mapped SceShaccCg import stubs if needed.
+    _SYSI_LOG("shacccg-skip");
     // Maximise CPU/GPU clocks — default is throttled; same settings as vitaQuakeII.
     scePowerSetArmClockFrequency(444);
     _SYSI_LOG("arm-clk");
@@ -496,6 +613,10 @@ void PlatformVita::SystemInit()
     extern unsigned char *big_scratch;
     big_scratch = (unsigned char *)KfxAlloc(256 * 1024);
     _SYSI_LOG("malloc-done");
+    // Early log — bootstraps keeperfx.log so errors during VideoInit/InputInit/AudioInit
+    // are captured.  kfxmain() will re-open with the config-selected filename.
+    LbErrorLogSetup(GetDataPath(), "keeperfx.log", 5);
+    _SYSI_LOG("log-setup");
 #undef _SYSI_LOG
 }
 

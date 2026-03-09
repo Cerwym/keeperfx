@@ -56,6 +56,12 @@ public:
 
     void LogWrite(const char* message) override;
 
+    void VideoInit() override;
+    void InputInit() override;
+    void AudioInit() override;
+    TbBool ForcesAllModesAvailable() const override { return true; }
+    TbBool OwnsDisplay() const override { return true; }
+
     void SystemInit() override;
     void FrameTick() override;
     void WorkTick() override;

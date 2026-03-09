@@ -311,6 +311,16 @@
     "presentation": { "reveal": "always", "focus": false, "panel": "shared", "showReuseMessage": false }
 },
 
+{
+    "label": "Fetch Vita Logs",
+    "detail": "Download kfx_boot.log, kfx_preinit.log, keeperfx.log from Vita → out/vita-logs/",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' fetch-logs",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false }
+},
+
 // ── Fork management ──────────────────────────────────────────────────
 //
 // PowerShell scripts for keeping master/develop/feature branches in sync.

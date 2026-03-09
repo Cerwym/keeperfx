@@ -11,6 +11,7 @@
 #   ./tools/vita-companion.sh launch         # Kill + relaunch KeeperFX
 #   ./tools/vita-companion.sh deploy-launch  # deploy-eboot + launch in one step
 #   ./tools/vita-companion.sh reboot         # Reboot the Vita
+#   ./tools/vita-companion.sh fetch-logs     # Download kfx_boot/preinit/keeperfx logs to out/vita-logs/
 #   ./tools/vita-companion.sh log [port]     # Listen for PrincessLog output (default 8080)
 #   ./tools/vita-companion.sh screen <on|off>
 #
@@ -269,6 +270,56 @@ cmd_log() {
     fi
 }
 
+# ── FETCH-LOGS: Pull device log files from Vita ──────────────────────
+
+cmd_fetch_logs() {
+    local out_dir="$WORKSPACE/out/vita-logs"
+    mkdir -p "$out_dir"
+    info "Fetching log files from ${VITA_IP}:${VITA_FTP} → out/vita-logs/"
+    local failed=0
+    for remote in \
+        "ux0:/data/vitaGL.log" \
+        "ux0:/data/keeperfx/kfx_boot.log" \
+        "ux0:/data/keeperfx/kfx_preinit.log" \
+        "ux0:/data/keeperfx/keeperfx.log"
+    do
+        local fname
+        fname="$(basename "$remote")"
+        info "  $remote ..."
+        if curl -s --ftp-method nocwd --connect-timeout 8 -m 15 \
+               -o "$out_dir/$fname" \
+               "ftp://${VITA_IP}:${VITA_FTP}/${remote}" 2>&1; then
+            if [[ -s "$out_dir/$fname" ]]; then
+                ok "  → saved to out/vita-logs/$fname ($(wc -c < "$out_dir/$fname") bytes)"
+            else
+                warn "  → empty or not found: $remote"
+                failed=$((failed + 1))
+            fi
+        else
+            err "  → FTP download failed: $remote"
+            failed=$((failed + 1))
+        fi
+    done
+    if [[ $failed -eq 0 ]]; then
+        ok "All logs saved to out/vita-logs/"
+        echo ""
+        echo "=== vitaGL.log ==="
+        cat "$out_dir/vitaGL.log" 2>/dev/null || echo '(empty)'
+        echo ""
+        echo "=== kfx_boot.log ==="
+        cat "$out_dir/kfx_boot.log" 2>/dev/null || echo '(empty)'
+        echo ""
+        echo "=== kfx_preinit.log ==="
+        cat "$out_dir/kfx_preinit.log" 2>/dev/null || echo '(empty)'
+    else
+        err "$failed log file(s) missing. Make sure:"
+        err "  - Vita is powered on"
+        err "  - KeeperFX has been launched at least once (creates the log files)"
+        err "  - VitaCompanion FTP is running on ${VITA_IP}:${VITA_FTP}"
+        return 1
+    fi
+}
+
 # ── SCREEN ───────────────────────────────────────────────────────────
 
 cmd_screen() {
@@ -293,6 +344,7 @@ usage() {
     echo "  launch           Kill running apps + launch KeeperFX"
     echo "  deploy-launch    Deploy eboot + launch (combined)"
     echo "  reboot           Reboot the Vita"
+    echo "  fetch-logs       Download kfx_boot.log, kfx_preinit.log, keeperfx.log → out/vita-logs/"
     echo "  log [port]       Listen for PrincessLog output (default: 8080)"
     echo "  screen <on|off>  Turn Vita screen on or off"
     echo ""
@@ -306,6 +358,7 @@ case "${1:-}" in
     launch)         cmd_launch ;;
     deploy-launch)  cmd_deploy_launch ;;
     reboot)         cmd_reboot ;;
+    fetch-logs)     cmd_fetch_logs ;;
     log)            cmd_log "${2:-8080}" ;;
     screen)         cmd_screen "${2:-}" ;;
     -h|--help|"")   usage ;;
