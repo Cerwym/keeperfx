@@ -173,6 +173,8 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
     # Exclude desktop-only IPlatform implementations
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/PlatformLinux\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/PlatformWindows\\.cpp$")
+    # Exclude SDL-based window system — homebrew platforms use their own IWindowSystem impl
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/WindowSystemSDL\\.cpp$")
     # Exclude IPlatform implementations for the other homebrew platforms
     if(NOT PLATFORM_VITA)
         list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/PlatformVita\\.cpp$")
