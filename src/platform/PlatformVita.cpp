@@ -517,17 +517,21 @@ void PlatformVita::VideoInit()
 #endif
 
     // Use pool_size=0 (auto, matches d3es/vitaQuakeIII pattern).
-    // RAM pool: 0x1000000 (16 MB) without MSAA, 0x1800000 (24 MB) with 4×.
+    // ram_threshold = 4 MB (reserved headroom for system/newlib).
+    // vglInitExtended computes: pool = sceKernelGetFreeMemorySize().size_user - ram_threshold.
+    // With 16-24 MB threshold the probe above showed KfxAlloc(32MB)=OK, so free user RAM is
+    // >32MB, leaving >28MB for vitaGL.  Previous 0x1000000 (16MB) threshold was too high and
+    // left vitaGL with ~0 bytes, causing all glTexImage2D calls to silently fail.
     GLboolean vgl_ok;
     switch (s_vita_msaa) {
         case 2:
-            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x1800000, SCE_GXM_MULTISAMPLE_2X);
+            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x400000, SCE_GXM_MULTISAMPLE_2X);
             break;
         case 4:
-            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x1800000, SCE_GXM_MULTISAMPLE_4X);
+            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x400000, SCE_GXM_MULTISAMPLE_4X);
             break;
         default:
-            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x1000000, SCE_GXM_MULTISAMPLE_NONE);
+            vgl_ok = vglInitExtended(0, s_vita_scr_width, s_vita_scr_height, 0x400000, SCE_GXM_MULTISAMPLE_NONE);
             break;
     }
 
