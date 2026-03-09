@@ -544,4 +544,9 @@ IAudioPlatform* PlatformVita::GetAudio()
     return &m_audio;
 }
 
+IWindowSystem* PlatformVita::GetWindowSystem()
+{
+    return &m_windowSystem;
+}
+
 #endif // PLATFORM_VITA
