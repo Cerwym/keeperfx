@@ -1,5 +1,6 @@
 #include "pre_inc.h"
 #include "platform/PlatformManager.h"
+#include "platform/IWindowSystem.h"
 #include "platform.h"
 #include "bflib_fileio.h"
 #include "post_inc.h"
@@ -17,6 +18,17 @@ void PlatformManager::Set(IPlatform* platform)
 {
     delete s_instance;
     s_instance = platform;
+}
+
+// ----- Default IWindowSystem (base class impl) -----
+// Returned by IPlatform::GetWindowSystem() when the platform has not
+// registered a more specific window system.  HasOSCursor() returns false
+// so all grab/warp/focus logic in the engine is skipped on stub platforms.
+static IWindowSystem s_defaultWindowSystem;
+
+IWindowSystem* IPlatform::GetWindowSystem()
+{
+    return &s_defaultWindowSystem;
 }
 
 // ----- C-compatible wrappers -----

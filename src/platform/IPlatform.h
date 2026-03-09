@@ -5,6 +5,7 @@
 #include "bflib_fileio.h"
 #include "bflib_sound.h"
 #include "IAudioPlatform.h"
+#include "IWindowSystem.h"
 
 /** Abstract interface for OS/platform-specific operations.
  *
@@ -131,6 +132,14 @@ public:
      *  has no native audio path (desktop CI, headless builds).
      *  When nullptr, callers fall back to SDL audio or silent playback. */
     virtual IAudioPlatform* GetAudio() { return nullptr; }
+
+    /** Returns the platform window-system implementation.
+     *  Desktop SDL platforms return a WindowSystemSDL instance.
+     *  Console platforms (Vita, 3DS, Switch) return a platform-specific or
+     *  default IWindowSystem whose HasOSCursor() returns false.
+     *  Never returns nullptr — the base implementation returns a static
+     *  default IWindowSystem instance with safe no-op behaviour. */
+    virtual IWindowSystem* GetWindowSystem();
 };
 
 #endif // IPLATFORM_H
