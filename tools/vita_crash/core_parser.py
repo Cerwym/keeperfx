@@ -30,12 +30,22 @@ NT_PSP2_THREAD_INFO = 0x1003
 NT_PSP2_THREAD_REG_INFO = 0x1004
 NT_PSP2_MODULE_INFO = 0x1005
 
-# Known stop reasons
+# Known stop reasons — encoding: (severity << 16) | SceExcpKind
+# Low nibble maps to ARM exception vector: 1=undef, 2=SWI, 3=prefetch abort, 4=data abort
 STOP_REASONS = {
-    0x00000: "No reason",
-    0x10002: "Undefined instruction exception",
-    0x20003: "Prefetch abort exception",
-    0x30004: "Data abort exception",
+    0x00000: "No exception",
+    0x10002: "Undefined instruction",
+    0x20003: "Prefetch abort",
+    0x30003: "Prefetch abort",
+    0x30004: "Data abort",
+}
+
+# Fallback: decode low nibble as SceExcpKind when exact value is unknown
+_EXCEPTION_TYPES = {
+    1: "Undefined instruction",
+    2: "Software interrupt",
+    3: "Prefetch abort",
+    4: "Data abort",
 }
 
 
@@ -69,6 +79,8 @@ class ThreadRegisters:
     sp: int = 0
     lr: int = 0
     pc: int = 0
+    cpsr: int = 0
+    fpscr: int = 0
 
 
 @dataclass
@@ -83,7 +95,13 @@ class Thread:
 
     @property
     def stop_reason_str(self) -> str:
-        return STOP_REASONS.get(self.stop_reason, f"Unknown (0x{self.stop_reason:x})")
+        if self.stop_reason in STOP_REASONS:
+            return STOP_REASONS[self.stop_reason]
+        kind = self.stop_reason & 0xF
+        exc = _EXCEPTION_TYPES.get(kind)
+        if exc:
+            return f"{exc} (0x{self.stop_reason:x})"
+        return f"Unknown exception (0x{self.stop_reason:x})"
 
     @property
     def crashed(self) -> bool:
@@ -345,19 +363,25 @@ def _parse_thread_reg_info(desc: bytes, threads: List[Thread]):
 
     for i in range(count):
         off = 12 + i * entry_size
-        # Need at least 68 bytes to read through PC at +64
-        if off + 68 > len(desc):
+        # Need at least 72 bytes to read through CPSR at +68
+        if off + 72 > len(desc):
             break
 
         tid = struct.unpack_from("<I", desc, off)[0]
-        # R0-R12 at +4..+52, SP at +56, LR at +60, PC at +64
-        regs_raw = struct.unpack_from("<16I", desc, off + 4)
+        # R0-R12 at +4..+52, SP at +56, LR at +60, PC at +64, CPSR at +68
+        regs_raw = struct.unpack_from("<17I", desc, off + 4)
+        # FPSCR at +72 (first field of VFP save area)
+        fpscr = 0
+        if off + 76 <= len(desc):
+            fpscr = struct.unpack_from("<I", desc, off + 72)[0]
 
         reg = ThreadRegisters(
             r=list(regs_raw[:13]),
             sp=regs_raw[13],
             lr=regs_raw[14],
             pc=regs_raw[15],
+            cpsr=regs_raw[16],
+            fpscr=fpscr,
         )
 
         for t in threads:

@@ -17,7 +17,7 @@ from typing import Optional
 from .core_parser import parse_core_dump
 from .symbolicate import (
     build_stack_trace, heuristic_stack_walk, StackTrace,
-    _find_elf, _find_code_segment,
+    _find_elf, _find_code_segment, symbolicate_addresses,
 )
 from .report import format_text, format_html
 
@@ -145,6 +145,22 @@ def main():
         )
         traces.append(trace)
 
+    # Resolve register values that are code addresses to function names
+    register_symbols = {}
+    ct = dump.crashed_thread
+    if ct and ct.regs and elf_path:
+        r = ct.regs
+        code_addrs = []
+        for i in range(13):
+            if 0x81000000 <= r.r[i] < 0x82000000:
+                code_addrs.append(r.r[i])
+        for val in (r.sp, r.lr, r.pc):
+            if 0x81000000 <= val < 0x82000000:
+                code_addrs.append(val)
+        if code_addrs:
+            register_symbols = symbolicate_addresses(
+                code_addrs, elf_path, args.addr2line)
+
     # Also try to parse crash.log if available
     crash_log_content = None
     crash_log_path = args.crash_log
@@ -160,7 +176,7 @@ def main():
     os.makedirs(args.output, exist_ok=True)
 
     if args.format in ("text", "all"):
-        text = format_text(dump, traces, source_root)
+        text = format_text(dump, traces, source_root, register_symbols)
         print(text)  # Always print to stdout
         text_path = os.path.join(args.output, "crash_report.txt")
         with open(text_path, "w", encoding="utf-8") as f:
@@ -172,7 +188,7 @@ def main():
 
     html_path = None
     if args.format in ("html", "all"):
-        html_content = format_html(dump, traces, source_root)
+        html_content = format_html(dump, traces, source_root, register_symbols)
         html_path = os.path.join(args.output, "crash_report.html")
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html_content)
