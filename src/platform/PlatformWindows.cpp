@@ -464,3 +464,8 @@ int PlatformWindows::FileDelete(const char* fname)
 {
     return remove(fname) ? -1 : 1;
 }
+
+IWindowSystem* PlatformWindows::GetWindowSystem()
+{
+    return GetSDLWindowSystem();
+}

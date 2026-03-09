@@ -2,6 +2,7 @@
 #define PLATFORM_LINUX_H
 
 #include "platform/IPlatform.h"
+#include "platform/WindowSystemSDL.h"
 
 /** Linux implementation of IPlatform using POSIX dirent/fnmatch. */
 class PlatformLinux : public IPlatform {
@@ -42,6 +43,8 @@ public:
     void   PauseRedbookTrack() override;
     void   ResumeRedbookTrack() override;
     void   StopRedbookTrack() override;
+
+    IWindowSystem* GetWindowSystem() override;
 
 private:
     char data_path_[256] = ".";

@@ -300,3 +300,8 @@ int PlatformLinux::FileDelete(const char* fname)
 {
     return remove(fname) ? -1 : 1;
 }
+
+IWindowSystem* PlatformLinux::GetWindowSystem()
+{
+    return GetSDLWindowSystem();
+}

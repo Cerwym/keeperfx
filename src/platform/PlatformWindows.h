@@ -2,6 +2,7 @@
 #define PLATFORM_WINDOWS_H
 
 #include "platform/IPlatform.h"
+#include "platform/WindowSystemSDL.h"
 
 /** Windows implementation of IPlatform using Win32 FindFirstFile/FindNextFile. */
 class PlatformWindows : public IPlatform {
@@ -44,6 +45,8 @@ public:
     void   PauseRedbookTrack() override;
     void   ResumeRedbookTrack() override;
     void   StopRedbookTrack() override;
+
+    IWindowSystem* GetWindowSystem() override;
 
 private:
     char data_path_[256] = ".";
