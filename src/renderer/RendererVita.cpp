@@ -230,9 +230,9 @@ void RendererVita::EndFrame()
         m_blit.Bind();
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
-        vglVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 4, k_quad_pos);
-        vglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 4, dyn_uv);
-        vglDrawObjects(GL_TRIANGLE_STRIP, 4, GL_TRUE);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, k_quad_pos);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, dyn_uv);
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
         if (!gpu_passes.empty()) {
             // Stage 2 — ping-pong each GPU pass over the decoded scene.

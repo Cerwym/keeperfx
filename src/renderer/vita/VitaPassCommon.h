@@ -125,15 +125,15 @@ static inline GLuint vita_build_pass_program(const char* frag_glsl)
 // Full-screen quad draw call
 /******************************************************************************/
 
-/** Draw a full-screen quad using vitaGL's immediate array path.
- *  Assumes attrib arrays 0 and 1 are already used by the active program. */
+/** Draw a full-screen quad using the standard GL array path (works with
+ *  GLSL runtime-compiled programs via glDrawArrays). */
 static inline void vita_draw_fullscreen_quad()
 {
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
-    vglVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 4, k_pp_pos);
-    vglVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 4, k_pp_uv);
-    vglDrawObjects(GL_TRIANGLE_STRIP, 4, GL_TRUE);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, k_pp_pos);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, k_pp_uv);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 #endif // PLATFORM_VITA
