@@ -4,6 +4,12 @@ Binary parser for PS Vita .psp2dmp crash dump files.
 .psp2dmp format: gzip-compressed ELF with:
   - PT_NOTE segments containing MODULE_INFO, THREAD_INFO, THREAD_REG_INFO
   - PT_LOAD segments containing raw memory pages (stack, heap)
+
+Note descriptor format (common header for THREAD_INFO, THREAD_REG_INFO,
+MODULE_INFO): 12 bytes — (total_count:u32, count_in_note:u32, entry_size:u32).
+For MODULE_INFO, entry_size=0 (variable-length entries).
+Multiple PT_NOTE segments may contain notes of the same type; entries are
+accumulated across all segments.
 """
 
 import gzip
@@ -19,17 +25,27 @@ ELF_MAGIC = b"\x7fELF"
 PT_NOTE = 4
 PT_LOAD = 1
 
-# Vita core NOTE types (from SCE kernel)
-NT_PSP2_MODULE_INFO = 1
-NT_PSP2_THREAD_INFO = 3
-NT_PSP2_THREAD_REG_INFO = 6
+# Vita core NOTE types (from SCE kernel coredump format)
+NT_PSP2_THREAD_INFO = 0x1003
+NT_PSP2_THREAD_REG_INFO = 0x1004
+NT_PSP2_MODULE_INFO = 0x1005
 
-# Known stop reasons
+# Known stop reasons — encoding: (severity << 16) | SceExcpKind
+# Low nibble maps to ARM exception vector: 1=undef, 2=SWI, 3=prefetch abort, 4=data abort
 STOP_REASONS = {
-    0x00000: "No reason",
-    0x10002: "Undefined instruction exception",
-    0x20003: "Prefetch abort exception",
-    0x30004: "Data abort exception",
+    0x00000: "No exception",
+    0x10002: "Undefined instruction",
+    0x20003: "Prefetch abort",
+    0x30003: "Prefetch abort",
+    0x30004: "Data abort",
+}
+
+# Fallback: decode low nibble as SceExcpKind when exact value is unknown
+_EXCEPTION_TYPES = {
+    1: "Undefined instruction",
+    2: "Software interrupt",
+    3: "Prefetch abort",
+    4: "Data abort",
 }
 
 
@@ -63,6 +79,8 @@ class ThreadRegisters:
     sp: int = 0
     lr: int = 0
     pc: int = 0
+    cpsr: int = 0
+    fpscr: int = 0
 
 
 @dataclass
@@ -77,7 +95,13 @@ class Thread:
 
     @property
     def stop_reason_str(self) -> str:
-        return STOP_REASONS.get(self.stop_reason, f"Unknown (0x{self.stop_reason:x})")
+        if self.stop_reason in STOP_REASONS:
+            return STOP_REASONS[self.stop_reason]
+        kind = self.stop_reason & 0xF
+        exc = _EXCEPTION_TYPES.get(kind)
+        if exc:
+            return f"{exc} (0x{self.stop_reason:x})"
+        return f"Unknown exception (0x{self.stop_reason:x})"
 
     @property
     def crashed(self) -> bool:
@@ -185,94 +209,119 @@ def _parse_notes(note_data: bytes) -> list:
     return notes
 
 
-def _parse_module_info(desc: bytes, modules: List[Module]):
-    """Parse MODULE_INFO note descriptor into module list."""
-    off = 0
-    while off + 4 <= len(desc):
-        # Module entry: name (variable), then segments
-        # Format from vita-parse-core: each module has a name string,
-        # followed by segment count, then segment entries.
-        # Actual format reverse-engineered from vita-parse-core core.py:
-        # The entire note is a flat list: for each module:
-        #   uint32 name_offset (into a separate string table? no — inline)
-        #   Actually the format is more complex. Let's parse based on
-        #   what vita-parse-core does.
-        break  # Handled by the comprehensive parser below
-
-
-def _parse_module_info_v2(desc: bytes) -> List[Module]:
+def _parse_module_info_v2(desc: bytes, modules: List[Module]):
     """
-    Parse MODULE_INFO from the core dump.
+    Parse MODULE_INFO (type 0x1005) note descriptor.
 
-    Based on vita-parse-core's core.py CoreParser._parse_modules():
-    The descriptor is a flat binary blob with module entries.
-    Each entry: 4 bytes flags, 32-byte name, then per-segment entries.
+    Descriptor layout:
+      12-byte header: total(u32), count(u32), entry_size(u32=0 for variable)
+      Variable-length module entries (accumulated into modules list).
+
+    Per-module entry layout:
+      +0:  uid (u32)
+      +4:  7 u32 fields (sdk_version, flags, type, addresses)
+      +32: name (32 bytes, null-terminated)
+      +64: type_field (u32, typically 2)
+      +68: fingerprint (u32, module NID)
+      +72: num_segments (u32)
+      +76: reserved (u32, 0)
+      +80: segments (num_segments × 20 bytes each)
+      then 20 bytes trailing data (exidx pointers + null)
+
+    Per-segment (20 bytes):
+      +0: flags (u32, 0x05=text, 0x06=data)
+      +4: vaddr (u32)
+      +8: memsz (u32)
+      +12: alignment (u32)
+      +16: extra (u32)
+
+    Entry stride: 76 + num_segments * 20 + 20
     """
-    modules = []
-    off = 0
+    if len(desc) < 12:
+        return
 
-    # Header: uint32 count
-    if len(desc) < 4:
-        return modules
-    count = struct.unpack_from("<I", desc, off)[0]
-    off += 4
+    _total, count, _entry_size = struct.unpack_from("<III", desc, 0)
+    off = 12
 
     for _ in range(count):
-        if off + 36 > len(desc):
+        if off + 80 > len(desc):
             break
-        # Module entry header varies by Vita FW version.
-        # Common layout: 4 bytes (flags+num_segments), 32 bytes name
-        flags_and_segs = struct.unpack_from("<I", desc, off)[0]
-        off += 4
-        num_segments = flags_and_segs & 0xFF
 
-        # Name: 32 bytes, null-terminated
-        name_bytes = desc[off : off + 32]
-        off += 32
+        name_bytes = desc[off + 32 : off + 64]
         name = name_bytes.split(b"\x00", 1)[0].decode("ascii", errors="replace")
+        num_segments = struct.unpack_from("<I", desc, off + 72)[0]
+
+        # Sanity-check segment count
+        if num_segments > 8:
+            break
 
         mod = Module(name=name)
+        seg_off = off + 80
         for seg_idx in range(num_segments):
-            if off + 16 > len(desc):
+            if seg_off + 20 > len(desc):
                 break
-            seg_base, seg_size, seg_perms, _pad = struct.unpack_from("<IIII", desc, off)
-            off += 16
+            flags, vaddr, memsz, alignment, _extra = struct.unpack_from(
+                "<IIIII", desc, seg_off
+            )
+            perms = 0
+            if flags & 0x04:
+                perms |= 1  # read
+            if flags & 0x01:
+                perms |= 2  # execute
+            if flags & 0x02:
+                perms |= 4  # write
             mod.segments.append(ModuleSegment(
                 index=seg_idx,
-                base=seg_base,
-                size=seg_size,
-                perms=seg_perms,
+                base=vaddr,
+                size=memsz,
+                perms=perms,
             ))
+            seg_off += 20
+
         modules.append(mod)
+        # Advance: 76 (fixed header) + num_segments * 20 (segs) + 20 (trailing)
+        off += 76 + num_segments * 20 + 20
 
-    return modules
 
-
-def _parse_thread_info(desc: bytes) -> List[Thread]:
+def _parse_thread_info(desc: bytes, threads: List[Thread]):
     """
-    Parse THREAD_INFO note descriptor.
+    Parse THREAD_INFO (type 0x1003) note descriptor.
 
-    Based on vita-parse-core core.py:
-    Header: uint32 count
-    Each thread: uint32 tid, uint32 stop_reason, uint32 status,
-                 uint32 pc, 32-byte name
+    Descriptor layout:
+      12-byte header: total(u32), count_in_note(u32), entry_size(u32)
+      Followed by count_in_note entries of entry_size bytes each.
+
+    Per-entry layout (200 bytes):
+      +0:   tid (u32)
+      +4:   name (32 bytes, null-terminated)
+      +48:  pc (u32)
+      +112: stop_reason (u32)
+
+    Entries are accumulated into the threads list across multiple notes.
     """
-    threads = []
-    off = 0
+    if len(desc) < 12:
+        return
 
-    if len(desc) < 4:
-        return threads
-    count = struct.unpack_from("<I", desc, off)[0]
-    off += 4
+    _total, count, entry_size = struct.unpack_from("<III", desc, 0)
 
-    for _ in range(count):
-        if off + 48 > len(desc):
+    if entry_size == 0 or count == 0:
+        return
+
+    for i in range(count):
+        off = 12 + i * entry_size
+        # Need at least 116 bytes to read through stop_reason at +112
+        if off + 116 > len(desc):
             break
-        tid, stop_reason, status, pc = struct.unpack_from("<IIII", desc, off)
-        off += 16
-        name_bytes = desc[off : off + 32]
-        off += 32
+
+        tid = struct.unpack_from("<I", desc, off)[0]
+        name_bytes = desc[off + 4 : off + 36]
         name = name_bytes.split(b"\x00", 1)[0].decode("ascii", errors="replace")
+        pc = struct.unpack_from("<I", desc, off + 48)[0]
+        stop_reason = struct.unpack_from("<I", desc, off + 112)[0]
+
+        # Derive status: 0 for crashed, 8 (waiting) otherwise
+        status = 0 if stop_reason != 0 else 8
+
         threads.append(Thread(
             name=name,
             tid=tid,
@@ -280,27 +329,59 @@ def _parse_thread_info(desc: bytes) -> List[Thread]:
             status=status,
             pc=pc,
         ))
-    return threads
 
 
 def _parse_thread_reg_info(desc: bytes, threads: List[Thread]):
     """
-    Parse THREAD_REG_INFO and attach register sets to matching threads.
+    Parse THREAD_REG_INFO (type 0x1004) and attach register sets to threads.
 
-    Each entry: uint32 tid, then 16 x uint32 registers (R0-R12, SP, LR, PC).
+    Descriptor layout:
+      12-byte header: total(u32), count_in_note(u32), entry_size(u32)
+      Followed by count_in_note entries of entry_size bytes each.
+
+    Per-entry layout (372–376 bytes):
+      +0:  tid (u32)
+      +4:  R0 (u32)
+      +8:  R1 (u32)
+      ...
+      +52: R12 (u32)
+      +56: SP (u32)
+      +60: LR (u32)
+      +64: PC (u32)
+      +68: CPSR (u32)
+      +72: VFP/NEON registers (remaining bytes)
+
+    Entries are matched to threads by tid.
     """
-    off = 0
-    while off + 68 <= len(desc):  # 4 (tid) + 16*4 (regs) = 68
+    if len(desc) < 12:
+        return
+
+    _total, count, entry_size = struct.unpack_from("<III", desc, 0)
+
+    if entry_size == 0 or count == 0:
+        return
+
+    for i in range(count):
+        off = 12 + i * entry_size
+        # Need at least 72 bytes to read through CPSR at +68
+        if off + 72 > len(desc):
+            break
+
         tid = struct.unpack_from("<I", desc, off)[0]
-        off += 4
-        regs_raw = struct.unpack_from("<16I", desc, off)
-        off += 64
+        # R0-R12 at +4..+52, SP at +56, LR at +60, PC at +64, CPSR at +68
+        regs_raw = struct.unpack_from("<17I", desc, off + 4)
+        # FPSCR at +72 (first field of VFP save area)
+        fpscr = 0
+        if off + 76 <= len(desc):
+            fpscr = struct.unpack_from("<I", desc, off + 72)[0]
 
         reg = ThreadRegisters(
             r=list(regs_raw[:13]),
             sp=regs_raw[13],
             lr=regs_raw[14],
             pc=regs_raw[15],
+            cpsr=regs_raw[16],
+            fpscr=fpscr,
         )
 
         for t in threads:
@@ -314,6 +395,8 @@ def parse_core_dump(path: str) -> CoreDump:
     Parse a .psp2dmp file and return a CoreDump.
 
     The file may be gzip-compressed or raw ELF.
+    Notes of the same type may appear in multiple PT_NOTE segments;
+    entities are accumulated across all of them.
     """
     with open(path, "rb") as f:
         raw = f.read()
@@ -336,15 +419,15 @@ def parse_core_dump(path: str) -> CoreDump:
         offset = hdr["phoff"] + i * hdr["phentsize"]
         phdrs.append(_parse_phdr(data, offset))
 
-    # Parse NOTE segments for metadata
+    # Parse NOTE segments — accumulate entities across all segments
     for ph in phdrs:
         if ph["type"] == PT_NOTE:
             note_data = data[ph["offset"] : ph["offset"] + ph["filesz"]]
             for note in _parse_notes(note_data):
                 if note["type"] == NT_PSP2_MODULE_INFO:
-                    dump.modules = _parse_module_info_v2(note["desc"])
+                    _parse_module_info_v2(note["desc"], dump.modules)
                 elif note["type"] == NT_PSP2_THREAD_INFO:
-                    dump.threads = _parse_thread_info(note["desc"])
+                    _parse_thread_info(note["desc"], dump.threads)
                 elif note["type"] == NT_PSP2_THREAD_REG_INFO:
                     _parse_thread_reg_info(note["desc"], dump.threads)
 

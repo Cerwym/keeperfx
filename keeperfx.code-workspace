@@ -2,6 +2,14 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"name": "d3es-vita",
+			"path": "/workspaces/d3es-vita"
+		},
+		{
+			"name": "vitaQuakeIII",
+			"path": "/workspaces/vitaQuakeIII"
 		}
 	],
     "settings": {
@@ -177,6 +185,13 @@
             "format": "c",
             "xstring": "c"
         },
-        "powershell.cwd": "vita-hardware-acceleration"
+        "powershell.cwd": "vita-hardware-acceleration",
+        // Open crash report preview inside VS Code (Simple Browser) instead of host browser
+        "remote.portsAttributes": {
+            "18080": {
+                "label": "Crash Report Preview",
+                "onAutoForward": "openPreview"
+            }
+        }
     }
 }

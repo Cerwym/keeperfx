@@ -177,7 +177,10 @@
 {
 "label": "Parse Vita Crash Dump",
 "type": "shell",
-"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Interactive",
+"command": "bash '${workspaceFolder}/tools/vita-parse-crash.sh' --interactive --open",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Interactive; if (Test-Path '${workspaceFolder}\\out\\vita-dumps\\crash_report.html') { code '${workspaceFolder}\\out\\vita-dumps\\crash_report.html' }"
+},
 "problemMatcher": [],
 "group": "build",
 "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false, "close": false }
@@ -186,7 +189,10 @@
 {
 "label": "Parse Local Crash Dump",
 "type": "shell",
-"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Dump '${input:dumpFile}'",
+"command": "bash '${workspaceFolder}/tools/vita-parse-crash.sh' --dump '${input:dumpFile}' --open",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Dump '${input:dumpFile}'; if (Test-Path '${workspaceFolder}\\out\\vita-dumps\\crash_report.html') { code '${workspaceFolder}\\out\\vita-dumps\\crash_report.html' }"
+},
 "problemMatcher": [],
 "group": "build",
 "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
@@ -235,16 +241,154 @@
 "problemMatcher": [],
 "group": "build",
 "presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+},
+
+// ── Vita companion / deploy / logging ────────────────────────────────
+//
+// vitacompanion provides FTP (1337) + command server (1338) on the Vita.
+// PrincessLog streams printf/sceClibPrintf over TCP to your dev machine.
+// noASLR makes crash addresses deterministic across runs.
+// Run "Setup Vita Companion" once to install all three plugins.
+
+{
+    "label": "Setup Vita Companion",
+    "detail": "Download vitacompanion + noASLR + PrincessLog, upload to Vita, patch taiHEN config",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' setup",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false }
+},
+
+{
+    "label": "Deploy Vita eboot.bin",
+    "detail": "Upload latest eboot.bin to the Vita via FTP (vitacompanion)",
+    "type": "shell",
+    "command": "VITA_PRESET='${input:vitaPreset}' bash '${workspaceFolder}/tools/vita-companion.sh' deploy-eboot",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+    "label": "Deploy & Launch Vita",
+    "detail": "Upload eboot.bin + kill + relaunch KeeperFX on Vita",
+    "type": "shell",
+    "command": "VITA_PRESET='${input:vitaPreset}' bash '${workspaceFolder}/tools/vita-companion.sh' deploy-launch",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+    "label": "Build & Deploy Vita",
+    "detail": "Build → deploy → launch on Vita with live PrincessLog output",
+    "type": "shell",
+    "command": "echo '--- PrincessLog listener on port ${input:princessLogPort} ---' && nc -kl ${input:princessLogPort} &\nLOG_PID=$! && trap 'kill $LOG_PID 2>/dev/null' EXIT && cmake --preset ${input:vitaPreset} && cmake --build --preset ${input:vitaPreset} && VITA_PRESET='${input:vitaPreset}' bash '${workspaceFolder}/tools/vita-companion.sh' deploy-launch && echo '--- Vita launched. PrincessLog output below (Ctrl+C to stop) ---' && wait $LOG_PID",
+    "problemMatcher": "$gcc",
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+    "label": "Vita PrincessLog Listener",
+    "detail": "Standalone listener for PrincessLog stdout (Ctrl+C to stop)",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' log ${input:princessLogPort}",
+    "problemMatcher": [],
+    "group": "build",
+    "isBackground": true,
+    "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false }
+},
+
+{
+    "label": "Reboot Vita",
+    "detail": "Send reboot command to Vita via vitacompanion",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' reboot",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": false, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+    "label": "Fetch Vita Logs",
+    "detail": "Download kfx_boot.log, kfx_preinit.log, keeperfx.log from Vita → out/vita-logs/",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' fetch-logs",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false }
+},
+
+// ── Fork management ──────────────────────────────────────────────────
+//
+// PowerShell scripts for keeping master/develop/feature branches in sync.
+// Run "Setup Git Hooks" once, then "Sync Repos" whenever you want upstream changes.
+
+{
+"label": "Setup Git Hooks",
+"detail": "One-time: installs hooks protecting master, adds upstream remote",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\setup-hooks.ps1'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Sync Repos",
+"detail": "Fetch upstream → ff master → merge develop → rebase vita branch",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\sync-repos.ps1'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Create Upstream PR Branch",
+"detail": "Cherry-pick commits onto a clean branch off master for upstream PRs",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\upstream-pr.ps1' -Name '${input:upstreamBranchName}' -Commits ${input:cherryPickCommits}",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
 }
 
 ],
 
 "inputs": [
 {
+    "id": "upstreamBranchName",
+    "type": "promptString",
+    "description": "Name for the upstream branch (e.g. vita-crash-tool). Will be prefixed with upstream/.",
+    "default": ""
+},
+{
+    "id": "cherryPickCommits",
+    "type": "promptString",
+    "description": "Comma-separated commit hashes to cherry-pick (e.g. abc1234, def5678)",
+    "default": ""
+},
+{
     "id": "dumpFile",
     "type": "promptString",
     "description": "Path to local .psp2dmp crash dump file",
     "default": "out/vita-dumps/"
+},
+{
+    "id": "vitaPreset",
+    "type": "pickString",
+    "description": "Vita build preset to deploy",
+    "options": ["vita-reldebug", "vita-debug", "vita-release"],
+    "default": "vita-reldebug"
+},
+{
+    "id": "princessLogPort",
+    "type": "promptString",
+    "description": "PrincessLog listener port (must match PrincessLog settings on Vita)",
+    "default": "8080"
 }
 ]
 }

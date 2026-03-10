@@ -226,7 +226,6 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
                 "CMAKE_BUILD_TYPE": "Release",
                 "PLATFORM_VITA": "ON",
-                "VITA_ENABLE_VITAGL": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -240,7 +239,6 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "PLATFORM_VITA": "ON",
-                "VITA_ENABLE_VITAGL": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -254,7 +252,6 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
                 "CMAKE_BUILD_TYPE": "Debug",
                 "PLATFORM_VITA": "ON",
-                "VITA_ENABLE_VITAGL": "ON",
                 "VITA_PERF_LOG": "ON",
                 "VITA_SCE_DIAG": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"

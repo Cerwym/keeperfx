@@ -82,7 +82,34 @@ def _find_code_segment(dump: CoreDump, module_name: str = "keeperfx") -> Optiona
     return None
 
 
-def heuristic_stack_walk(dump: CoreDump, thread: Thread, max_depth: int = 32) -> List[int]:
+def _find_text_range(elf_path: str) -> Optional[Tuple[int, int]]:
+    """Return the runtime (base, size) of the .text section.
+
+    Parses ELF section headers to get the actual executable code range,
+    excluding .rodata and other non-executable sections that share the
+    same LOAD segment.  Vita ELFs use pre-linked addresses (sh_addr
+    already includes the 0x81000000 base), so no offset is needed.
+    """
+    try:
+        from elftools.elf.elffile import ELFFile
+        with open(elf_path, "rb") as f:
+            elf = ELFFile(f)
+            text = elf.get_section_by_name(".text")
+            if text:
+                return (text["sh_addr"], text["sh_size"])
+    except Exception:
+        pass
+    return None
+
+
+# Regex matching symbols that are NOT real functions:
+#   .LC14, .LFB0, .LBB2, .LBE3  — GCC local/constant/block labels
+#   $a, $d, $t                   — ARM ELF mapping symbols
+_BAD_SYMBOL_RE = re.compile(r"^(\.[A-Z]+\d+|\$[adtx])$")
+
+
+def heuristic_stack_walk(dump: CoreDump, thread: Thread, max_depth: int = 32,
+                         elf_path: Optional[str] = None) -> List[int]:
     """
     Scan stack memory for return addresses in the code segment.
 
@@ -90,7 +117,10 @@ def heuristic_stack_walk(dump: CoreDump, thread: Thread, max_depth: int = 32) ->
     fall within the executable code range. Not all will be actual return
     addresses, but it's a good starting point.
     """
-    code_seg = _find_code_segment(dump)
+    # Prefer .text section range (excludes .rodata) when ELF is available;
+    # fall back to the full code segment from the dump.
+    text_range = _find_text_range(elf_path) if elf_path else None
+    code_seg = text_range or _find_code_segment(dump)
     if not code_seg:
         return []
 
@@ -101,11 +131,22 @@ def heuristic_stack_walk(dump: CoreDump, thread: Thread, max_depth: int = 32) ->
     if not thread.regs:
         return addresses
 
-    # Add PC and LR first
-    if code_base <= thread.regs.pc < code_end:
-        addresses.append(thread.regs.pc)
-    if code_base <= thread.regs.lr < code_end:
-        addresses.append(thread.regs.lr)
+    # Add PC and LR first — use the full segment range for these two so
+    # we never lose the actual crash address even if it's outside .text
+    # (e.g. executing from a trampoline in .plt).
+    full_seg = _find_code_segment(dump)
+    if full_seg:
+        seg_base, seg_size = full_seg
+        seg_end = seg_base + seg_size
+        if seg_base <= thread.regs.pc < seg_end:
+            addresses.append(thread.regs.pc)
+        if seg_base <= thread.regs.lr < seg_end:
+            addresses.append(thread.regs.lr)
+    else:
+        if code_base <= thread.regs.pc < code_end:
+            addresses.append(thread.regs.pc)
+        if code_base <= thread.regs.lr < code_end:
+            addresses.append(thread.regs.lr)
 
     # Scan stack region around SP
     sp = thread.regs.sp
@@ -366,29 +407,47 @@ def build_stack_trace(dump: CoreDump, thread: Thread, elf_path: Optional[str],
         exception_type=thread.stop_reason_str,
     )
 
-    if not thread.regs:
-        return trace
-
     code_seg = _find_code_segment(dump)
 
-    # Try DWARF unwinding first, fall back to heuristic
+    # Collect candidate return addresses.
+    # Start with the thread-info PC (the original crash/wait PC) and
+    # register PC/LR, then supplement with heuristic stack scan.
     addresses = []
-    if elf_path:
-        addresses = dwarf_stack_walk(dump, thread, elf_path, max_depth)
-    if len(addresses) < 3:
-        # DWARF didn't produce much — supplement with heuristic scan
-        heuristic = heuristic_stack_walk(dump, thread, max_depth)
-        for addr in heuristic:
-            if addr not in addresses:
-                addresses.append(addr)
+
+    # Thread-info PC is the most important address
+    if thread.pc:
+        addresses.append(thread.pc)
+
+    if thread.regs:
+        # Register PC may differ from thread-info PC (e.g. after exception
+        # dispatch), include it if distinct
+        reg_pc = thread.regs.pc
+        if reg_pc and reg_pc not in addresses:
+            addresses.append(reg_pc)
+
+        lr = thread.regs.lr & ~1  # clear Thumb bit
+        if lr and lr not in addresses:
+            addresses.append(lr)
+
+    # Heuristic stack scan for more return addresses
+    heuristic = heuristic_stack_walk(dump, thread, max_depth, elf_path=elf_path)
+    for addr in heuristic:
+        if addr not in addresses:
+            addresses.append(addr)
+
+    addresses = addresses[:max_depth]
 
     # Symbolicate all addresses in one batch
     symbolicated = {}
     if elf_path and addresses:
         symbolicated = symbolicate_addresses(addresses, elf_path, addr2line)
 
+    # Number of "anchor" addresses (thread-PC, reg-PC, LR) that are always
+    # kept regardless of symbol quality — they are the real crash context.
+    n_anchors = len(addresses) - len(heuristic)
+
     # Build frames
-    for idx, addr in enumerate(addresses[:max_depth]):
+    for idx, addr in enumerate(addresses):
         module_ref = dump.resolve_address(addr)
         offset = None
         if code_seg:
@@ -396,12 +455,22 @@ def build_stack_trace(dump: CoreDump, thread: Thread, elf_path: Optional[str],
             if code_base <= addr < code_base + code_size:
                 offset = addr - code_base
 
+        source = symbolicated.get(addr)
+
+        # Filter heuristic frames with bad symbols (.LC*, $a/$d/$t, fully
+        # unresolved).  Anchor frames (PC, LR) are always kept.
+        if idx >= n_anchors and source:
+            if _BAD_SYMBOL_RE.match(source.function):
+                continue
+            if source.function == "unknown" and source.file == "??" and source.line == 0:
+                continue
+
         frame = StackFrame(
-            index=idx,
+            index=len(trace.frames),
             address=addr,
             offset_in_module=offset,
             module_ref=module_ref,
-            source=symbolicated.get(addr),
+            source=source,
         )
         trace.frames.append(frame)
 

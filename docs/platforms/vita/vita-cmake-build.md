@@ -56,9 +56,9 @@ Swap `vita-debug` with `vita-reldebug` or `vita-release` as needed.
 
 | Preset | Build type | Key cache variables | Intended use |
 |---|---|---|---|
-| `vita-release` | `Release` | `PLATFORM_VITA=ON`, `VITA_ENABLE_VITAGL=ON` | Shipping/performance package build. |
-| `vita-reldebug` | `RelWithDebInfo` | `PLATFORM_VITA=ON`, `VITA_ENABLE_VITAGL=ON` | Crash analysis and profiling with symbols, near-release optimization. |
-| `vita-debug` | `Debug` | `PLATFORM_VITA=ON`, `VITA_ENABLE_VITAGL=ON`, `VITA_PERF_LOG=ON`, `VITA_SCE_DIAG=ON` | Deep diagnostics and subsystem tracing during development. |
+| `vita-release` | `Release` | `PLATFORM_VITA=ON` | Shipping/performance package build. |
+| `vita-reldebug` | `RelWithDebInfo` | `PLATFORM_VITA=ON` | Crash analysis and profiling with symbols, near-release optimization. |
+| `vita-debug` | `Debug` | `PLATFORM_VITA=ON`, `VITA_PERF_LOG=ON`, `VITA_SCE_DIAG=ON` | Deep diagnostics and subsystem tracing during development. |
 
 ## Vita Debug Flags And Purpose
 
@@ -69,7 +69,6 @@ When you run `cmake --preset vita-debug`, these preset cache variables are set:
 | `CMAKE_TOOLCHAIN_FILE` | `$env{VITASDK}/share/vita.toolchain.cmake` | Uses Vita cross-toolchain. |
 | `CMAKE_BUILD_TYPE` | `Debug` | Enables debug configuration path. |
 | `PLATFORM_VITA` | `ON` | Selects Vita platform code and dependencies. |
-| `VITA_ENABLE_VITAGL` | `ON` | Enables vitaGL renderer integration path. |
 | `VITA_PERF_LOG` | `ON` | Enables startup/load timing logs (compile definition `VITA_PERF_LOG=1` on `keeperfx`). |
 | `VITA_SCE_DIAG` | `ON` | Enables SCE diagnostic hooks (compile definition `VITA_SCE_DIAG=1`). |
 | `CMAKE_EXPORT_COMPILE_COMMANDS` | `on` | Generates `compile_commands.json` for tooling. |
@@ -80,8 +79,6 @@ Additional compile/link behavior triggered by Vita CMake logic:
 |---|---|---|
 | `PLATFORM_VITA=1` | compile definition | Enables Vita-specific code paths. |
 | `DEBUG=1` (Debug config) | compile definition | Project-wide debug macro. |
-| `VITA_HAVE_VITAGL=1` | compile definition | Compiles vitaGL renderer path when `VITA_ENABLE_VITAGL=ON`. |
-| `VITA_USE_PRECOMPILED_SHADERS=1` | compile definition | Uses precompiled `.gxp` shaders. |
 | `-mcpu=cortex-a9 -mfpu=neon -ffast-math` | compile options | Vita CPU/FPU tuning. |
 | `-Wl,--wrap,malloc/free/calloc/realloc/memalign` | link options | Routes allocations through vitaGL allocator wrappers. |
 
@@ -120,9 +117,9 @@ Source: `CMakePresets.json` (`configurePresets`).
 | `linux-x64-release` | No | `linux-base`, `Release` | `CMAKE_EXPORT_COMPILE_COMMANDS=on` | Linux native x64 release build. |
 | `wasm-release` | No | `base` | Emscripten toolchain, `CMAKE_BUILD_TYPE=Release`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | WebAssembly build via Emscripten. |
 | `3ds-release` | No | `base` | 3DS toolchain, `PLATFORM_3DS=ON`, `CMAKE_BUILD_TYPE=Release`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | Nintendo 3DS release build. |
-| `vita-release` | No | `base` | Vita toolchain, `PLATFORM_VITA=ON`, `VITA_ENABLE_VITAGL=ON`, `CMAKE_BUILD_TYPE=Release`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | PlayStation Vita release build. |
-| `vita-reldebug` | No | `base` | Vita toolchain, `PLATFORM_VITA=ON`, `VITA_ENABLE_VITAGL=ON`, `CMAKE_BUILD_TYPE=RelWithDebInfo`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | Vita release-like build with symbols for crash analysis. |
-| `vita-debug` | No | `base` | Vita toolchain, `PLATFORM_VITA=ON`, `VITA_ENABLE_VITAGL=ON`, `VITA_PERF_LOG=ON`, `VITA_SCE_DIAG=ON`, `CMAKE_BUILD_TYPE=Debug`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | Vita diagnostics/perf-debug build. |
+| `vita-release` | No | `base` | Vita toolchain, `PLATFORM_VITA=ON`, `CMAKE_BUILD_TYPE=Release`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | PlayStation Vita release build. |
+| `vita-reldebug` | No | `base` | Vita toolchain, `PLATFORM_VITA=ON`, `CMAKE_BUILD_TYPE=RelWithDebInfo`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | Vita release-like build with symbols for crash analysis. |
+| `vita-debug` | No | `base` | Vita toolchain, `PLATFORM_VITA=ON`, `VITA_PERF_LOG=ON`, `VITA_SCE_DIAG=ON`, `CMAKE_BUILD_TYPE=Debug`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | Vita diagnostics/perf-debug build. |
 | `switch-release` | No | `base` | Switch toolchain, `PLATFORM_SWITCH=ON`, `CMAKE_BUILD_TYPE=Release`, `CMAKE_EXPORT_COMPILE_COMMANDS=on` | Nintendo Switch release build. |
 
 ## Build Preset Table (All Presets)

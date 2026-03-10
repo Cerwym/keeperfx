@@ -3,6 +3,7 @@
 #include "platform/PlatformWindows.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <SDL2/SDL.h>
 #include <excpt.h>
 #include <imagehlp.h>
 #include <dbghelp.h>
@@ -245,6 +246,13 @@ void PlatformWindows::ErrorParachuteUpdate()
     SetUnhandledExceptionFilter(ctrl_handler_w32);
 }
 
+void PlatformWindows::VideoInit()
+{
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK) < 0)
+        fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+    atexit(SDL_Quit);
+}
+
 // ----- File system helpers -----
 
 TbBool PlatformWindows::FileExists(const char* path) const
@@ -463,4 +471,9 @@ long PlatformWindows::FileLength(const char* fname)
 int PlatformWindows::FileDelete(const char* fname)
 {
     return remove(fname) ? -1 : 1;
+}
+
+IWindowSystem* PlatformWindows::GetWindowSystem()
+{
+    return GetSDLWindowSystem();
 }

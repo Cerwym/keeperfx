@@ -2,19 +2,280 @@
 Output formatters for crash reports — text and HTML.
 """
 
+import base64
 import html
 import os
 from datetime import datetime
-from typing import List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
-from .core_parser import CoreDump, Thread
+from .core_parser import CoreDump, Thread, ThreadRegisters
+from .sce_error_codes import SCE_ERROR_CODES, SCE_ERROR_DESCRIPTIONS
 from .symbolicate import StackTrace, StackFrame, SourceLocation
+
+
+# ── ARM register decoding (per ARM DDI 0406C §B1.3, §B4.1.58) ──────────
+
+# CPSR M[4:0] → mode name (Table B1-1, ARM DDI 0406C §B1.3)
+_ARM_MODES = {
+    0b10000: "USR",
+    0b10001: "FIQ",
+    0b10010: "IRQ",
+    0b10011: "SVC",
+    0b10110: "MON",
+    0b10111: "ABT",
+    0b11010: "HYP",
+    0b11011: "UND",
+    0b11111: "SYS",
+}
+
+# CPSR J:T → instruction set (§A2.5.1)
+_ISET_STATE = {
+    (0, 0): "ARM",
+    (0, 1): "Thumb",
+    (1, 0): "Jazelle",
+    (1, 1): "ThumbEE",
+}
+
+# FPSCR RMode[23:22] → rounding mode name (§B4.1.58)
+_FP_RMODE = {
+    0b00: "RN",   # Round to Nearest
+    0b01: "RP",   # Round towards Plus Infinity
+    0b10: "RM",   # Round towards Minus Infinity
+    0b11: "RZ",   # Round towards Zero
+}
+
+
+def _decode_cpsr(cpsr: int) -> str:
+    """Decode CPSR into a human-readable summary (ARM DDI 0406C §B1.3.3)."""
+    # Condition flags [31:28]
+    n = bool(cpsr & (1 << 31))
+    z = bool(cpsr & (1 << 30))
+    c = bool(cpsr & (1 << 29))
+    v = bool(cpsr & (1 << 28))
+    q = bool(cpsr & (1 << 27))  # Saturation flag
+
+    # Instruction set state: J[24], T[5]
+    j = (cpsr >> 24) & 1
+    t = (cpsr >> 5) & 1
+    iset = _ISET_STATE.get((j, t), "?")
+
+    # Endianness E[9]
+    endian = "BE" if cpsr & (1 << 9) else "LE"
+
+    # Interrupt masks A[8], I[7], F[6]
+    a = bool(cpsr & (1 << 8))
+    irq = bool(cpsr & (1 << 7))
+    fiq = bool(cpsr & (1 << 6))
+
+    # GE[19:16] for SIMD
+    ge = (cpsr >> 16) & 0xF
+
+    # IT[7:2] = CPSR[15:10], IT[1:0] = CPSR[26:25]
+    it_hi = (cpsr >> 10) & 0x3F
+    it_lo = (cpsr >> 25) & 0x3
+    it_state = (it_hi << 2) | it_lo
+
+    # Mode M[4:0]
+    mode = _ARM_MODES.get(cpsr & 0x1F, f"0x{cpsr & 0x1F:02x}")
+
+    parts = [f"{mode}/{iset}"]
+    parts.append(f"NZCVQ={''.join(str(int(f)) for f in (n, z, c, v, q))}")
+    parts.append(endian)
+    if it_state:
+        parts.append(f"IT=0x{it_state:02x}")
+    if ge:
+        parts.append(f"GE=0x{ge:x}")
+    masks = []
+    if a: masks.append("A")
+    if irq: masks.append("I")
+    if fiq: masks.append("F")
+    if masks:
+        parts.append(f"mask:{','.join(masks)}")
+    return "  ".join(parts)
+
+
+def _decode_fpscr(fpscr: int) -> str:
+    """Decode FPSCR into a human-readable summary (ARM DDI 0406C §B4.1.58)."""
+    # Control bits
+    dn = bool(fpscr & (1 << 25))   # Default NaN
+    fz = bool(fpscr & (1 << 24))   # Flush-to-zero
+    rmode = _FP_RMODE.get((fpscr >> 22) & 3, "?")
+    ahp = bool(fpscr & (1 << 26))  # Alternative half-precision
+
+    # Cumulative exception flags [7, 4:0]
+    exc_bits = [
+        ("IOC", fpscr & 1),          # Invalid Operation
+        ("DZC", fpscr & 2),          # Division by Zero
+        ("OFC", fpscr & 4),          # Overflow
+        ("UFC", fpscr & 8),          # Underflow
+        ("IXC", fpscr & 0x10),       # Inexact
+        ("IDC", fpscr & 0x80),       # Input Denormal
+    ]
+    raised = [name for name, bit in exc_bits if bit]
+
+    parts = [f"DN={int(dn)}  FZ={int(fz)}  {rmode}"]
+    if ahp:
+        parts.append("AHP")
+    if raised:
+        parts.append(f"exceptions:{','.join(raised)}")
+    return "  ".join(parts)
+
+
+# ── ARM calling convention (AAPCS) ──────────────────────────────────────
+
+_REG_ROLES = {
+    "R0": "argument 1 / return value",
+    "R1": "argument 2 / return value (64-bit)",
+    "R2": "argument 3",
+    "R3": "argument 4",
+    "R4": "callee-saved local",
+    "R5": "callee-saved local",
+    "R6": "callee-saved local",
+    "R7": "callee-saved local (frame pointer in Thumb)",
+    "R8": "callee-saved local",
+    "R9": "callee-saved local (platform register)",
+    "R10": "callee-saved local",
+    "R11": "callee-saved local (frame pointer in ARM)",
+    "R12": "scratch (intra-procedure call)",
+    "SP": "stack pointer",
+    "LR": "return address (link register)",
+    "PC": "program counter (current instruction)",
+}
+
+_SENTINELS = {
+    0xDEADBEEF: "debug fill — register never written",
+    0xCCCCCCCC: "MSVC uninit stack marker",
+    0xBAADF00D: "LocalAlloc uninit heap marker",
+    0xFEEEFEEE: "HeapFree marker",
+    0xABABABAB: "HeapAlloc guard bytes",
+    0x7F80DEAD: "VFP uninit sentinel",
+    0x7FF8DEAD: "VFP NaN sentinel",
+}
+
+
+def _classify_register(name: str, value: int, dump: CoreDump,
+                       reg_symbols: Optional[Dict[int, SourceLocation]] = None
+                       ) -> Tuple[str, str, str]:
+    """Classify a register value into (category, short_label, tooltip_text).
+
+    Categories: null, code, stack, heap, kernel, sentinel, sce_error,
+                small_int, unknown.
+    """
+    role = _REG_ROLES.get(name, "")
+
+    # NULL
+    if value == 0:
+        return ("null", "NULL",
+                f"{name} = 0x00000000 — NULL pointer.\nRole: {role}" if role
+                else f"{name} = 0x00000000 — NULL pointer.")
+
+    # Sentinel values (debug fill patterns)
+    if value in _SENTINELS:
+        desc = _SENTINELS[value]
+        return ("sentinel", desc.split(" — ")[0] if " — " in desc else "sentinel",
+                f"{name} = 0x{value:08x} — {desc}.\nRole: {role}" if role
+                else f"{name} = 0x{value:08x} — {desc}.")
+
+    # SCE error code (0x80XXXXXX / 0xC0XXXXXX)
+    if _is_sce_error(value):
+        decoded = _decode_sce_error(value) or f"SCE error 0x{value:08x}"
+        return ("sce-error", "SCE error",
+                f"{name} = 0x{value:08x} — {decoded}.\nRole: {role}" if role
+                else f"{name} = 0x{value:08x} — {decoded}.")
+
+    # Code address (0x81000000 – 0x82000000)
+    if 0x81000000 <= value < 0x82000000:
+        module_ref = dump.resolve_address(value) or "code address"
+        sym = ""
+        if reg_symbols and value in reg_symbols:
+            loc = reg_symbols[value]
+            sym = f"\nFunction: {loc.function}"
+            if loc.file and loc.file != "??":
+                sym += f"  ({loc.file}:{loc.line})"
+        return ("code", module_ref,
+                f"{name} = 0x{value:08x} — {module_ref}{sym}.\nRole: {role}" if role
+                else f"{name} = 0x{value:08x} — {module_ref}{sym}.")
+
+    # Stack address (0x83000000 – 0x84000000)
+    if 0x83000000 <= value < 0x84000000:
+        return ("stack", "stack address",
+                f"{name} = 0x{value:08x} — stack memory.\nRole: {role}" if role
+                else f"{name} = 0x{value:08x} — stack memory.")
+
+    # Heap address (0x84000000 – 0x88000000)
+    if 0x84000000 <= value < 0x88000000:
+        return ("heap", "heap address",
+                f"{name} = 0x{value:08x} — heap memory.\nRole: {role}" if role
+                else f"{name} = 0x{value:08x} — heap memory.")
+
+    # Kernel address (0xE0000000+)
+    if value >= 0xE0000000:
+        module_ref = dump.resolve_address(value) or "kernel address"
+        return ("kernel", module_ref,
+                f"{name} = 0x{value:08x} — {module_ref} (kernel).\nRole: {role}" if role
+                else f"{name} = 0x{value:08x} — {module_ref} (kernel).")
+
+    # Small integer (0x0001 – 0xFFFF)
+    if 0 < value <= 0xFFFF:
+        return ("small-int", f"integer {value}",
+                f"{name} = {value} (0x{value:x}) — small integer.\nRole: {role}" if role
+                else f"{name} = {value} (0x{value:x}) — small integer.")
+
+    # Unknown / unclassified
+    return ("unknown", "",
+            f"{name} = 0x{value:08x}.\nRole: {role}" if role
+            else f"{name} = 0x{value:08x}.")
+
+
+def _cpsr_plain_english(cpsr: int) -> str:
+    """One-line plain-English summary of CPSR for non-ARM developers."""
+    mode = _ARM_MODES.get(cpsr & 0x1F, "unknown")
+    mode_desc = {"USR": "normal user program", "SYS": "system mode",
+                 "SVC": "supervisor call handler", "IRQ": "interrupt handler",
+                 "FIQ": "fast interrupt handler", "ABT": "abort handler",
+                 "UND": "undefined instruction handler", "HYP": "hypervisor",
+                 "MON": "secure monitor"}.get(mode, mode)
+    j = (cpsr >> 24) & 1
+    t = (cpsr >> 5) & 1
+    iset = _ISET_STATE.get((j, t), ("?",))
+    iset_desc = {"ARM": "standard (ARM) instructions",
+                 "Thumb": "compact (Thumb) instructions",
+                 "Jazelle": "Java bytecode (Jazelle)",
+                 "ThumbEE": "Thumb with extensions"}.get(iset, iset)
+    endian = "big-endian" if cpsr & (1 << 9) else "little-endian"
+    return f"Running as: {mode_desc}, using {iset_desc}, {endian} byte order."
+
+
+def _fpscr_plain_english(fpscr: int) -> str:
+    """One-line plain-English summary of FPSCR for non-ARM developers."""
+    parts = ["FPU:"]
+    if fpscr & (1 << 25):
+        parts.append("default-NaN on,")
+    if fpscr & (1 << 24):
+        parts.append("flush-to-zero on,")
+    rmode = (fpscr >> 22) & 3
+    rmode_desc = {0: "round-to-nearest", 1: "round towards +\u221e",
+                  2: "round towards \u2212\u221e", 3: "round-to-zero"}.get(rmode, "?")
+    parts.append(f"{rmode_desc}.")
+    # Cumulative exceptions
+    exc = []
+    if fpscr & 0x01: exc.append("an invalid operation")
+    if fpscr & 0x02: exc.append("a division by zero")
+    if fpscr & 0x04: exc.append("an overflow")
+    if fpscr & 0x08: exc.append("an underflow")
+    if fpscr & 0x10: exc.append("an inexact result")
+    if fpscr & 0x80: exc.append("a denormal input")
+    if exc:
+        parts.append(f"Flagged: {', '.join(exc)}.")
+    return " ".join(parts)
 
 
 # ── Text Formatter ──────────────────────────────────────────────────────
 
 def format_text(dump: CoreDump, traces: List[StackTrace],
-                source_root: Optional[str] = None) -> str:
+                source_root: Optional[str] = None,
+                register_symbols: Optional[Dict[int, SourceLocation]] = None) -> str:
     """Generate a human-readable text crash report."""
     lines = []
     ct = dump.crashed_thread
@@ -49,6 +310,41 @@ def format_text(dump: CoreDump, traces: List[StackTrace],
                 row += f"R{j:<2}=0x{r.r[j]:08x}  "
             lines.append(row.rstrip())
         lines.append(f"  SP =0x{r.sp:08x}  LR =0x{r.lr:08x}  PC =0x{r.pc:08x}")
+        lines.append(f"  CPSR=0x{r.cpsr:08x}  [{_decode_cpsr(r.cpsr)}]")
+        lines.append(f"  FPSCR=0x{r.fpscr:08x}  [{_decode_fpscr(r.fpscr)}]")
+
+        lines.append("")
+        lines.append(f"  {_cpsr_plain_english(r.cpsr)}")
+        lines.append(f"  {_fpscr_plain_english(r.fpscr)}")
+
+        # Register annotations
+        lines.append("")
+        lines.append("REGISTER ANNOTATIONS:")
+        all_regs = [(f"R{i}", r.r[i]) for i in range(13)]
+        all_regs += [("SP", r.sp), ("LR", r.lr), ("PC", r.pc)]
+        # Group consecutive NULL callee-saved registers
+        null_group = []
+        for name, val in all_regs:
+            cat, label, tip = _classify_register(name, val, dump, register_symbols)
+            if cat == "null" and name not in ("SP", "LR", "PC"):
+                null_group.append(name)
+                continue
+            if null_group:
+                lines.append(f"  {', '.join(null_group):>12} = NULL")
+                null_group = []
+            sym = ""
+            if cat == "code" and register_symbols and val in register_symbols:
+                loc = register_symbols[val]
+                sym = f" \u2192 {loc.function}"
+                if loc.file and loc.file != "??":
+                    sym += f"  ({loc.file}:{loc.line})"
+            elif label:
+                sym = f" ({label})"
+            role = _REG_ROLES.get(name, "")
+            role_str = f"  [{role}]" if role else ""
+            lines.append(f"  {name:>12} = 0x{val:08x}{sym}{role_str}")
+        if null_group:
+            lines.append(f"  {', '.join(null_group):>12} = NULL")
 
     # Diagnosis hints
     diag = _diagnose(dump, ct)
@@ -181,19 +477,57 @@ def _diagnose(dump: CoreDump, thread: Optional[Thread]) -> List[str]:
     if r.sp == 0:
         null_regs.append("SP")
 
-    if thread.stop_reason == 0x30004:  # Data abort
+    exc_kind = thread.stop_reason & 0xF
+
+    if exc_kind == 4:  # Data abort (0x30004, etc.)
         hints.append("Data abort — attempted to read/write an invalid memory address.")
         if null_regs:
             hints.append(f"NULL registers: {', '.join(null_regs)} — likely NULL pointer dereference.")
 
-    elif thread.stop_reason == 0x20003:  # Prefetch abort
-        hints.append("Prefetch abort — attempted to execute code at an invalid address.")
-        if r.pc < 0x1000:
-            hints.append(f"PC=0x{r.pc:08x} is near zero — likely call through NULL function pointer.")
+    elif exc_kind == 3:  # Prefetch abort (0x20003, 0x30003, etc.)
+        hints.append("Prefetch abort — CPU failed to fetch the next instruction.")
+        # regs.pc holds the faulting fetch address; thread.pc may differ
+        fault_pc = r.pc
+        if fault_pc != thread.pc:
+            hints.append(f"Faulting address: 0x{fault_pc:08x} (CPU tried to execute here).")
+        if fault_pc < 0x1000:
+            hints.append(f"Address 0x{fault_pc:08x} is near zero — call through NULL function pointer.")
+            hints.append(f"LR=0x{r.lr:08x} — the caller that branched to NULL.")
+        elif not (0x81000000 <= fault_pc < 0x82000000):
+            hints.append(f"Address 0x{fault_pc:08x} is outside the code segment — jump to corrupted address (bad function pointer, vtable, or stack smash).")
 
-    elif thread.stop_reason == 0x10002:  # Undefined instruction
+    elif exc_kind == 1:  # Undefined instruction (0x10002, etc.)
         hints.append("Undefined instruction — CPU encountered an invalid opcode.")
+        # Check ARM/Thumb mode mismatch (ARM DDI 0406C §A2.5.1)
+        thumb = bool(r.cpsr & (1 << 5))
+        pc_thumb = bool(r.pc & 1)
+        if thumb:
+            hints.append("CPU was in Thumb mode (CPSR.T=1).")
+        else:
+            hints.append("CPU was in ARM mode (CPSR.T=0).")
+        if thumb != pc_thumb and exc_kind == 1:
+            hints.append("ARM/Thumb mode mismatch detected — possible BLX to wrong-mode address.")
         hints.append("This can indicate: corrupted code memory, wrong ARM/Thumb mode, or stack smashing.")
+
+    # Processor state context from CPSR (ARM DDI 0406C §B1.3)
+    if r.cpsr:
+        mode = r.cpsr & 0x1F
+        mode_name = _ARM_MODES.get(mode)
+        # If we ended up in ABT mode, that's the exception handler's mode
+        if mode_name and mode_name not in ("USR", "SYS"):
+            hints.append(f"Processor mode: {mode_name} (M=0b{mode:05b}) — exception context.")
+
+    # FPSCR cumulative exceptions (ARM DDI 0406C §B4.1.58)
+    if r.fpscr:
+        fp_exc = []
+        if r.fpscr & 0x01: fp_exc.append("IOC (Invalid Operation)")
+        if r.fpscr & 0x02: fp_exc.append("DZC (Division by Zero)")
+        if r.fpscr & 0x04: fp_exc.append("OFC (Overflow)")
+        if r.fpscr & 0x08: fp_exc.append("UFC (Underflow)")
+        if r.fpscr & 0x10: fp_exc.append("IXC (Inexact)")
+        if r.fpscr & 0x80: fp_exc.append("IDC (Input Denormal)")
+        if fp_exc:
+            hints.append(f"FPU exceptions flagged: {', '.join(fp_exc)}.")
 
     # Stack overflow detection (Vita default thread stack is at ~0x836xxxxx range)
     if 0x83600000 <= r.sp <= 0x83600100:
@@ -204,16 +538,193 @@ def _diagnose(dump: CoreDump, thread: Optional[Thread]) -> List[str]:
     if crash_ref and any(kw in crash_ref.lower() for kw in ("malloc", "vglmalloc", "alloc")):
         hints.append("Crash in memory allocator — possible out-of-memory condition.")
 
+    # SCE error code detection in registers
+    sce_errors = _scan_sce_errors(r)
+    if sce_errors:
+        hints.append("SCE error codes detected in registers:")
+        for reg_name, code, desc in sce_errors:
+            hints.append(f"  {reg_name}=0x{code:08x} → {desc}")
+
     return hints
+
+
+# ── SCE Error Code Resolution ──────────────────────────────────────────
+
+# Facility codes from https://wiki.henkaku.xyz/vita/Error_Codes
+_SCE_FACILITIES = {
+    0x001: "ERRNO",
+    0x002: "KERNEL",
+    0x003: "KERNEL_EXT",
+    0x004: "KERNEL_S",
+    0x005: "KERNEL_SEXT",
+    0x006: "KERNEL_B",
+    0x007: "KERNEL_BEXT",
+    0x008: "DECI_USR",
+    0x009: "DECI_SYS",
+    0x00A: "COREDUMP",
+    0x00C: "REGISTRY",
+    0x00F: "SBL",
+    0x010: "VSH",
+    0x011: "UTILITY",
+    0x012: "SYSFILE",
+    0x013: "MSAPP",
+    0x014: "PFS",
+    0x018: "UPDATER",
+    0x020: "SHAREDFB",
+    0x022: "MEMSTICK",
+    0x024: "USB",
+    0x025: "SYSCON",
+    0x026: "AUDIO",
+    0x027: "LFLASH",
+    0x028: "LFATFS",
+    0x029: "DISPLAY",
+    0x02B: "POWER",
+    0x02C: "AUDIOROUTING",
+    0x02D: "MEDIASYNC",
+    0x02E: "CAMERA",
+    0x034: "CTRL",
+    0x035: "TOUCH",
+    0x036: "MOTION",
+    0x03F: "PERIPH",
+    0x041: "NETWORK",
+    0x042: "SAS",
+    0x043: "HTTP",
+    0x044: "WAVE",
+    0x045: "SND",
+    0x046: "FONT",
+    0x047: "P3DA",
+    0x048: "HASH",
+    0x049: "PRNG",
+    0x04A: "NGS",
+    0x04B: "ECHO",
+    0x04C: "GPU",
+    0x04D: "SUPLHA",
+    0x04E: "VOICE",
+    0x04F: "HEAP",
+    0x052: "OPENPSID",
+    0x053: "DNAS",
+    0x054: "MTP",
+    0x055: "NP",
+    0x056: "COMPRESSION",
+    0x057: "DBGFONT",
+    0x058: "PERF",
+    0x059: "FIBER",
+    0x05A: "SYSMODULE",
+    0x05B: "GXM",
+    0x05C: "CES",
+    0x05D: "GXT",
+    0x05F: "LIBRARY",
+    0x060: "CODECENGINE",
+    0x061: "MPEG",
+    0x062: "AVC",
+    0x063: "ATRAC",
+    0x064: "ASF",
+    0x065: "JPEG",
+    0x066: "AVI",
+    0x067: "MP3",
+    0x068: "G729",
+    0x069: "PNG",
+    0x06A: "AVPLAYER",
+    0x06B: "AACENC",
+    0x077: "RUDP",
+    0x07F: "CODEC",
+    0x080: "APPMGR",
+    0x081: "ULT",
+    0x082: "FIOS",
+    0x083: "BASE64",
+    0x084: "INIFILE",
+    0x085: "XML",
+    0x086: "AUDIOENC",
+    0x087: "NPDRM",
+    0x088: "PHYSICSEFFECTS",
+    0x089: "SYSTEM_GESTURE",
+    0x08B: "FACE",
+    0x08C: "SMART",
+    0x090: "SAMPLE_UTILITY",
+    0x091: "NGS_QUICK_SYNTH",
+    0x092: "JSON",
+    0x100: "SCREAM",
+}
+
+
+def _decode_sce_error(code: int) -> Optional[str]:
+    """Decode a 0x80XXXXXX SCE error code into a human-readable description."""
+    if (code & 0x80000000) == 0:
+        return None
+
+    is_fatal = bool(code & 0x40000000)
+    facility = (code >> 16) & 0xFFF
+    error_num = code & 0xFFFF
+
+    facility_name = _SCE_FACILITIES.get(facility)
+    if not facility_name:
+        facility_name = f"UNKNOWN(0x{facility:03x})"
+
+    severity = "FATAL" if is_fatal else "error"
+
+    # Look up the exact named constant and description
+    named = SCE_ERROR_CODES.get(code)
+    desc = SCE_ERROR_DESCRIPTIONS.get(code)
+    if named and desc:
+        return f"{severity}: {named} [{facility_name}] — {desc}"
+    if named:
+        return f"{severity}: {named} [{facility_name}]"
+    return f"{severity}: {facility_name} (0x{error_num:04x})"
+
+
+def _is_sce_error(val: int) -> bool:
+    """Check if a value looks like an SCE error code, not a memory address."""
+    if (val & 0x80000000) == 0:
+        return False
+    # Vita memory regions that look like error codes but aren't:
+    # 0x81000000-0x82000000 = user code segment
+    # 0x83000000-0x84000000 = user stack
+    # 0x84000000-0x88000000 = user heap / shared memory
+    # 0xE0000000-0xFFFFFFFF = kernel addresses
+    # Real SCE errors: 0x80XXXXXX and 0xC0XXXXXX (fatal), facility in bits 27-16
+    if val >= 0xE0000000:
+        return False
+    if 0x81000000 <= val < 0x88000000:
+        return False
+    facility = (val >> 16) & 0xFFF
+    return facility in _SCE_FACILITIES
+
+
+def _scan_sce_errors(regs) -> List[tuple]:
+    """Scan all registers for SCE error codes (0x80XXXXXX pattern)."""
+    results = []
+    for i in range(13):
+        val = regs.r[i]
+        if _is_sce_error(val):
+            results.append((f"R{i}", val, _decode_sce_error(val)))
+    if _is_sce_error(regs.lr):
+        results.append(("LR", regs.lr, _decode_sce_error(regs.lr)))
+    return results
 
 
 # ── HTML Formatter ──────────────────────────────────────────────────────
 
+_BANNER_PATH = Path(__file__).resolve().parents[2] / "res" / "keeperfx_icon256-24bpp.png"
+
+
+def _load_banner_b64() -> str:
+    """Load the KeeperFX icon as a base64 data URI for embedding."""
+    try:
+        data = _BANNER_PATH.read_bytes()
+        return "data:image/png;base64," + base64.b64encode(data).decode()
+    except OSError:
+        return ""
+
+
 def format_html(dump: CoreDump, traces: List[StackTrace],
-                source_root: Optional[str] = None) -> str:
+                source_root: Optional[str] = None,
+                register_symbols: Optional[Dict[int, SourceLocation]] = None) -> str:
     """Generate a self-contained HTML crash report."""
     ct = dump.crashed_thread
     h = html.escape
+
+    banner_b64 = _load_banner_b64() if _BANNER_PATH.exists() else ""
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     parts = [
         "<!DOCTYPE html>",
@@ -222,28 +733,37 @@ def format_html(dump: CoreDump, traces: List[StackTrace],
         "<style>",
         _CSS,
         "</style></head><body>",
-        "<div class='report'>",
-        "<h1>KeeperFX Vita Crash Report</h1>",
-        f"<p class='meta'>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>",
+        "<div class='container'>",
+        # Banner box - mimics the top banner image on the site
+        "<div class='content-box'>",
+        "<div class='banner'>",
+        f"<img src='{banner_b64}' alt='KeeperFX' class='banner-icon'>" if banner_b64 else "",
+        "<h1>Vita Crash Report</h1>",
+        "</div>",
+        "</div>",
     ]
 
+    # Crash info box
     if ct:
-        parts.append("<div class='crash-info'>")
-        parts.append(f"<p><strong>Exception:</strong> {h(ct.stop_reason_str)}</p>")
+        parts.append("<div class='content-box'>")
+        parts.append("<div class='content-header'><h2>Exception</h2></div>")
+        parts.append("<div class='content-body'>")
+        parts.append(f"<p><strong>Type:</strong> {h(ct.stop_reason_str)}</p>")
         parts.append(f"<p><strong>Thread:</strong> {h(ct.name)} (TID 0x{ct.tid:x})</p>")
         parts.append(f"<p><strong>PC:</strong> <code>0x{ct.pc:08x}</code></p>")
         if ct.regs:
             parts.append(f"<p><strong>LR:</strong> <code>0x{ct.regs.lr:08x}</code></p>")
-        parts.append("</div>")
+        parts.append("</div></div>")
 
-    # Diagnosis
+    # Diagnosis box
     diag = _diagnose(dump, ct)
     if diag:
-        parts.append("<div class='diagnosis'>")
-        parts.append("<h2>Diagnosis</h2>")
+        parts.append("<div class='content-box diagnosis'>")
+        parts.append("<div class='content-header'><h2>Diagnosis</h2></div>")
+        parts.append("<div class='content-body'>")
         for d in diag:
             parts.append(f"<p>{h(d)}</p>")
-        parts.append("</div>")
+        parts.append("</div></div>")
 
     # Crashed thread stack trace
     for trace in traces:
@@ -251,22 +771,57 @@ def format_html(dump: CoreDump, traces: List[StackTrace],
             parts.append(_format_trace_html(trace, source_root, is_crashed=True))
             break
 
-    # Registers
+    # Registers box
     if ct and ct.regs:
-        parts.append("<h2>Registers</h2>")
+        parts.append("<div class='content-box'>")
+        parts.append("<div class='content-header'><h2>Registers</h2></div>")
+        parts.append("<div class='content-body'>")
+
+        # Color legend
+        parts.append("<div class='reg-legend'>")
+        parts.append("<span class='leg-item'><span class='leg-dot null-dot'></span> NULL</span>")
+        parts.append("<span class='leg-item'><span class='leg-dot code-dot'></span> Code address</span>")
+        parts.append("<span class='leg-item'><span class='leg-dot stack-dot'></span> Stack address</span>")
+        parts.append("<span class='leg-item'><span class='leg-dot heap-dot'></span> Heap address</span>")
+        parts.append("<span class='leg-item'><span class='leg-dot sentinel-dot'></span> Uninitialized</span>")
+        parts.append("<span class='leg-item'><span class='leg-dot sce-error-dot'></span> SCE error code</span>")
+        parts.append("<span class='leg-item'><span class='leg-dot kernel-dot'></span> Kernel address</span>")
+        parts.append("</div>")
+
         parts.append("<table class='regs'>")
         r = ct.regs
         for i in range(0, 13, 4):
             parts.append("<tr>")
             for j in range(i, min(i + 4, 13)):
-                cls = "null" if r.r[j] == 0 else "code" if 0x81000000 <= r.r[j] < 0x82000000 else "stack" if 0x83000000 <= r.r[j] < 0x84000000 else ""
-                parts.append(f"<td>R{j}</td><td class='{cls}'><code>0x{r.r[j]:08x}</code></td>")
+                cat, label, tip = _classify_register(f"R{j}", r.r[j], dump, register_symbols)
+                sym_html = ""
+                if cat == "code" and register_symbols and r.r[j] in register_symbols:
+                    loc = register_symbols[r.r[j]]
+                    sym_html = f"<br><span class='reg-sym'>{h(loc.function)}</span>"
+                parts.append(f"<td>R{j}</td><td class='{cat}' data-tooltip='{h(tip)}'>"
+                             f"<code>0x{r.r[j]:08x}</code>{sym_html}</td>")
             parts.append("</tr>")
+
+        # SP / LR / PC row
         parts.append("<tr>")
-        parts.append(f"<td>SP</td><td class='stack'><code>0x{r.sp:08x}</code></td>")
-        parts.append(f"<td>LR</td><td class='code'><code>0x{r.lr:08x}</code></td>")
-        parts.append(f"<td>PC</td><td class='code'><code>0x{r.pc:08x}</code></td>")
+        for name, val in [("SP", r.sp), ("LR", r.lr), ("PC", r.pc)]:
+            cat, label, tip = _classify_register(name, val, dump, register_symbols)
+            sym_html = ""
+            if cat == "code" and register_symbols and val in register_symbols:
+                loc = register_symbols[val]
+                sym_html = f"<br><span class='reg-sym'>{h(loc.function)}</span>"
+            parts.append(f"<td>{name}</td><td class='{cat}' data-tooltip='{h(tip)}'>"
+                         f"<code>0x{val:08x}</code>{sym_html}</td>")
         parts.append("</tr></table>")
+
+        # Plain-English CPSR/FPSCR summaries
+        parts.append("<div class='psr-decode'>")
+        parts.append(f"<p class='psr-plain'>{h(_cpsr_plain_english(r.cpsr))}</p>")
+        parts.append(f"<p><strong>CPSR</strong> <code>0x{r.cpsr:08x}</code> &mdash; {h(_decode_cpsr(r.cpsr))}</p>")
+        parts.append(f"<p class='psr-plain'>{h(_fpscr_plain_english(r.fpscr))}</p>")
+        parts.append(f"<p><strong>FPSCR</strong> <code>0x{r.fpscr:08x}</code> &mdash; {h(_decode_fpscr(r.fpscr))}</p>")
+        parts.append("</div>")
+        parts.append("</div></div>")
 
     # Other threads
     other_traces = [t for t in traces if not ct or t.thread_id != ct.tid]
@@ -276,21 +831,26 @@ def format_html(dump: CoreDump, traces: List[StackTrace],
             parts.append(_format_trace_html(trace, source_root, is_crashed=False))
         parts.append("</details>")
 
-    # Thread summary
+    # Thread summary box
     parts.append("<details><summary>Thread Summary</summary>")
-    parts.append("<table class='threads'><tr><th>Name</th><th>TID</th><th>Status</th><th>PC</th></tr>")
+    parts.append("<div class='content-box'>")
+    parts.append("<div class='content-body'>")
+    parts.append("<table class='threads'><thead><tr><th>Name</th><th>TID</th><th>Status</th><th>PC</th></tr></thead><tbody>")
     for t in dump.threads:
         status = "CRASHED" if t.crashed else "Waiting" if t.status == 8 else f"0x{t.status:x}"
         cls = "crashed" if t.crashed else ""
         ref = dump.resolve_address(t.pc) or "unknown"
         parts.append(f"<tr class='{cls}'><td>{h(t.name)}</td><td><code>0x{t.tid:08x}</code></td>")
         parts.append(f"<td>{status}</td><td><code>0x{t.pc:08x}</code> ({h(ref)})</td></tr>")
-    parts.append("</table></details>")
+    parts.append("</tbody></table>")
+    parts.append("</div></div></details>")
 
-    # Modules
+    # Modules box
     if dump.modules:
         parts.append("<details><summary>Loaded Modules</summary>")
-        parts.append("<table class='modules'><tr><th>Module</th><th>Segment</th><th>Base</th><th>Size</th></tr>")
+        parts.append("<div class='content-box'>")
+        parts.append("<div class='content-body'>")
+        parts.append("<table class='modules'><thead><tr><th>Module</th><th>Segment</th><th>Base</th><th>Size</th></tr></thead><tbody>")
         for mod in dump.modules:
             for seg in mod.segments:
                 parts.append(
@@ -298,9 +858,18 @@ def format_html(dump: CoreDump, traces: List[StackTrace],
                     f"<td><code>0x{seg.base:08x}</code></td>"
                     f"<td>{seg.size:,}</td></tr>"
                 )
-        parts.append("</table></details>")
+        parts.append("</tbody></table>")
+        parts.append("</div></div></details>")
 
-    parts.append("</div></body></html>")
+    # Footer - matches the site's footer
+    parts.append("<footer>")
+    parts.append("KeeperFX &mdash; Open Source Dungeon Keeper Remake &amp; Fan Expansion")
+    parts.append(f"<br>Generated {timestamp}")
+    parts.append("</footer>")
+
+    parts.append("</div>")
+    parts.append(_TOOLTIP_JS)
+    parts.append("</body></html>")
     return "\n".join(parts)
 
 
@@ -312,7 +881,9 @@ def _format_trace_html(trace: StackTrace, source_root: Optional[str],
 
     title = "Call Stack" if is_crashed else f"Thread: {trace.thread_name}"
     tag = "h2" if is_crashed else "h3"
-    parts.append(f"<{tag}>{h(title)}</{tag}>")
+    parts.append("<div class='content-box'>")
+    parts.append(f"<div class='content-header'><{tag}>{h(title)}</{tag}></div>")
+    parts.append("<div class='content-body'>")
     parts.append("<div class='stack-trace'>")
 
     for frame in trace.frames:
@@ -355,41 +926,143 @@ def _format_trace_html(trace: StackTrace, source_root: Optional[str],
         parts.append("</div>")
 
     parts.append("</div>")
+    parts.append("</div></div>")
     return "\n".join(parts)
 
 
 _CSS = """
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-       background: #1e1e2e; color: #cdd6f4; margin: 0; padding: 20px; }
-.report { max-width: 1000px; margin: 0 auto; }
-h1 { color: #f38ba8; border-bottom: 2px solid #45475a; padding-bottom: 8px; }
-h2 { color: #89b4fa; }
-h3 { color: #a6e3a1; }
-.meta { color: #6c7086; }
-.crash-info { background: #302030; border-left: 4px solid #f38ba8; padding: 12px; margin: 16px 0; border-radius: 4px; }
-.diagnosis { background: #303020; border-left: 4px solid #f9e2af; padding: 12px; margin: 16px 0; border-radius: 4px; }
-.diagnosis h2 { color: #f9e2af; margin-top: 0; }
-code { background: #313244; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
-.stack-trace { margin: 12px 0; }
-.frame { padding: 8px 12px; margin: 4px 0; background: #313244; border-radius: 4px; border-left: 3px solid #45475a; }
-.frame.crashed { border-left-color: #f38ba8; background: #3a2030; }
-.frame-idx { color: #6c7086; margin-right: 8px; font-weight: bold; }
-.func { color: #89dceb; font-weight: bold; margin-right: 12px; }
-.loc { color: #a6adc8; }
-.addr { color: #6c7086; margin-left: 8px; }
-.inline { color: #9399b2; margin-left: 32px; font-size: 0.9em; }
-pre.source { background: #181825; padding: 8px; margin: 4px 0 0 32px; border-radius: 4px;
-             font-size: 0.85em; overflow-x: auto; }
-pre.source mark { background: #4a3040; color: #f38ba8; }
-table { border-collapse: collapse; margin: 8px 0; width: 100%; }
-td, th { padding: 4px 8px; border: 1px solid #45475a; }
-th { background: #313244; text-align: left; }
-.regs td { padding: 4px 12px; }
-.regs .null code { color: #f38ba8; }
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Nunito:wght@400;600&display=swap');
+* { color: rgb(215, 197, 182); box-sizing: border-box; }
+body { font-family: 'Nunito', sans-serif; background-color: #040404; color: rgb(215, 197, 182);
+       margin: 0; padding: 20px; }
+.container { max-width: 1000px; margin: 0 auto; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Cinzel', serif; color: #efefef; }
+hr { background-color: #333; height: 2px; border: none; opacity: 1; }
+a { color: #ff4217; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Content box system — matches keeperfx.net */
+.content-box { background: rgba(11, 11, 11, 0.52); border: 2px solid #1c1c1c; }
+.content-box + .content-box { margin-top: 30px; }
+.content-header { border-bottom: 2px solid #1c1c1c; margin: 0 20px; padding: 20px 0 5px 0; }
+.content-header h2, .content-header h3 { font-size: 22px; margin: 0; border: 0; }
+.content-body { padding: 20px; }
+.content-body p { padding-left: 15px; padding-right: 15px; }
+
+/* Banner */
+.banner { display: flex; align-items: center; gap: 16px; padding: 15px 20px; }
+.banner h1 { margin: 0; border: 0; font-size: 28px; }
+.banner-icon { width: 64px; height: 64px; }
+
+/* Crash info (exception box) */
+.content-box:has(.content-header h2) .content-body strong { color: #efefef; }
+
+/* Diagnosis box */
+.diagnosis { border-left: 4px solid #cd8e00; }
+.diagnosis .content-header h2 { color: #cd8e00; }
+
+/* Code styling — matches site */
+code { background-color: rgba(30, 30, 30, 0.7); border: 1px solid rgba(50, 50, 50, 1);
+       padding: 4px; padding-bottom: 3px; color: rgb(238, 231, 224); font-family: monospace;
+       font-size: initial; }
+
+/* Stack trace */
+.stack-trace { margin: 0; }
+.frame { padding: 8px 12px; margin: 4px 0; background: rgba(6, 6, 6, 0.666);
+         border: 2px solid #1c1c1c; border-left: 4px solid #1c1c1c; }
+.frame.crashed { border-left-color: #ff4217; background: rgba(30, 8, 8, 0.7); }
+.frame-idx { color: #616161; margin-right: 8px; font-weight: bold; font-family: 'Cinzel', serif; }
+.func { color: #ff4217; font-weight: bold; margin-right: 12px; }
+.loc { color: rgb(215, 197, 182); }
+.addr { color: #616161; margin-left: 8px; }
+.inline { color: #616161; margin-left: 32px; font-size: 0.9em; }
+pre.source { background: rgba(30, 30, 30, 0.7); border: 1px solid rgba(50, 50, 50, 1);
+             padding: 8px; margin: 4px 0 0 32px; font-size: 0.85em; overflow-x: auto;
+             color: rgb(238, 231, 224); }
+pre.source mark { background: rgba(255, 66, 23, 0.2); color: #ff4217; }
+
+/* Tables — matches site */
+table { border-collapse: collapse; margin: 0; width: 100%; border: 2px solid rgba(0,0,0,0.4); }
+thead { background-color: rgba(0, 0, 0, 0.65); }
+tbody { background-color: rgba(0, 0, 0, 0.4); }
+th { font-family: 'Cinzel', serif; border: 0; padding: 6px 8px; text-align: left; }
+td { border: 0; padding: 4px 8px; }
+.regs td { padding: 4px 12px; cursor: default; position: relative; }
+.regs .null code { color: #ff4217; }
 .regs .code code { color: #89b4fa; }
 .regs .stack code { color: #a6e3a1; }
-.threads .crashed { background: #3a2030; }
-details { margin: 16px 0; }
-summary { cursor: pointer; color: #89b4fa; font-weight: bold; padding: 8px; }
-summary:hover { background: #313244; border-radius: 4px; }
+.regs .heap code { color: #cba6f7; }
+.regs .sentinel code { color: #6c7086; }
+.regs .sce-error code { color: #f9e2af; }
+.regs .kernel code { color: #fab387; }
+.regs .small-int code { color: rgb(238, 231, 224); }
+.reg-sym { display: block; font-size: 0.8em; color: #89b4fa; font-family: monospace;
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+
+/* Register legend */
+.reg-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 12px; margin-bottom: 12px;
+              background: rgba(6, 6, 6, 0.666); border: 2px solid #1c1c1c; font-size: 0.85em; }
+.leg-item { display: inline-flex; align-items: center; gap: 4px; }
+.leg-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.null-dot { background: #ff4217; }
+.code-dot { background: #89b4fa; }
+.stack-dot { background: #a6e3a1; }
+.heap-dot { background: #cba6f7; }
+.sentinel-dot { background: #6c7086; }
+.sce-error-dot { background: #f9e2af; }
+.kernel-dot { background: #fab387; }
+
+/* Register tooltip */
+.reg-tooltip { position: fixed; max-width: 360px; padding: 10px 14px; background: #1e1e2e;
+               border: 2px solid #45475a; color: rgb(215, 197, 182); font-size: 0.85em;
+               line-height: 1.5; white-space: pre-wrap; pointer-events: none; z-index: 1000;
+               box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
+
+.psr-decode { padding: 8px 12px; margin-top: 12px; background: rgba(6, 6, 6, 0.666);
+              border: 2px solid #1c1c1c; font-size: 0.9em; }
+.psr-decode p { padding: 2px 8px; margin: 4px 0; }
+.psr-decode .psr-plain { color: #a6e3a1; font-style: italic; margin-bottom: 2px; }
+.psr-decode strong { color: #89b4fa; font-family: 'Cinzel', serif; }
+.threads .crashed { background: rgba(30, 8, 8, 0.7); }
+
+/* Details/summary — section toggles */
+details { margin-top: 30px; }
+summary { cursor: pointer; color: #ff4217; font-weight: 600; padding: 8px 0;
+          font-family: 'Cinzel', serif; font-size: 20px; }
+summary:hover { color: #efefef; }
+
+/* Footer — matches site */
+footer { padding-top: 30px; font-size: 14px; text-align: center; color: #777; padding-bottom: 15px; }
+"""
+
+_TOOLTIP_JS = """
+<script>
+(function() {
+  var tip = document.createElement('div');
+  tip.className = 'reg-tooltip';
+  tip.style.display = 'none';
+  document.body.appendChild(tip);
+
+  document.querySelectorAll('[data-tooltip]').forEach(function(el) {
+    el.addEventListener('mouseenter', function(e) {
+      tip.textContent = el.getAttribute('data-tooltip');
+      tip.style.display = 'block';
+      positionTip(e);
+    });
+    el.addEventListener('mousemove', positionTip);
+    el.addEventListener('mouseleave', function() {
+      tip.style.display = 'none';
+    });
+  });
+
+  function positionTip(e) {
+    var x = e.clientX + 12, y = e.clientY + 12;
+    var r = tip.getBoundingClientRect();
+    if (x + r.width > window.innerWidth) x = e.clientX - r.width - 8;
+    if (y + r.height > window.innerHeight) y = e.clientY - r.height - 8;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+})();
+</script>
 """

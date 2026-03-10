@@ -9,8 +9,8 @@
  *     into a single allocator, preventing cross-pool fragmentation — a large
  *     texture upload can use memory a game object just freed, and vice versa.
  * @par Comment:
- *     Activated via GCC --wrap linker flags added by CMakeLists when
- *     VITA_ENABLE_VITAGL is ON and vitaGL is found.  The __wrap_* convention
+ *     Activated via GCC --wrap linker flags added by CMakeLists for Vita
+ *     builds.  The __wrap_* convention
  *     means the linker silently replaces every call to malloc/free/etc. in the
  *     entire binary (game code + all linked libraries) with these functions,
  *     with zero source changes needed elsewhere.
@@ -24,8 +24,6 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
-#ifdef VITA_HAVE_VITAGL
-
 #include <stdint.h>
 #include <string.h>
 #include <vitaGL.h>
@@ -95,5 +93,3 @@ void *__wrap_memalign(uint32_t alignment, uint32_t size)
     _in_vgl_memalign = 0;
     return ptr;
 }
-
-#endif /* VITA_HAVE_VITAGL */
