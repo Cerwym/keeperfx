@@ -1,154 +1,394 @@
 {
-	"version": "2.0.0",
-	"inputs": [
-		{
-			"id": "debugChoice",
-			"type": "pickString",
-			"description": "Choose the debug option:",
-			"options": [
-				"DEBUG=1\t\t\t(debug symbols ON)",
-				"DEBUG=0\t[default]\t(debug symbols OFF)",
-				"FTEST_DEBUG=1\t\t(debug symbols ON, functional tests ON)",
-				"FTEST_DEBUG=0\t\t(debug symbols OFF, functional tests ON)"
-			],
-			"default": "DEBUG=0"
-		}
-	],
-	"tasks": [
-		{
-			"label": "Default task",
-			"type": "shell",
-			"windows": {
-				"command": [
-					"$script = '{0}' -f '${workspaceFolder}\\.vscode\\default_task.ps1';",
-					"$compileSettingsFile = '{0}' -f '${workspaceFolder}\\.vscode\\compile_settings.cfg';",
-					"powershell -ExecutionPolicy Bypass -File \\\"${script}\\\" -workspaceFolder \\\"${workspaceFolder}\\\" -compileSettingsFile \\\"${compileSettingsFile}\\\" -debugChoice \\\"${input:debugChoice}\\\";",
-				]
-			},
-			"linux": {
-				"command": [
-					"chmod +x '${workspaceFolder}/.vscode/linuxscript.sh';",
-					"'${workspaceFolder}/.vscode/linuxscript.sh' '${workspaceFolder}'"
-				]
-			},
-			"problemMatcher": "$gcc",
-			"group": {"kind": "build","isDefault": true},
-			"presentation": {
-				"clear": true,
-				"echo": false,
-				"reveal": "always",
-				"focus": true,
-				"panel": "shared",
-				"showReuseMessage": false
-			}
-		},
-		{
-			// Called by launch.json
-			"label": "Compile, Copy Files",
-			"type": "shell",
-			"windows": {
-				"command": [
-					"$script = '{0}' -f '${workspaceFolder}\\.vscode\\compile_and_copy_files.ps1';",
-					"$launchJsonFile = '{0}' -f '${workspaceFolder}\\.vscode\\launch.json';",
-					"$compileSettingsFile = '{0}' -f '${workspaceFolder}\\.vscode\\compile_settings.cfg';",
-					"powershell -ExecutionPolicy Bypass -File \\\"${script}\\\" -workspaceFolder \\\"${workspaceFolder}\\\" -launchJsonFile \\\"${launchJsonFile}\\\" -compileSettingsFile \\\"${compileSettingsFile}\\\";",
-				],
-			},
-			"linux": {"command": []},
-			"problemMatcher": "$gcc",
-			"group": "build",
-			"presentation": {
-				"clear": true,
-				"echo": false,
-				"reveal": "always",
-				"focus": true,
-				"panel": "shared",
-				"showReuseMessage": false
-			}
-		},
-		{
-			// After the project is first opened, settings.json and launch.json will be created
-			"label": "Create settings.json and launch.json",
-			"type": "shell",
-			"windows": {
-				"command": [
-					"$script = '{0}' -f '${workspaceFolder}\\.vscode\\create_settings_and_launch_files.ps1';",
-					"$templateSettingsFile = '{0}' -f '${workspaceFolder}\\.vscode\\defaultsettings';",
-					"$templateLaunchFile = '{0}' -f '${workspaceFolder}\\.vscode\\defaultlaunch';",
-					"$settingsJsonFile = '{0}' -f '${workspaceFolder}\\.vscode\\settings.json';",
-					"$launchJsonFile = '{0}' -f '${workspaceFolder}\\.vscode\\launch.json';",
-					"powershell -ExecutionPolicy Bypass -File \\\"${script}\\\" -workspaceFolder \\\"${workspaceFolder}\\\" -templateSettingsFile \\\"${templateSettingsFile}\\\" -templateLaunchFile \\\"${templateLaunchFile}\\\" -settingsJsonFile \\\"${settingsJsonFile}\\\" -launchJsonFile \\\"${launchJsonFile}\\\" ;",
-				]
-			},
-			"linux": {
-				"command": [
-					"if [ ! -f \"${workspaceFolder}/.vscode/settings.json\" ]; then",
-					"    cp \"${workspaceFolder}/.vscode/defaultsettings\" \"${workspaceFolder}/.vscode/settings.json\";",
-					"    echo \"/.vscode/settings.json was created.\";",
-					"fi;",
-					"if [ ! -f \"${workspaceFolder}/.vscode/launch.json\" ]; then",
-					"    cp \"${workspaceFolder}/.vscode/defaultlaunch\" \"${workspaceFolder}/.vscode/launch.json\";",
-					"    echo \"/.vscode/launch.json was created, but it won't work on linux. Use Ctrl+Shift+B instead.\";",
-					"fi;",
-					"if [ ! -f \"${workspaceFolder}/.vscode/linuxscript.sh\" ]; then",
-					"    cp \"${workspaceFolder}/.vscode/defaultlinuxscript\" \"${workspaceFolder}/.vscode/linuxscript.sh\";",
-					"    echo \"/.vscode/linuxscript.sh was created, please edit it and fill in your game directories.\";",
-					"fi"
-				]
-			},
-			"problemMatcher": "$gcc",
-			"runOptions": {"runOn": "folderOpen"},
-			"group": "build",
-			"presentation": {
-				"echo": false,
-				"focus": true,
-				"panel": "shared",
-				"showReuseMessage": false
-			}
-		},
-		{
-			"label": "Log",
-			"type": "shell",
-			"windows": {
-				"command": [
-					"$gameDir = (Get-Content -Raw '${workspaceFolder}\\.vscode\\launch.json' | Select-String -Pattern '\\\"cwd\\\"\\s*:\\s*\\\"(.*?)\\\"').Matches[0].Groups[1].Value.Replace('\\', '/');",
-					"cd $gameDir;",
-					"Clear-Content keeperfx.log;",
-					"Get-Content keeperfx.log -Wait"
-				]
-			},
-			"linux": {},
-			"problemMatcher": "$gcc",
-			"dependsOn": "Check For Game Directory",
-			"group": "build"
-		},
-		{
-			"label": "Clean",
-			"type": "shell",
-			"windows": {
-				"command": "wsl make clean -j`nproc`"
-			},
-			"linux": {
-				"command": "make clean -j`nproc`"
-			},
-			"problemMatcher": "$gcc",
-			"group": "build"
-		},
-		{
-			"label": "Generate compile_commands.json",
-			"type": "shell",
-			"windows": {
-				"command": [
-					"wsl make clean-build clean-tools;",
-					"wsl bear -- make -j2 standard"
-				]
-			},
-			"linux": {
-				"command": "make clean-build clean-tools && bear -- make -j2 standard"
-			},
-			"problemMatcher": "$gcc",
-			"group": "build",
-			"dependsOn": "Compile",
-		},
-	],
+"version": "2.0.0",
+"tasks": [
+
+// ── Windows Desktop (Docker cross-compile via mingw32) ────────────────
+//
+// "Build & Deploy Windows Debug" is the default Ctrl+Shift+B task and
+// the preLaunchTask for F5 debugging. It builds with full debug symbols
+// and copies the exe into .deploy/ so GDB can launch it with game data.
+// Run "Init .deploy/" once before first use to populate game data layers.
+
+{
+"label": "Build & Deploy Windows Debug",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm mingw32 bash -c 'cmake --preset windows-x86-debug && cmake --build --preset windows-x86-debug' && cp out/build/windows-x86-debug/keeperfx.exe .deploy/keeperfx.exe && echo 'Deployed.'",
+"windows": {
+"command": [
+"docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm mingw32 bash -c 'cmake --preset windows-x86-debug && cmake --build --preset windows-x86-debug';",
+"if ($LASTEXITCODE -ne 0) { exit 1 };",
+"Copy-Item '${workspaceFolder}\\out\\build\\windows-x86-debug\\keeperfx.exe' '${workspaceFolder}\\.deploy\\keeperfx.exe' -Force;",
+"Write-Host 'keeperfx.exe deployed to .deploy/' -ForegroundColor Green;"
+]
+},
+"problemMatcher": "$gcc",
+"group": { "kind": "build", "isDefault": true },
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Build Windows x86 Release",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm mingw32 bash -c 'cmake --preset windows-x86-release && cmake --build --preset windows-x86-release'",
+"windows": {
+"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm mingw32 bash -c 'cmake --preset windows-x86-release && cmake --build --preset windows-x86-release'"
+},
+"problemMatcher": "$gcc",
+"group": "build",
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+// ── Linux (Docker) ───────────────────────────────────────────────────
+
+{
+"label": "Build Linux x64",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm linux bash -c 'cmake --preset linux-x64-release && cmake --build --preset linux-x64-release'",
+"windows": {
+"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm linux bash -c 'cmake --preset linux-x64-release && cmake --build --preset linux-x64-release'"
+},
+"problemMatcher": "$gcc",
+"group": "build",
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+// ── PS Vita (Docker vitasdk) ─────────────────────────────────────────
+//
+// All three Vita presets use vitaGL. Output VPK: out/build/<preset>/keeperfx.vpk
+
+{
+"label": "Build Vita Release",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-release && cmake --build --preset vita-release'",
+"windows": {
+"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-release && cmake --build --preset vita-release'"
+},
+"problemMatcher": "$gcc",
+"group": "build",
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Build Vita RelDebug",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-reldebug && cmake --build --preset vita-reldebug'",
+"windows": {
+"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-reldebug && cmake --build --preset vita-reldebug'"
+},
+"problemMatcher": "$gcc",
+"group": "build",
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Build Vita Debug",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-debug && cmake --build --preset vita-debug'",
+"windows": {
+"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm vitasdk bash -c 'cmake --preset vita-debug && cmake --build --preset vita-debug'"
+},
+"problemMatcher": "$gcc",
+"group": "build",
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+// ── Local deployment ─────────────────────────────────────────────────
+
+{
+// One-time setup: builds game data layers and populates .deploy/.
+// Requires the DK original game files to be present on this machine.
+"label": "Init .deploy/",
+"type": "shell",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\.vscode\\init_layered_deploy.ps1' -WorkspaceFolder '${workspaceFolder}'"
+},
+"osx": {
+"command": "echo 'Init .deploy/ is Windows-only. Copy DK originals to .deploy/ manually on Mac.'"
+},
+"linux": {
+"command": "echo 'Init .deploy/ is Windows-only. Copy DK originals to .deploy/ manually on Linux.'"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+// Rebuild Layer 2 (GFX): re-runs make pkg-gfx if gfx submodule has changed,
+// then redeploys pkg/data and pkg/ldata into .deploy/.
+// Run this after pulling gfx submodule changes.
+"label": "Rebuild GFX Layer",
+"type": "shell",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\.vscode\\rebuild_gfx_layer.ps1' -WorkspaceFolder '${workspaceFolder}'"
+},
+"osx": {
+"command": "bash '${workspaceFolder}/.vscode/rebuild_gfx_layer.sh'"
+},
+"linux": {
+"command": "bash '${workspaceFolder}/.vscode/rebuild_gfx_layer.sh'"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+// ── IntelliSense / tooling ───────────────────────────────────────────
+
+{
+// Regenerates compile_commands.json for cpptools IntelliSense.
+// Uses the debug preset so headers and macros match the active code.
+"label": "Generate compile_commands.json",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm mingw32 bash -c 'cmake --preset windows-x86-debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON'",
+"windows": {
+"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm mingw32 bash -c 'cmake --preset windows-x86-debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON'"
+},
+"problemMatcher": "$gcc",
+"group": "build"
+},
+
+// ── Clean ────────────────────────────────────────────────────────────
+
+{
+"label": "Clean Windows Debug",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm mingw32 bash -c 'cmake --build --preset windows-x86-debug --target clean'",
+"windows": {
+"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm mingw32 bash -c 'cmake --build --preset windows-x86-debug --target clean'"
+},
+"problemMatcher": "$gcc",
+"group": "build"
+},
+
+{
+"label": "Clean Windows Release",
+"type": "shell",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm mingw32 bash -c 'cmake --build --preset windows-x86-release --target clean'",
+"windows": {
+"command": "docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm mingw32 bash -c 'cmake --build --preset windows-x86-release --target clean'"
+},
+"problemMatcher": "$gcc",
+"group": "build"
+},
+
+// ── Vita crash analysis ──────────────────────────────────────────────
+
+{
+"label": "Parse Vita Crash Dump",
+"type": "shell",
+"command": "bash '${workspaceFolder}/tools/vita-parse-crash.sh' --interactive --open",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Interactive; if (Test-Path '${workspaceFolder}\\out\\vita-dumps\\crash_report.html') { code '${workspaceFolder}\\out\\vita-dumps\\crash_report.html' }"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false, "close": false }
+},
+
+{
+"label": "Parse Local Crash Dump",
+"type": "shell",
+"command": "bash '${workspaceFolder}/tools/vita-parse-crash.sh' --dump '${input:dumpFile}' --open",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Dump '${input:dumpFile}'; if (Test-Path '${workspaceFolder}\\out\\vita-dumps\\crash_report.html') { code '${workspaceFolder}\\out\\vita-dumps\\crash_report.html' }"
+},
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+},
+
+// ── Vita debugger plugins ────────────────────────────────────────────
+
+{
+"label": "Fetch Vita Debugger Plugins",
+"type": "shell",
+"command": [
+    "$outDir = '${workspaceFolder}\\out\\vita-tools';",
+    "New-Item -ItemType Directory -Force -Path $outDir | Out-Null;",
+    "Write-Host 'Pulling kvdb OCI artifact...' -ForegroundColor Cyan;",
+    "$kvdbId = docker create ghcr.io/cerwym/vita-kvdb:latest 2>$null;",
+    "if (!$kvdbId) { Write-Host 'ERROR: Failed to pull ghcr.io/cerwym/vita-kvdb:latest' -ForegroundColor Red; exit 1 };",
+    "docker cp \"${kvdbId}:/kvdb.skprx\" \"$outDir/kvdb.skprx\";",
+    "docker rm $kvdbId | Out-Null;",
+    "Write-Host 'Pulling vdbtcp OCI artifact...' -ForegroundColor Cyan;",
+    "$vdbtcpId = docker create ghcr.io/cerwym/vita-vdbtcp:latest 2>$null;",
+    "if (!$vdbtcpId) { Write-Host 'ERROR: Failed to pull ghcr.io/cerwym/vita-vdbtcp:latest' -ForegroundColor Red; exit 1 };",
+    "docker cp \"${vdbtcpId}:/vdbtcp.suprx\" \"$outDir/vdbtcp.suprx\";",
+    "docker rm $vdbtcpId | Out-Null;",
+    "Write-Host 'Vita debugger plugins saved to out/vita-tools/' -ForegroundColor Green;",
+    "Get-ChildItem $outDir | Format-Table Name, Length;"
+],
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+},
+
+{
+"label": "Deploy Vita Debugger",
+"type": "shell",
+"command": [
+    "$vitaIp = '192.168.0.66';",
+    "$toolsDir = '${workspaceFolder}\\out\\vita-tools';",
+    "if (!(Test-Path \"$toolsDir\\kvdb.skprx\") -or !(Test-Path \"$toolsDir\\vdbtcp.suprx\")) {",
+    "  Write-Host 'ERROR: Plugins not found. Run Fetch Vita Debugger Plugins first.' -ForegroundColor Red; exit 1",
+    "};",
+    "Write-Host \"Uploading to $vitaIp via FTP...\" -ForegroundColor Cyan;",
+    "docker run --rm -v \"${toolsDir}:/data\" curlimages/curl:latest -T /data/kvdb.skprx \"ftp://${vitaIp}:1337/ur0:/tai/kvdb.skprx\" --ftp-create-dirs;",
+    "docker run --rm -v \"${toolsDir}:/data\" curlimages/curl:latest -T /data/vdbtcp.suprx \"ftp://${vitaIp}:1337/ur0:/tai/vdbtcp.suprx\" --ftp-create-dirs;",
+    "Write-Host 'Plugins deployed to ur0:/tai/ — reboot Vita to load.' -ForegroundColor Green;"
+],
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "dedicated" }
+},
+
+// ── Vita companion / deploy / logging ────────────────────────────────
+//
+// vitacompanion provides FTP (1337) + command server (1338) on the Vita.
+// PrincessLog streams printf/sceClibPrintf over TCP to your dev machine.
+// noASLR makes crash addresses deterministic across runs.
+// Run "Setup Vita Companion" once to install all three plugins.
+
+{
+    "label": "Setup Vita Companion",
+    "detail": "Download vitacompanion + noASLR + PrincessLog, upload to Vita, patch taiHEN config",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' setup",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false }
+},
+
+{
+    "label": "Deploy Vita eboot.bin",
+    "detail": "Upload latest eboot.bin to the Vita via FTP (vitacompanion)",
+    "type": "shell",
+    "command": "VITA_PRESET='${input:vitaPreset}' bash '${workspaceFolder}/tools/vita-companion.sh' deploy-eboot",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+    "label": "Deploy & Launch Vita",
+    "detail": "Upload eboot.bin + kill + relaunch KeeperFX on Vita",
+    "type": "shell",
+    "command": "VITA_PRESET='${input:vitaPreset}' bash '${workspaceFolder}/tools/vita-companion.sh' deploy-launch",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+    "label": "Build & Deploy Vita",
+    "detail": "Build → deploy → launch on Vita with live PrincessLog output",
+    "type": "shell",
+    "command": "echo '--- PrincessLog listener on port ${input:princessLogPort} ---' && nc -kl ${input:princessLogPort} &\nLOG_PID=$! && trap 'kill $LOG_PID 2>/dev/null' EXIT && cmake --preset ${input:vitaPreset} && cmake --build --preset ${input:vitaPreset} && VITA_PRESET='${input:vitaPreset}' bash '${workspaceFolder}/tools/vita-companion.sh' deploy-launch && echo '--- Vita launched. PrincessLog output below (Ctrl+C to stop) ---' && wait $LOG_PID",
+    "problemMatcher": "$gcc",
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+    "label": "Vita PrincessLog Listener",
+    "detail": "Standalone listener for PrincessLog stdout (Ctrl+C to stop)",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' log ${input:princessLogPort}",
+    "problemMatcher": [],
+    "group": "build",
+    "isBackground": true,
+    "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false }
+},
+
+{
+    "label": "Reboot Vita",
+    "detail": "Send reboot command to Vita via vitacompanion",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' reboot",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": false, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+    "label": "Fetch Vita Logs",
+    "detail": "Download kfx_boot.log, kfx_preinit.log, keeperfx.log from Vita → out/vita-logs/",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-companion.sh' fetch-logs",
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false }
+},
+
+// ── Fork management ──────────────────────────────────────────────────
+//
+// PowerShell scripts for keeping master/develop/feature branches in sync.
+// Run "Setup Git Hooks" once, then "Sync Repos" whenever you want upstream changes.
+
+{
+"label": "Setup Git Hooks",
+"detail": "One-time: installs hooks protecting master, adds upstream remote",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\setup-hooks.ps1'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Sync Repos",
+"detail": "Fetch upstream → ff master → merge develop → rebase vita branch",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\sync-repos.ps1'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Create Upstream PR Branch",
+"detail": "Cherry-pick commits onto a clean branch off master for upstream PRs",
+"type": "shell",
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\upstream-pr.ps1' -Name '${input:upstreamBranchName}' -Commits ${input:cherryPickCommits}",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+}
+
+],
+
+"inputs": [
+{
+    "id": "upstreamBranchName",
+    "type": "promptString",
+    "description": "Name for the upstream branch (e.g. vita-crash-tool). Will be prefixed with upstream/.",
+    "default": ""
+},
+{
+    "id": "cherryPickCommits",
+    "type": "promptString",
+    "description": "Comma-separated commit hashes to cherry-pick (e.g. abc1234, def5678)",
+    "default": ""
+},
+{
+    "id": "dumpFile",
+    "type": "promptString",
+    "description": "Path to local .psp2dmp crash dump file",
+    "default": "out/vita-dumps/"
+},
+{
+    "id": "vitaPreset",
+    "type": "pickString",
+    "description": "Vita build preset to deploy",
+    "options": ["vita-reldebug", "vita-debug", "vita-release"],
+    "default": "vita-reldebug"
+},
+{
+    "id": "princessLogPort",
+    "type": "promptString",
+    "description": "PrincessLog listener port (must match PrincessLog settings on Vita)",
+    "default": "8080"
+}
+]
 }
