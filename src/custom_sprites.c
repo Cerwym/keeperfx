@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "custom_sprites.h"
 #include "creature_graphics.h"
@@ -31,6 +32,10 @@
 #include <json.h>
 #include <json-dom.h>
 #include <minizip/unzip.h>
+#include "platform/PlatformManager.h"
+#ifdef PLATFORM_VITA
+#include "custom_sprites_cache.h"
+#endif
 #include "post_inc.h"
 
 // Performance tests
@@ -110,12 +115,13 @@ enum CustomLoadFlags {
     CLF_LensMists = 0x8
 };
 
-// big_scratch is the permanent gameplay scratch buffer.
+// big_scratch is the permanent gameplay scratch buffer (256 KB).
 // It is defined in platform_shims.c for all constrained platforms and allocated
 // in PlatformVita::SystemInit() before any gameplay code runs.
-// On PC it is a static array here.
+// On PC it is a static array here; sized at 256 KB to match the constrained-platform
+// limit and catch any over-use at compile/test time.
 #ifndef PLATFORM_VITA
-static unsigned char big_scratch_data[1024*1024*16] = {0};
+static unsigned char big_scratch_data[256 * 1024] = {0};
 unsigned char *big_scratch = big_scratch_data;
 #endif
 
@@ -236,6 +242,9 @@ static int cmp_named_command(const void *a, const void *b)
 static int load_file_sprites(const char *path, const char *file_desc)
 {
     SYNCDBG(8, "Starting");
+#ifdef PLATFORM_VITA
+    sprite_cache_record_zip(path);
+#endif
     int add_flag = 0;
     if (add_custom_sprite(path))
     {
@@ -318,6 +327,7 @@ static void load_dir_sprites(const char *dir_path, const char *dir_desc)
             if (add_flag & CLF_Icons)
                 cnt_icon++;
             cnt_zip++;
+            PlatformManager_WorkTick();
         } while (LbFileFindNext(ff, &fe) >= 0);
         LbFileFindEnd(ff);
 
@@ -408,7 +418,7 @@ void init_custom_sprites(LevelNumber lvnum)
     {
         if (keepersprite_add[i] != NULL)
         {
-            free(keepersprite_add[i]);
+            KfxFree(keepersprite_add[i]);
             keepersprite_add[i] = NULL;
         }
     }
@@ -417,7 +427,7 @@ void init_custom_sprites(LevelNumber lvnum)
     {
         if (added_sprites[i].name != NULL)
         {
-            free((char *) added_sprites[i].name);
+            KfxFree((char *) added_sprites[i].name);
         }
     }
     num_added_sprite = 0;
@@ -428,7 +438,7 @@ void init_custom_sprites(LevelNumber lvnum)
     {
         if (added_icons[i].name != NULL)
         {
-            free((char *) added_icons[i].name);
+            KfxFree((char *) added_icons[i].name);
             added_icons[i].name = NULL;
         }
     }
@@ -442,35 +452,85 @@ void init_custom_sprites(LevelNumber lvnum)
 
     if (anim_names != NULL)
     {
-        free(anim_names);
+        KfxFree(anim_names);
     }
 
-
-    char *dname = prepare_file_path(FGrp_FxData, NULL);
-    load_dir_sprites(dname, "Main FxData dir");
-
-    if (mods_conf.after_base_cnt > 0)
+#ifdef PLATFORM_VITA
     {
-        load_sprites_for_mod_list(lvnum, mods_conf.after_base_item, mods_conf.after_base_cnt);
+        SpriteCacheCtx cache_ctx = {
+            keepersprite_add, creature_table_add, iso_td_add, td_iso_add,
+            &next_free_sprite, added_sprites, &num_added_sprite,
+            &custom_sprites, added_icons, &num_added_icons, &next_free_icon
+        };
+        SpriteCacheTierSnapshot global_snap = {0,0,0,0,0}, campaign_snap = {0,0,0,0,0};
+        TbBool global_hit, campaign_hit, level_hit;
+        char s_lvl_zip[256] = {0};
+        char *dname;
+
+        /* --- Global tier (FxData + after_base) --- */
+        sprite_cache_begin_phase(0);
+        global_hit = sprite_cache_try_load_global(&cache_ctx);
+        if (!global_hit) {
+            dname = prepare_file_path(FGrp_FxData, NULL);
+            load_dir_sprites(dname, "Main FxData dir");
+            if (mods_conf.after_base_cnt > 0)
+                load_sprites_for_mod_list(lvnum, mods_conf.after_base_item, mods_conf.after_base_cnt);
+        }
+        sprite_cache_snapshot(&cache_ctx, &global_snap);
+
+        /* --- Campaign tier (CmpgConfig + after_campaign) --- */
+        sprite_cache_begin_phase(1);
+        dname = prepare_file_path(FGrp_CmpgConfig, NULL);
+        campaign_hit = sprite_cache_try_load_campaign(dname, &cache_ctx, &global_snap);
+        if (!campaign_hit) {
+            dname = prepare_file_path(FGrp_CmpgConfig, NULL);
+            load_dir_sprites(dname, "Main CmpgConfig dir");
+            if (mods_conf.after_campaign_cnt > 0)
+                load_sprites_for_mod_list(lvnum, mods_conf.after_campaign_item, mods_conf.after_campaign_cnt);
+        }
+        sprite_cache_snapshot(&cache_ctx, &campaign_snap);
+
+        /* --- Level tier (map ZIP + after_map) --- */
+        sprite_cache_begin_phase(2);
+        {
+            char *fpath = prepare_file_fmtpath(get_level_fgroup(lvnum), "map%05lu.zip", lvnum);
+            strncpy(s_lvl_zip, fpath, sizeof(s_lvl_zip) - 1);
+        }
+        level_hit = sprite_cache_try_load_level(s_lvl_zip, &cache_ctx, &campaign_snap);
+        if (!level_hit) {
+            if (LbFileExists(s_lvl_zip))
+                load_file_sprites(s_lvl_zip, "Main CmpgLvls file");
+            if (mods_conf.after_map_cnt > 0)
+                load_sprites_for_mod_list(lvnum, mods_conf.after_map_item, mods_conf.after_map_cnt);
+        }
+
+        /* Write any tiers that were cache-missed */
+        if (!global_hit)
+            sprite_cache_write_global(&cache_ctx);
+        if (!campaign_hit) {
+            dname = prepare_file_path(FGrp_CmpgConfig, NULL);
+            sprite_cache_write_campaign(dname, &cache_ctx, &global_snap);
+        }
+        if (!level_hit)
+            sprite_cache_write_level(s_lvl_zip, &cache_ctx, &campaign_snap);
     }
-
-    dname = prepare_file_path(FGrp_CmpgConfig, NULL);
-    load_dir_sprites(dname, "Main CmpgConfig dir");
-
-    if (mods_conf.after_campaign_cnt > 0)
+#else
     {
-        load_sprites_for_mod_list(lvnum, mods_conf.after_campaign_item, mods_conf.after_campaign_cnt);
+        char *dname = prepare_file_path(FGrp_FxData, NULL);
+        load_dir_sprites(dname, "Main FxData dir");
+        if (mods_conf.after_base_cnt > 0)
+            load_sprites_for_mod_list(lvnum, mods_conf.after_base_item, mods_conf.after_base_cnt);
+        dname = prepare_file_path(FGrp_CmpgConfig, NULL);
+        load_dir_sprites(dname, "Main CmpgConfig dir");
+        if (mods_conf.after_campaign_cnt > 0)
+            load_sprites_for_mod_list(lvnum, mods_conf.after_campaign_item, mods_conf.after_campaign_cnt);
+        char *fname = prepare_file_fmtpath(get_level_fgroup(lvnum), "map%05lu.zip", lvnum);
+        if (LbFileExists(fname))
+            load_file_sprites(fname, "Main CmpgLvls file");
+        if (mods_conf.after_map_cnt > 0)
+            load_sprites_for_mod_list(lvnum, mods_conf.after_map_item, mods_conf.after_map_cnt);
     }
-
-    char *fname = prepare_file_fmtpath(get_level_fgroup(lvnum), "map%05lu.zip", lvnum);
-    if (LbFileExists(fname))
-        load_file_sprites(fname, "Main CmpgLvls file");
-
-    if (mods_conf.after_map_cnt > 0)
-    {
-        load_sprites_for_mod_list(lvnum, mods_conf.after_map_item, mods_conf.after_map_cnt);
-    }
-
+#endif
 }
 
 /**
@@ -579,7 +639,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
         spng_ctx_free(ctx);
         return 1;
     }
-    struct spng_text *text = malloc(sizeof(struct spng_text) * n_text);
+    struct spng_text *text = KfxAlloc(sizeof(struct spng_text) * n_text);
     spng_get_text(ctx, text, &n_text);
 
     for (int i = 0; i < n_text; i++)
@@ -605,7 +665,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
             if (endl == value)
             {
                 WARNLOG("Invalid Frame metadata at %s/%s", path, subpath);
-                free(text);
+                KfxFree(text);
                 spng_ctx_free(ctx);
                 return 1;
             }
@@ -616,7 +676,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
 
     if (found != 3) // Scene + Camera + Frame
     {
-        free(text);
+        KfxFree(text);
         spng_ctx_free(ctx);
         return 0; // File without metadata is not a problem
     }
@@ -637,7 +697,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
     if (lr_dir < 0)
     {
         WARNLOG("Unknown frame: %s/%s dir:%s ", path, subpath, camera);
-        free(text);
+        KfxFree(text);
         spng_ctx_free(ctx);
         return 1;
     }
@@ -654,7 +714,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
                 if (!value_bool(rotated))
                 {
                     WARNLOG("Too many frames and Rotated is false");
-                    free(text);
+                    KfxFree(text);
                     spng_ctx_free(ctx);
                     return 1;
                 }
@@ -668,7 +728,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
                 if (!value_int32(rotated))
                 {
                     WARNLOG("Too many frames and Rotated is false");
-                    free(text);
+                    KfxFree(text);
                     spng_ctx_free(ctx);
                     return 1;
                 }
@@ -676,7 +736,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
             default:
             {
                 WARNLOG("'rotatable' has unexpected value");
-                free(text);
+                KfxFree(text);
                 spng_ctx_free(ctx);
                 return 1;
             }
@@ -708,7 +768,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
     else if (value_type(row) != VALUE_DICT)
     {
         ERRORLOG("Invalid frame record");
-        free(text);
+        KfxFree(text);
         spng_ctx_free(ctx);
         return 1;
     }
@@ -721,7 +781,7 @@ static int read_png_info(unzFile zip, const char *path, struct SpriteContext *co
     }
     value_init_string(dst, subpath);
 
-    free(text);
+    KfxFree(text);
     spng_ctx_free(ctx);
     return 0;
 }
@@ -771,19 +831,26 @@ static int read_png_icon(unzFile zip, const char *path, const char *subpath, int
         return 0;
     }
 
-    unsigned char *dst_buf = big_scratch;
+    unsigned char *dst_buf = KfxAlloc(out_size);
+    if (dst_buf == NULL) {
+        ERRORLOG("Unable to allocate decode buffer for %s", path);
+        spng_ctx_free(ctx);
+        return 0;
+    }
     spng_decode_image(ctx, dst_buf, out_size, fmt, SPNG_DECODE_TRNS);
 
     if (sprite.SWidth >= 255 || sprite.SHeight >= 255)
     {
         ERRORLOG("Sprites more than 255x255 are not supported");
+        KfxFree(dst_buf);
         return 0;
     }
 
     size_t sz = (sprite.SWidth + 2) * (sprite.SHeight + 3);
-    sprite.Data = malloc(sz);
+    sprite.Data = KfxAlloc(sz);
 
     compress_raw(&sprite, dst_buf, 0, 0, sprite.SWidth, sprite.SHeight);
+    KfxFree(dst_buf);
 
     spng_ctx_free(ctx);
 
@@ -794,7 +861,7 @@ static int read_png_icon(unzFile zip, const char *path, const char *subpath, int
     }
 
     add_sprite(custom_sprites, sprite.SWidth, sprite.SHeight, sz, sprite.Data);
-    free(sprite.Data);
+    KfxFree(sprite.Data);
     *icon_ptr = next_free_icon + GUI_PANEL_SPRITES_COUNT;
     next_free_icon++;
 
@@ -852,10 +919,16 @@ static int read_png_data(unzFile zip, const char *path, struct SpriteContext *co
         return 0;
     }
 
-    unsigned char *dst_buf = big_scratch;
+    unsigned char *dst_buf = KfxAlloc(out_size);
+    if (dst_buf == NULL) {
+        ERRORLOG("Unable to allocate decode buffer for %s/%s", path, subpath);
+        spng_ctx_free(ctx);
+        return 0;
+    }
     if (spng_decode_image(ctx, dst_buf, out_size, fmt, SPNG_DECODE_TRNS))
     {
         ERRORLOG("Unable to decode %s/%s", path, subpath);
+        KfxFree(dst_buf);
         spng_ctx_free(ctx);
         return 0;
     }
@@ -867,12 +940,14 @@ static int read_png_data(unzFile zip, const char *path, struct SpriteContext *co
     if (dst_w >= 255 || dst_h >= 255)
     {
         ERRORLOG("Sprites more than 255x255 are not supported");
+        KfxFree(dst_buf);
         return 0;
     }
 
     if (next_free_sprite >= KEEPERSPRITE_ADD_NUM)
     {
         ERRORLOG("Too many custom sprites allocated");
+        KfxFree(dst_buf);
         return 0;
     }
     short sprite_idx = next_free_sprite;
@@ -882,7 +957,7 @@ static int read_png_data(unzFile zip, const char *path, struct SpriteContext *co
     (*context->id_sz_ptr)++; // Add new sprite for current view (FP/TD)
 
     size_t sz = (dst_w + 2) * (dst_h + 3);
-    keepersprite_add[sprite_idx] = malloc(sz);
+    keepersprite_add[sprite_idx] = KfxAlloc(sz);
     context->sprite.Data = keepersprite_add[sprite_idx];
     compress_raw(&context->sprite, dst_buf, context->x, context->y, dst_w, dst_h);
     struct KeeperSprite *ksprite = &creature_table_add[sprite_idx];
@@ -936,6 +1011,7 @@ static int read_png_data(unzFile zip, const char *path, struct SpriteContext *co
 #undef READ_WITH_DEFAULT
 
     spng_ctx_free(ctx);
+    KfxFree(dst_buf);
     return 1;
 }
 #pragma clang diagnostic pop
@@ -984,7 +1060,7 @@ static void load_rgb_to_pal_table()
     }
     // load palette
     const uint32_t table_size = MAX_COLOR_VALUE * MAX_COLOR_VALUE * MAX_COLOR_VALUE;
-    rgb_to_pal_table = calloc(table_size, 1);
+    rgb_to_pal_table = KfxCalloc(table_size, 1);
     if (!rgb_to_pal_table) {
         ERRORLOG("Cannot allocate rgb conversion table");
         return;
@@ -1084,7 +1160,7 @@ struct StrBuf
 static int dump_callback(const char *str, size_t size, void *user_data)
 {
     struct StrBuf *buf = user_data;
-    buf->ptr = realloc(buf->ptr, buf->size + size + 1);
+    buf->ptr = KfxRealloc(buf->ptr, buf->size + size + 1);
     memcpy(buf->ptr + buf->size, str, size);
     buf->size += size;
     buf->ptr[buf->size] = 0;
@@ -1302,7 +1378,7 @@ static int process_sprite_from_list(const char *path, unzFile zip, int idx, VALU
             return 0;
         }
         spr = &added_sprites[num_added_sprite++];
-        spr->name = strdup(name);
+        spr->name = KfxStrDup(name);
         spr->num = context.td_id;
     }
 
@@ -1316,6 +1392,7 @@ add_custom_json(const char *path, const char *name, TbBool (*process)(const char
     unz_file_info64 zip_info = {0};
     VALUE root;
     JSON_INPUT_POS json_input_pos;
+    char *json_buf = NULL;
     unzFile zip = unzOpen(path);
 
     if (zip == NULL)
@@ -1343,24 +1420,31 @@ add_custom_json(const char *path, const char *name, TbBool (*process)(const char
         goto end;
     }
 
+    json_buf = KfxAlloc(zip_info.uncompressed_size + 1);
+    if (json_buf == NULL)
+    {
+        WARNLOG("Unable to allocate JSON buffer for %s/%s", path, name);
+        goto end;
+    }
+
     if (UNZ_OK != unzOpenCurrentFile(zip))
     {
         goto end;
     }
 
-    if (unzReadCurrentFile(zip, big_scratch, zip_info.uncompressed_size) != zip_info.uncompressed_size)
+    if (unzReadCurrentFile(zip, json_buf, zip_info.uncompressed_size) != zip_info.uncompressed_size)
     {
         WARNLOG("Unable to read %s/%s", path, name);
         goto end;
     }
-    big_scratch[zip_info.uncompressed_size] = 0;
+    json_buf[zip_info.uncompressed_size] = 0;
 
     if (UNZ_OK != unzCloseCurrentFile(zip))
     {
         goto end;
     }
 
-    int ret = json_dom_parse((char *) big_scratch, zip_info.uncompressed_size, NULL, 0, &root, &json_input_pos);
+    int ret = json_dom_parse(json_buf, zip_info.uncompressed_size, NULL, 0, &root, &json_input_pos);
     if (ret)
     {
 
@@ -1380,11 +1464,13 @@ add_custom_json(const char *path, const char *name, TbBool (*process)(const char
 
     fastUnzClearCache();
     unzClose(zip);
+    KfxFree(json_buf);
 
     return ret_ok;
 end:
     fastUnzClearCache();
     unzClose(zip);
+    KfxFree(json_buf);
     return 0;
 }
 
@@ -1425,7 +1511,7 @@ static unsigned char* decode_png_to_indexed_internal(unzFile zip, const char *fi
         return NULL;
     }
 
-    unsigned char *png_buffer = malloc(zip_info->uncompressed_size);
+    unsigned char *png_buffer = KfxAlloc(zip_info->uncompressed_size);
     if (png_buffer == NULL)
     {
         ERRORLOG("Failed to allocate memory for PNG buffer");
@@ -1435,7 +1521,7 @@ static unsigned char* decode_png_to_indexed_internal(unzFile zip, const char *fi
     if (unzReadCurrentFile(zip, png_buffer, zip_info->uncompressed_size) != zip_info->uncompressed_size)
     {
         WARNLOG("Failed to read '%s' from '%s'", file, path);
-        free(png_buffer);
+        KfxFree(png_buffer);
         return NULL;
     }
 
@@ -1444,7 +1530,7 @@ static unsigned char* decode_png_to_indexed_internal(unzFile zip, const char *fi
     if (ctx == NULL)
     {
         ERRORLOG("Failed to create spng context");
-        free(png_buffer);
+        KfxFree(png_buffer);
         return NULL;
     }
 
@@ -1456,7 +1542,7 @@ static unsigned char* decode_png_to_indexed_internal(unzFile zip, const char *fi
     {
         ERRORLOG("Failed to set PNG buffer for '%s'", file);
         spng_ctx_free(ctx);
-        free(png_buffer);
+        KfxFree(png_buffer);
         return NULL;
     }
 
@@ -1466,7 +1552,7 @@ static unsigned char* decode_png_to_indexed_internal(unzFile zip, const char *fi
     {
         ERRORLOG("spng_get_ihdr() error: %s for '%s'", spng_strerror(r), file);
         spng_ctx_free(ctx);
-        free(png_buffer);
+        KfxFree(png_buffer);
         return NULL;
     }
 
@@ -1474,7 +1560,7 @@ static unsigned char* decode_png_to_indexed_internal(unzFile zip, const char *fi
     {
         WARNLOG("Invalid image dimensions (%dx%d) in '%s'", ihdr.width, ihdr.height, file);
         spng_ctx_free(ctx);
-        free(png_buffer);
+        KfxFree(png_buffer);
         return NULL;
     }
 
@@ -1485,38 +1571,38 @@ static unsigned char* decode_png_to_indexed_internal(unzFile zip, const char *fi
     {
         ERRORLOG("Failed to get decoded image size for '%s'", file);
         spng_ctx_free(ctx);
-        free(png_buffer);
+        KfxFree(png_buffer);
         return NULL;
     }
 
-    unsigned char *rgba_buffer = malloc(out_size);
+    unsigned char *rgba_buffer = KfxAlloc(out_size);
     if (rgba_buffer == NULL)
     {
         ERRORLOG("Failed to allocate memory for decoded image");
         spng_ctx_free(ctx);
-        free(png_buffer);
+        KfxFree(png_buffer);
         return NULL;
     }
 
     if (spng_decode_image(ctx, rgba_buffer, out_size, fmt, SPNG_DECODE_TRNS))
     {
         ERRORLOG("Failed to decode PNG '%s'", file);
-        free(rgba_buffer);
+        KfxFree(rgba_buffer);
         spng_ctx_free(ctx);
-        free(png_buffer);
+        KfxFree(png_buffer);
         return NULL;
     }
 
     spng_ctx_free(ctx);
-    free(png_buffer);
+    KfxFree(png_buffer);
 
     // Convert RGBA to indexed palette format
     size_t indexed_size = ihdr.width * ihdr.height;
-    unsigned char *indexed_data = malloc(indexed_size);
+    unsigned char *indexed_data = KfxAlloc(indexed_size);
     if (indexed_data == NULL)
     {
         ERRORLOG("Failed to allocate memory for indexed image data");
-        free(rgba_buffer);
+        KfxFree(rgba_buffer);
         return NULL;
     }
 
@@ -1558,7 +1644,7 @@ static unsigned char* decode_png_to_indexed_internal(unzFile zip, const char *fi
         }
     }
 
-    free(rgba_buffer);
+    KfxFree(rgba_buffer);
 
     *out_width = ihdr.width;
     *out_height = ihdr.height;
@@ -1626,7 +1712,7 @@ static int process_lens_overlay_from_list(const char *path, unzFile zip, int idx
     if (is_raw && zip_info.uncompressed_size == raw_size)
     {
         // Load RAW format directly (256x256 8-bit indexed palette data)
-        unsigned char *indexed_data = malloc(raw_size);
+        unsigned char *indexed_data = KfxAlloc(raw_size);
         if (indexed_data == NULL)
         {
             ERRORLOG("Failed to allocate memory for RAW overlay");
@@ -1637,7 +1723,7 @@ static int process_lens_overlay_from_list(const char *path, unzFile zip, int idx
         if (unzReadCurrentFile(zip, indexed_data, raw_size) != raw_size)
         {
             WARNLOG("Failed to read RAW file '%s' from '%s'", file, path);
-            free(indexed_data);
+            KfxFree(indexed_data);
             unzCloseCurrentFile(zip);
             return 0;
         }
@@ -1658,7 +1744,7 @@ static int process_lens_overlay_from_list(const char *path, unzFile zip, int idx
         if (existing)
         {
             // Override existing overlay
-            free(existing->data);
+            KfxFree(existing->data);
             existing->data = indexed_data;
             existing->width = 256;
             existing->height = 256;
@@ -1669,11 +1755,11 @@ static int process_lens_overlay_from_list(const char *path, unzFile zip, int idx
             if (num_added_lens_overlays >= MAX_LENS_OVERLAYS)
             {
                 ERRORLOG("Too many lens overlays (max %d)", MAX_LENS_OVERLAYS);
-                free(indexed_data);
+                KfxFree(indexed_data);
                 return 0;
             }
 
-            added_lens_overlays[num_added_lens_overlays].name = strdup(name);
+            added_lens_overlays[num_added_lens_overlays].name = KfxStrDup(name);
             added_lens_overlays[num_added_lens_overlays].data = indexed_data;
             added_lens_overlays[num_added_lens_overlays].width = 256;
             added_lens_overlays[num_added_lens_overlays].height = 256;
@@ -1696,7 +1782,7 @@ static int process_lens_overlay_from_list(const char *path, unzFile zip, int idx
     if (width <= 0 || height <= 0 || width > 4096 || height > 4096)
     {
         WARNLOG("Invalid lens overlay dimensions (%dx%d) in '%s'", width, height, file);
-        free(indexed_data);
+        KfxFree(indexed_data);
         return 0;
     }
 
@@ -1714,7 +1800,7 @@ static int process_lens_overlay_from_list(const char *path, unzFile zip, int idx
     if (existing)
     {
         // Override existing overlay
-        free(existing->data);
+        KfxFree(existing->data);
         existing->data = indexed_data;
         existing->width = width;
         existing->height = height;
@@ -1725,11 +1811,11 @@ static int process_lens_overlay_from_list(const char *path, unzFile zip, int idx
         if (num_added_lens_overlays >= MAX_LENS_OVERLAYS)
         {
             ERRORLOG("Too many lens overlays (max %d)", MAX_LENS_OVERLAYS);
-            free(indexed_data);
+            KfxFree(indexed_data);
             return 0;
         }
         
-        added_lens_overlays[num_added_lens_overlays].name = strdup(name);
+        added_lens_overlays[num_added_lens_overlays].name = KfxStrDup(name);
         added_lens_overlays[num_added_lens_overlays].data = indexed_data;
         added_lens_overlays[num_added_lens_overlays].width = width;
         added_lens_overlays[num_added_lens_overlays].height = height;
@@ -1767,10 +1853,10 @@ static int process_icon_from_list(const char *path, unzFile zip, int idx, VALUE 
     if (value_type(file_value) == VALUE_STRING)
     {
         // convert "String" to ["String"]
-        char *tmp = strdup(value_string(file_value));
+        char *tmp = KfxStrDup(value_string(file_value));
         value_init_array(file_value);
         value_init_string(value_array_append(file_value), tmp);
-        free(tmp);
+        KfxFree(tmp);
     }
     else if (value_type(file_value) != VALUE_ARRAY)
     {
@@ -1826,7 +1912,7 @@ static int process_icon_from_list(const char *path, unzFile zip, int idx, VALUE 
             return 0;
         }
         spr = &added_icons[num_added_icons++];
-        spr->name = strdup(name);
+        spr->name = KfxStrDup(name);
         spr->num = first_icon;
     }
 
@@ -1922,7 +2008,7 @@ static int process_lens_mist_from_list(const char *path, unzFile zip, int idx, V
         {
             WARNLOG("Invalid mist dimensions for '%s' in '%s': expected 256x256, got %dx%d", 
                     file, path, width, height);
-            free(mist_data);
+            KfxFree(mist_data);
             return 0;
         }
 
@@ -1931,7 +2017,7 @@ static int process_lens_mist_from_list(const char *path, unzFile zip, int idx, V
     else
     {
         // RAW format (256x256 = 65536 bytes)
-        mist_data = malloc(mist_size);
+        mist_data = KfxAlloc(mist_size);
         if (mist_data == NULL)
         {
             ERRORLOG("Failed to allocate memory for mist data");
@@ -1942,7 +2028,7 @@ static int process_lens_mist_from_list(const char *path, unzFile zip, int idx, V
         if (unzReadCurrentFile(zip, mist_data, mist_size) != mist_size)
         {
             WARNLOG("Failed to read mist file '%s' from '%s'", file, path);
-            free(mist_data);
+            KfxFree(mist_data);
             unzCloseCurrentFile(zip);
             return 0;
         }
@@ -1965,7 +2051,7 @@ static int process_lens_mist_from_list(const char *path, unzFile zip, int idx, V
     if (existing)
     {
         // Override existing mist
-        free(existing->data);
+        KfxFree(existing->data);
         existing->data = mist_data;
         JUSTLOG("Overriding lens mist '%s/%s'", path, name);
     }
@@ -1975,11 +2061,11 @@ static int process_lens_mist_from_list(const char *path, unzFile zip, int idx, V
         if (num_added_lens_mists >= MAX_LENS_MISTS)
         {
             ERRORLOG("Too many lens mists (max %d)", MAX_LENS_MISTS);
-            free(mist_data);
+            KfxFree(mist_data);
             return 0;
         }
 
-        added_lens_mists[num_added_lens_mists].name = strdup(name);
+        added_lens_mists[num_added_lens_mists].name = KfxStrDup(name);
         added_lens_mists[num_added_lens_mists].data = mist_data;
         num_added_lens_mists++;
         SYNCDBG(8, "Added lens mist '%s' (256x256)", name);
@@ -2080,7 +2166,7 @@ short get_anim_id(const char *name, struct ObjectConfigStats *objst)
     char *P = strrchr(name, ':');
     if (P != NULL)
     {
-        char *name2 = strdup(name);
+        char *name2 = KfxStrDup(name);
         P = strchr(name2, ':');
         *P = 0; // removing :
         P++;
@@ -2091,7 +2177,7 @@ short get_anim_id(const char *name, struct ObjectConfigStats *objst)
         if (!val)
         {
             ERRORLOG("Unable to find sprite %s", name);
-            free(name2);
+            KfxFree(name2);
             return 0;
         }
         if (0 == strcmp(P, "NORTH"))
@@ -2131,7 +2217,7 @@ short get_anim_id(const char *name, struct ObjectConfigStats *objst)
             ERRORLOG("Unexpected Anim direction: %s", P);
         }
 
-        free(name2);
+        KfxFree(name2);
         return (short) val->num;
     }
     return 0;

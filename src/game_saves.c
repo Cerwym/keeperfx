@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "game_saves.h"
 
@@ -262,7 +263,7 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
             break;
         case SGC_LuaData:
             {
-                char* lua_data = (char*)malloc(hdr.len);
+                char* lua_data = (char*)KfxAlloc(hdr.len);
                 if (lua_data == NULL) {
                     WARNLOG("Could not allocate memory for LuaData chunk");
                     break;
@@ -275,7 +276,7 @@ int load_game_chunks(TbFileHandle fhandle, struct CatalogueEntry *centry)
                     chunks_done |= SGF_LuaData;
                 } else {
                     WARNLOG("Could not read LuaData chunk");
-                    free(lua_data);
+                    KfxFree(lua_data);
                 }
             }
             break;
@@ -401,6 +402,7 @@ TbBool load_game(long slot_num)
             game.loaded_level_number = centry->level_num;
         }
         WARNMSG("Couldn't correctly load saved game in slot %d.",(int)slot_num);
+        init_lookups();
         return false;
     }
     my_player_number = game.local_plyr_idx;

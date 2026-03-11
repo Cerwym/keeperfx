@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "thing_data.h"
 
@@ -207,7 +208,7 @@ void delete_thing_structure_f(struct Thing *thing, TbBool deleting_everything, c
 struct Thing *thing_get_f(ThingIndex tng_idx, const char *func_name)
 {
     if ((tng_idx > 0) && (tng_idx < THINGS_COUNT)) {
-        return &game.things_data[tng_idx];
+        return game.things.lookup[tng_idx];
     }
     if (tng_idx >= THINGS_COUNT) {
         ERRORMSG("%s: Request of invalid thing (no %d) intercepted",func_name,(int)tng_idx);
@@ -216,13 +217,11 @@ struct Thing *thing_get_f(ThingIndex tng_idx, const char *func_name)
 }
 
 /**
- * Returns true if thing pointer address is inside &game.things_data. May be true on an empty (0) thing.
+ * Returns true if thing pointer address is inside game.things.lookup. May be true on an empty (0) thing.
  */
 short thing_is_invalid(const struct Thing *thing)
 {
-    if (thing == NULL)
-        return true;
-    return (thing <= &game.things_data[0]) || (thing > &game.things_data[THINGS_COUNT-1]);
+    return (thing <= game.things.lookup[0]) || (thing > game.things.lookup[THINGS_COUNT-1]) || (thing == NULL);
 }
 
 /**

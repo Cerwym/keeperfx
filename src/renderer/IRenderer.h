@@ -97,31 +97,6 @@ public:
      *  When true, RendererVita runs GPU passes in EndFrame() and LensManager
      *  skips the corresponding CPU Draw() calls. */
     virtual bool SupportsGPUPasses() const { return false; }
-
-    /**
-     * Optional fast path for presenting a raw palette-indexed video frame.
-     *
-     * Uploads @p pixels (width × height, 1 byte per pixel, palette indices) and
-     * the 6-bit (0–63) RGB palette @p palette_6bit (768 bytes: R0G0B0 R1G1B1 …)
-     * directly to the GPU and presents the result to the display.
-     *
-     * When this returns true the caller MUST skip the normal
-     * LbScreenLock / copy_to_screen* / LbScreenUnlock / LbScreenSwap sequence.
-     *
-     * The default implementation returns false (not supported); backends that
-     * implement this can eliminate CPU-side pixel scaling for FMV playback.
-     *
-     * @param pixels       Raw 8-bit indexed pixel data (row-major, stride = width).
-     * @param width        Frame width in pixels.
-     * @param height       Frame height in pixels.
-     * @param linesize     Row stride of @p pixels in bytes (may be > width).
-     * @param palette_6bit 768-byte palette in R,G,B order, values 0–63.
-     * @return true if the frame was presented; false if the caller should fall back.
-     */
-    virtual bool PresentRawPalFrame(const uint8_t* pixels, int width, int height,
-                                    int linesize, const uint8_t* palette_6bit) {
-        return false;
-    }
 };
 
 /******************************************************************************/

@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "map_columns.h"
 #include "globals.h"
@@ -33,7 +34,7 @@ struct Column *get_column(long idx)
 {
   if ((idx < 1) || (idx >= COLUMNS_COUNT))
     return INVALID_COLUMN;
-  return &game.columns_data[idx];
+  return game.columns.lookup[idx];
 }
 
 struct Column *get_column_at(MapSubtlCoord stl_x, MapSubtlCoord stl_y)
@@ -42,14 +43,14 @@ struct Column *get_column_at(MapSubtlCoord stl_x, MapSubtlCoord stl_y)
   mapblk = get_map_block_at(stl_x, stl_y);
   if (map_block_invalid(mapblk))
     return INVALID_COLUMN;
-  return &game.columns_data[get_mapblk_column_index(mapblk)];
+  return game.columns.lookup[get_mapblk_column_index(mapblk)];
 }
 
 struct Column *get_map_column(const struct Map *mapblk)
 {
   if (map_block_invalid(mapblk))
     return INVALID_COLUMN;
-  return &game.columns_data[get_mapblk_column_index(mapblk)];
+  return game.columns.lookup[get_mapblk_column_index(mapblk)];
 }
 
 TbBool column_invalid(const struct Column *colmn)
@@ -58,7 +59,7 @@ TbBool column_invalid(const struct Column *colmn)
     return true;
   if (colmn == INVALID_COLUMN)
     return true;
-  return (colmn <= &game.columns_data[0]) || (colmn > &game.columns_data[COLUMNS_COUNT-1]) || (colmn == NULL);
+  return (colmn <= game.columns.lookup[0]) || (colmn > game.columns.lookup[COLUMNS_COUNT-1]) || (colmn == NULL);
 }
 
 /**

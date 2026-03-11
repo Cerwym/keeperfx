@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "engine_camera.h"
 
@@ -763,7 +764,7 @@ void view_process_camera_inertia(struct Camera *cam)
 void update_player_camera(struct PlayerInfo *player)
 {
     struct Dungeon *dungeon = get_players_dungeon(player);
-    struct Camera *cam = get_player_active_camera(player);
+    struct Camera *cam = player->acamera;
 
     view_process_camera_inertia(cam);
     switch (cam->view_mode)

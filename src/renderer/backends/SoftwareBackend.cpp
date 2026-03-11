@@ -1,4 +1,5 @@
 #include "SoftwareBackend.h"
+#include "bflib_video.h"
 #include "bflib_vidraw.h"
 
 SoftwareBackend::SoftwareBackend()

@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "packets.h"
 #include "net_received_packets.h"
@@ -35,7 +36,6 @@
 #include "bflib_fileio.h"
 #include "bflib_dernc.h"
 #include "bflib_network.h"
-#include "bflib_network_internal.h"
 #include "bflib_network_exchange.h"
 #include "bflib_sound.h"
 #include "bflib_sndlib.h"
@@ -257,7 +257,7 @@ TbBool player_sell_room_at_subtile(long plyr_idx, long stl_x, long stl_y)
         return false;
     }
     struct RoomConfigStats* roomst = get_room_kind_stats(room->kind);
-    long revenue = compute_value_percentage(roomst->cost, game.conf.rules[plyr_idx].game.room_sale_percent);
+    long revenue = compute_value_percentage(roomst->cost, game.conf.rules[plyr_idx].gameplay.room_sale_percent);
     if (room->owner != game.neutral_player_num)
     {
         struct Dungeon* dungeon = get_players_num_dungeon(room->owner);
@@ -518,7 +518,7 @@ void process_players_dungeon_control_packet_control(long plyr_idx)
     struct PlayerInfo* player = get_player(plyr_idx);
     struct Packet* pckt = get_packet_direct(player->packet_num);
     SYNCDBG(6,"Processing player %d action %d",(int)plyr_idx,(int)pckt->action);
-    struct Camera* cam = get_player_active_camera(player);
+    struct Camera* cam = player->acamera;
     if (cam == NULL) {
         ERRORLOG("No active camera");
         return;
@@ -1011,20 +1011,17 @@ TbBool process_players_global_packet_action(PlayerNumber plyr_idx)
       if (!is_player_ally_locked(plyr_idx, pckt->actn_par1))
       {
          toggle_ally_with_player(plyr_idx, pckt->actn_par1);
-         if (game.conf.rules[plyr_idx].game.allies_share_vision)
+         if (game.conf.rules[plyr_idx].gameplay.allies_share_vision)
          {
             panel_map_update(0, 0, game.map_subtiles_x+1, game.map_subtiles_y+1);
          }
       }
       return false;
   case PckA_SaveViewType:
-    {
-            struct Camera* camera = get_player_active_camera(player);
-            if (camera != NULL)
-                player->view_mode_restore = camera->view_mode;
+      if (player->acamera != NULL)
+        player->view_mode_restore = player->acamera->view_mode;
       set_player_mode(player, pckt->actn_par1);
       return false;
-    }
   case PckA_LoadViewType:
       set_player_mode(player, pckt->actn_par1);
       set_engine_view(player, player->view_mode_restore);
@@ -1797,12 +1794,40 @@ void process_frontend_packets(void)
       ERRORLOG("LbNetwork_Exchange failed");
       net_service_index_selected = -1;
   }
-  if (netstate.my_id != SERVER_ID && netstate.users[SERVER_ID].progress == USER_UNUSED) {
-    LbNetwork_Stop();
-    if (!setup_network_service(net_service_index_selected)) {
-      frontend_set_state(FeSt_MAIN_MENU);
+  if (frontend_should_all_players_quit())
+  {
+    i = frontnet_number_of_players_in_session();
+    if (players_currently_in_session < i)
+    {
+      players_currently_in_session = i;
     }
-    return;
+    if (players_currently_in_session > i)
+    {
+      if (frontend_menu_state == FeSt_NET_SESSION)
+      {
+          if (LbNetwork_Stop())
+          {
+            ERRORLOG("LbNetwork_Stop() failed");
+            return;
+          }
+          frontend_set_state(FeSt_MAIN_MENU);
+      } else if (frontend_menu_state == FeSt_NET_START)
+      {
+          if (LbNetwork_Stop())
+          {
+            ERRORLOG("LbNetwork_Stop() failed");
+            return;
+          }
+          if (setup_network_service(net_service_index_selected))
+          {
+            frontend_set_state(FeSt_NET_SESSION);
+          }
+          else
+          {
+            frontend_set_state(FeSt_MAIN_MENU);
+          }
+      }
+    }
   }
 #if DEBUG_NETWORK_PACKETS
   write_debug_screenpackets();

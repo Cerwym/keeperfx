@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "packets.h"
 #include "net_received_packets.h"
@@ -258,10 +259,10 @@ void close_packet_file(void)
 
 void dump_memory_to_file(const char * fname, const char * buf, size_t len)
 {
-    FILE* file = fopen(fname, "w");
-    fwrite(buf, 1, len, file);
-    fflush(file);
-    fclose(file);
+    TbFileHandle file = LbFileOpen(fname, Lb_FILE_MODE_NEW);
+    LbFileWrite(file, buf, len);
+    LbFileFlush(file);
+    LbFileClose(file);
 }
 
 void write_debug_packets(void)
@@ -347,6 +348,8 @@ void load_packets_for_turn(GameTurn nturn)
     SYNCDBG(19,"Starting");
     const int turn_data_size = PACKET_TURN_SIZE;
     unsigned char pckt_buf[PACKET_TURN_SIZE+4];
+    struct Packet* pckt = get_packet(my_player_number);
+    TbBigChecksum pckt_chksum = pckt->checksum;
     if (nturn >= game.turns_stored)
     {
         ERRORDBG(18,"Out of turns to load from Packet File");
@@ -377,9 +380,16 @@ void load_packets_for_turn(GameTurn nturn)
         game.turns_fastforward--;
     if (game.packet_checksum_verify)
     {
+        pckt = get_packet(my_player_number);
         if (compute_replay_integrity() != tot_chksum)
         {
             ERRORLOG("PacketSave checksum - Out of sync (GameTurn %u)", game.play_gameturn);
+            if (!is_onscreen_msg_visible())
+                show_onscreen_msg(game_num_fps, "Out of sync");
+        } else
+        if (pckt->checksum != pckt_chksum)
+        {
+            ERRORLOG("Oops we are really Out Of Sync (GameTurn %u)", game.play_gameturn);
             if (!is_onscreen_msg_visible())
                 show_onscreen_msg(game_num_fps, "Out of sync");
         }

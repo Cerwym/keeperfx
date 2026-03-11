@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "local_camera.h"
 #include "engine_camera.h"
@@ -309,9 +310,8 @@ void sync_local_camera(struct PlayerInfo *player)
     if (!is_my_player(player) || !local_camera_ready) {
         return;
     }
-    struct Camera *camera = get_player_active_camera(player);
-    if (camera == &player->cameras[CamIV_FirstPerson]) {
-        sync_first_person_camera(camera, player);
+    if (player->acamera == &player->cameras[CamIV_FirstPerson]) {
+        sync_first_person_camera(player->acamera, player);
         return;
     }
     for (int cam_idx = CamIV_Isometric; cam_idx <= CamIV_FrontView; cam_idx++) {

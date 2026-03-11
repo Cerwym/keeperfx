@@ -34,7 +34,6 @@
 #include "bflib_sprite.h"
 #include "bflib_mouse.h"
 #include "bflib_render.h"
-#include "renderer/RenderPass_C.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus
@@ -1284,9 +1283,6 @@ static inline TbResult LbSpriteDrawFCOneColour(const char *sp,short sprWd,short 
 
 TbResult LbSpriteDrawOneColour(long x, long y, const struct TbSprite *spr, const TbPixel colour)
 {
-    if ((lbDisplay.DrawFlags & Lb_SPRITE_GPU_BATCH_UI)) {
-        return RenderPass_SubmitSpriteOneColour(x, y, spr, colour, lbDisplay.DrawFlags);
-    }
     struct TbSpriteDrawData spd;
     TbResult ret;
     SYNCDBG(19,"At (%ld,%ld)",x,y);
@@ -1555,9 +1551,6 @@ void LbSpriteSetScalingData(long x, long y, long swidth, long sheight, long dwid
 
 TbResult LbSpriteDrawScaled(long xpos, long ypos, const struct TbSprite *sprite, long dest_width, long dest_height)
 {
-    if ((lbDisplay.DrawFlags & Lb_SPRITE_GPU_BATCH_UI)) {
-        return RenderPass_SubmitSprite(xpos, ypos, sprite, lbDisplay.DrawFlags);
-    }
     SYNCDBG(19,"At (%ld,%ld) size (%ld,%ld)",xpos,ypos,dest_width,dest_height);
     if ((dest_width <= 0) || (dest_height <= 0))
       return 1;
@@ -1575,9 +1568,6 @@ TbResult LbSpriteDrawScaled(long xpos, long ypos, const struct TbSprite *sprite,
 
 TbResult LbSpriteDrawScaledOneColour(long xpos, long ypos, const struct TbSprite *sprite, long dest_width, long dest_height, const TbPixel colour)
 {
-    if ((lbDisplay.DrawFlags & Lb_SPRITE_GPU_BATCH_UI)) {
-        return RenderPass_SubmitSpriteOneColour(xpos, ypos, sprite, colour, lbDisplay.DrawFlags);
-    }
     SYNCDBG(19,"At (%ld,%ld) size (%ld,%ld)",xpos,ypos,dest_width,dest_height);
     if ((dest_width <= 0) || (dest_height <= 0))
       return 1;
@@ -1589,9 +1579,6 @@ TbResult LbSpriteDrawScaledOneColour(long xpos, long ypos, const struct TbSprite
 
 int LbSpriteDrawScaledRemap(long xpos, long ypos, const struct TbSprite *sprite, long dest_width, long dest_height, const unsigned char *cmap)
 {
-    if ((lbDisplay.DrawFlags & Lb_SPRITE_GPU_BATCH_UI)) {
-        return RenderPass_SubmitSpriteRemap(xpos, ypos, sprite, cmap, lbDisplay.DrawFlags);
-    }
     SYNCDBG(19,"At (%ld,%ld) size (%ld,%ld)",xpos,ypos,dest_width,dest_height);
     if ((dest_width <= 0) || (dest_height <= 0))
       return 1;

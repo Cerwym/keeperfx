@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_network.h"
 #include "bflib_network_internal.h"
@@ -226,14 +227,17 @@ void OnDroppedUser(NetUserId id, enum NetDropReason reason) {
     } else if (reason == NETDROP_MANUAL) {
         NETMSG("Dropped user %i %s", id, netstate.users[id].name);
     }
+    if (netstate.my_id != SERVER_ID) {
+        NETMSG("Quitting after connection loss");
+        LbNetwork_Stop();
+        return;
+    }
     memset(&netstate.users[id], 0, sizeof(netstate.users[id]));
     netstate.users[id].id = id;
-    if (id != SERVER_ID) {
-        NetUserId uid;
-        for (uid = 0; uid < netstate.max_players; uid += 1) {
-            if (uid == netstate.my_id) { continue; }
-            SendUserUpdate(uid, id);
-        }
+    NetUserId uid;
+    for (uid = 0; uid < netstate.max_players; uid += 1) {
+        if (uid == netstate.my_id) { continue; }
+        SendUserUpdate(uid, id);
     }
     UpdateLocalPlayerInfo(id);
 }

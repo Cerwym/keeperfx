@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "ariadne.h"
 
@@ -4824,6 +4825,10 @@ void triangulation_init(void)
 {
     if (!tri_initialised)
     {
+        if (Triangles == NULL)
+            Triangles = (struct Triangle *)KfxCalloc(TRIANLGLES_COUNT, sizeof(struct Triangle));
+        if (ari_Points == NULL)
+            ari_Points = (struct Point *)KfxCalloc(POINTS_COUNT, sizeof(struct Point));
         tri_initialised = 1;
         triangulation_initxy(-256, -256, 512, 512);
     }

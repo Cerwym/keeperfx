@@ -11,6 +11,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "keeperfx.hpp"
 
@@ -57,6 +58,7 @@
   #include "ftests/ftest.h"
 #endif
 
+#include "platform/kfx_breadcrumb.h"
 #include "post_inc.h"
 
 extern TbBool force_player_num;
@@ -126,9 +128,33 @@ void init_player_types()
 }
 
 /******************************************************************************/
+void init_lookups(void)
+{
+    long i;
+    SYNCDBG(8,"Starting");
+    for (i=0; i < THINGS_COUNT; i++)
+    {
+        game.things.lookup[i] = &game.things_data[i];
+    }
+    game.things.end = &game.things_data[THINGS_COUNT];
+
+    memset(&game.persons, 0, sizeof(struct Persons));
+    for (i=0; i < CREATURES_COUNT; i++)
+    {
+        game.persons.cctrl_lookup[i] = &game.cctrl_data[i];
+    }
+    game.persons.cctrl_end = &game.cctrl_data[CREATURES_COUNT];
+
+    for (i=0; i < COLUMNS_COUNT; i++)
+    {
+        game.columns.lookup[i] = &game.columns_data[i];
+    }
+    game.columns.end = &game.columns_data[COLUMNS_COUNT];
+}
 
 static void init_level(void)
 {
+    KFX_BREADCRUMB("init_level");
     SYNCDBG(6,"Starting");
     struct IntralevelData transfer_mem;
     //memcpy(&transfer_mem,&game.intralvl.transferred_creature,sizeof(struct CreatureStorage));
@@ -431,7 +457,10 @@ void faststartup_saved_packet_game(void)
  */
 void clear_complete_game(void)
 {
-    memset(&game, 0, sizeof(struct Game));
+    if (gpGame == NULL)
+        gpGame = (struct Game *)KfxCalloc(1, sizeof(struct Game));
+    else
+        memset(gpGame, 0, sizeof(struct Game));
     memset(&intralvl, 0, sizeof(struct IntralevelData));
     game.turns_packetoff = -1;
     game.local_plyr_idx = default_loc_player;

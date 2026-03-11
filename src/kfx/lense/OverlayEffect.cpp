@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "../../pre_inc.h"
 #include "OverlayEffect.h"
 
@@ -46,6 +47,11 @@ public:
     TbBool LoadOverlay(long lens_idx);
     void Render(unsigned char *dstbuf, long dstpitch, unsigned char *srcbuf, long srcpitch, 
                 long width, long height);
+
+    const unsigned char* GetData()   const { return m_overlay_data; }
+    int                  GetWidth()  const { return m_width; }
+    int                  GetHeight() const { return m_height; }
+    float                GetAlphaF() const { return m_alpha / 256.0f; }
     
 private:
     OverlayEffect* m_parent;         // Parent effect for asset loading
@@ -73,7 +79,7 @@ COverlayRenderer::~COverlayRenderer()
     // Only free if we allocated the data (file fallback path)
     if (m_owns_data && m_overlay_data != NULL)
     {
-        free(m_overlay_data);
+        KfxFree(m_overlay_data);
     }
     m_overlay_data = NULL;
 }
@@ -116,7 +122,7 @@ TbBool COverlayRenderer::LoadOverlay(long lens_idx)
         // This allows simple file-based mods without requiring ZIP/JSON
         // For overlays without registry, assume 256x256 (standard size)
         const int default_size = 256;
-        m_overlay_data = (unsigned char*)malloc(default_size * default_size);
+        m_overlay_data = (unsigned char*)KfxAlloc(default_size * default_size);
         
         if (m_overlay_data == NULL)
         {
@@ -132,7 +138,7 @@ TbBool COverlayRenderer::LoadOverlay(long lens_idx)
         {
             WARNLOG("Failed to load overlay '%s' from registry or files for lens %ld", 
                     cfg->overlay_file, lens_idx);
-            free(m_overlay_data);
+            KfxFree(m_overlay_data);
             m_overlay_data = NULL;
             m_owns_data = false;
             return false;
@@ -267,7 +273,13 @@ TbBool OverlayEffect::Setup(long lens_idx)
     
     m_user_data = renderer;
     m_current_lens = lens_idx;
-    
+
+#ifdef PLATFORM_VITA
+    m_gpu_pass.Configure(renderer->GetData(), renderer->GetWidth(),
+                         renderer->GetHeight(), renderer->GetAlphaF());
+    m_gpu_pass.Init();
+#endif
+
     SYNCDBG(7, "Overlay effect ready");
     return true;
 }
@@ -282,6 +294,9 @@ void OverlayEffect::Cleanup()
             m_user_data = NULL;
         }
         m_current_lens = -1;
+#ifdef PLATFORM_VITA
+        m_gpu_pass.Free();
+#endif
         SYNCDBG(9, "Overlay effect cleaned up");
     }
 }

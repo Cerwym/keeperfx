@@ -25,12 +25,8 @@
 #include "bflib_video.h"
 #include "bflib_vidsurface.h"
 #include "globals.h"
-#include "renderer/RenderPass.h"
-#include "renderer/RenderPass_C.h"
 #include "renderer/IPostProcessPass.h"
 #include "kfx/lense/LensManager.h"
-#include "renderer/vita/VitaTileAtlas.h"
-#include "engine_textures.h"
 
 #include <psp2/io/stat.h>    // sceIoMkdir
 #include <psp2/kernel/sysmem.h>  // sceKernelAllocMemBlock probe
@@ -41,12 +37,6 @@ extern "C" {
 #include "post_inc.h"
 
 extern "C" bool vita_is_vitagl_ready(void);
-
-// Phase 2A: Old SpriteBatchInterface shims are no longer used.
-// RenderPassSystem now handles all sprite batch routing through VitaGPUBackend.
-// The old shim code (sb_on_sheet_loaded, sb_submit_sprite, etc.) has been
-// removed. Frame lifecycle is now driven through RenderPass_BeginFrame()
-// and RenderPass_EndFrame() in RendererVita::BeginFrame/EndFrame.
 
 static const float k_quad_pos[4][2] = {
     { -1.0f,  1.0f },
@@ -137,22 +127,6 @@ bool RendererVita::Init()
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_BLEND);
 
-        // Build GPU tile atlas from the already-loaded block_ptrs[]
-        // and current lbPalette.  Non-fatal if it fails — the software
-        // rasterizer path continues working independence of the atlas.
-        if (!m_tile_atlas.Init()) {
-            SYNCLOG("RendererVita: tile atlas init failed — hardware tile rendering unavailable");
-        }
-
-        // Initialise the UI sprite layer (Tier 1).
-        if (!m_sprite_layer.Init()) {
-            SYNCLOG("RendererVita: sprite layer init failed — UI sprites will use SW path");
-        } else {
-            // Phase 2A: Initialize RenderPassSystem with GPU backend.
-            // This wires all sprite batch routing through VitaGPUBackend → VitaSpriteLayer.
-            RenderPassSystem::GetInstance().Initialize(RenderPassSystem::BACKEND_GPU_VITA);
-        }
-
         m_initialized = true;
         SYNCLOG("RendererVita: vitaGL palette shader initialised (%dx%d -> 960x544)", k_gameW, k_gameH);
         return true;
@@ -163,11 +137,6 @@ void RendererVita::Shutdown()
 {
     if (!m_initialized) return;
 
-    // Shutdown the render system before destroying components
-    RenderPassSystem::GetInstance().Shutdown();
-
-    m_sprite_layer.Free();
-    m_tile_atlas.Free();
     m_blit.Free();
     m_passthrough.Free();
     if (m_index_tex)   { glDeleteTextures(1, &m_index_tex);   m_index_tex   = 0; }
@@ -186,11 +155,7 @@ void RendererVita::Shutdown()
 
 bool RendererVita::BeginFrame()
 {
-    if (!m_initialized) return false;
-    // Phase 2A: Route sprite batch frame setup through RenderPassSystem.
-    // This calls into VitaGPUBackend::BeginFrame() → VitaSpriteLayer::BeginFrame()
-    RenderPass_BeginFrame();
-    return true;
+    return m_initialized;
 }
 
 void RendererVita::EndFrame()
@@ -226,9 +191,20 @@ void RendererVita::EndFrame()
             { 0.0f, 0.0f }, { u1, 0.0f }, { 0.0f, v1 }, { u1, v1 },
         };
 
-        // GPU lens post-process passes (GetEffects/GetGPUPass not yet implemented)
+        // Collect GPU-side post-process passes from active lens effects.
+        // These run on the GPU instead of the CPU lens path in LensManager.
         std::vector<IPostProcessPass*> gpu_passes;
-        // TODO: when LensEffect::GetGPUPass() is added, collect here:
+        {
+            LensManager* lm = LensManager::GetInstance();
+            if (lm && lm->IsReady()) {
+                for (LensEffect* e : lm->GetEffects()) {
+                    if (e->IsEnabled()) {
+                        IPostProcessPass* p = e->GetGPUPass();
+                        if (p) gpu_passes.push_back(p);
+                    }
+                }
+            }
+        }
 
         // Stage 1 — palette decode: index_tex + palette_tex → (scene FBO when GPU
         //   passes are active, directly to screen when running CPU-only effects).
@@ -273,13 +249,6 @@ void RendererVita::EndFrame()
             // Stage 3 — final blit to screen (960×544 upscale/stretch).
             m_passthrough.Apply(src_tex, 0, k_gameW, k_gameH);
         }
-
-        // Stage 4 — UI sprite overlay (Tier 1): all screen-space quads
-        // accumulated this frame are flushed directly onto FBO 0 (screen).
-        // Phase 2A: Route sprite batch flush through RenderPassSystem.
-        // This calls into VitaGPUBackend::EndFrame() → VitaSpriteLayer::Flush()
-        RenderPass_EndFrame();
-
         vglSwapBuffers(GL_FALSE);
     }
 }
@@ -289,70 +258,6 @@ uint8_t* RendererVita::LockFramebuffer(int* out_pitch)
     if (SDL_LockSurface(lbDrawSurface) < 0) return nullptr;
     if (out_pitch) *out_pitch = lbDrawSurface->pitch;
     return static_cast<uint8_t*>(lbDrawSurface->pixels);
-}
-
-bool RendererVita::PresentRawPalFrame(const uint8_t* pixels, int width, int height,
-                                      int linesize, const uint8_t* palette_6bit)
-{
-    if (!m_initialized) return false;
-
-    // Upload the raw palette-indexed frame directly — bypasses the costly
-    // copy_to_screen_scaled() CPU scaling loop entirely.  The GPU shader
-    // handles the scale from the native frame size (e.g. 320×200) up to
-    // 960×544 via the UV range [0, w/k_gameW] × [0, h/k_gameH].
-
-    // If the source row stride matches the width we can upload in one call;
-    // otherwise copy row-by-row into the index texture.
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_index_tex);
-    if (linesize == width) {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
-                        GL_LUMINANCE, GL_UNSIGNED_BYTE, pixels);
-    } else {
-        for (int row = 0; row < height; row++) {
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, row, width, 1,
-                            GL_LUMINANCE, GL_UNSIGNED_BYTE, pixels + row * linesize);
-        }
-    }
-
-    // Expand 6-bit palette values to 8-bit RGBA and upload.
-    uint8_t rgba[256 * 4];
-    for (int i = 0; i < 256; i++) {
-        rgba[i*4+0] = (uint8_t)(palette_6bit[i*3+0] << 2);
-        rgba[i*4+1] = (uint8_t)(palette_6bit[i*3+1] << 2);
-        rgba[i*4+2] = (uint8_t)(palette_6bit[i*3+2] << 2);
-        rgba[i*4+3] = 0xFF;
-    }
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, m_palette_tex);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 1,
-                    GL_RGBA, GL_UNSIGNED_BYTE, rgba);
-
-    // UVs covering only the live frame region within the k_gameW × k_gameH texture.
-    const float u1 = (float)width  / (float)k_gameW;
-    const float v1 = (float)height / (float)k_gameH;
-    const float dyn_uv[4][2] = {
-        { 0.0f, 0.0f }, { u1, 0.0f }, { 0.0f, v1 }, { u1, v1 },
-    };
-
-    // Direct-to-screen blit — FMV has no GPU post-process passes.
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, 960, 544);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_index_tex);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, m_palette_tex);
-
-    m_blit.Bind();
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, k_quad_pos);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, dyn_uv);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-    vglSwapBuffers(GL_FALSE);
-    return true;
 }
 
 void RendererVita::UnlockFramebuffer()

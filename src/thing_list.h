@@ -179,6 +179,12 @@ struct StructureList {
      unsigned long index;
 };
 
+struct Things {
+    struct Thing *lookup[THINGS_COUNT];
+    struct Thing *end;
+};
+
+
 #pragma pack()
 /******************************************************************************/
 extern Thing_Class_Func class_functions[];

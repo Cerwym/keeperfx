@@ -13,6 +13,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config_keeperfx.h"
 
@@ -37,6 +38,8 @@
 #include "sounds.h"
 #include "vidmode.h"
 #include "moonphase.h"
+#include "renderer/RendererManager.h"
+#include "platform/PlatformManager.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus
@@ -99,6 +102,15 @@ const struct NamedCommand scrshot_type[] = {
   {NULL,  0},
   };
 
+const struct NamedCommand renderer_type_names[] = {
+  {"AUTO",     RENDERER_AUTO},
+  {"SOFTWARE", RENDERER_SOFTWARE},
+  {"OPENGL",   RENDERER_OPENGL},
+  {NULL, 0},
+  };
+
+int cfg_renderer_type = RENDERER_AUTO;
+
 const struct NamedCommand atmos_volume[] = {
   {"LOW",     64},
   {"MEDIUM", 128},
@@ -155,6 +167,7 @@ const struct NamedCommand conf_commands[] = {
   {"FRAMES_PER_SECOND"             , 39},
   {"TAG_MODE_TOGGLING"             , 40},
   {"DEFAULT_TAG_MODE"              , 41},
+  {"RENDERER"                      , 42},
   {NULL,                   0},
   };
 
@@ -315,15 +328,26 @@ TbBool prepare_diskpath(char *buf,long buflen)
         i = buflen - 1;
     if (i < 0)
         return false;
+    // Strip trailing path separators and whitespace.
     while (i > 0)
     {
         if ((buf[i] != '\\') && (buf[i] != '/') &&
             ((unsigned char)(buf[i]) > 32))
             break;
         i--;
-  }
-  buf[i+1]='\0';
-  return true;
+    }
+    // Also strip trailing "/." and "\." (current-directory components).
+    // This normalises paths like "ux0:data/keeperfx/./" -> "ux0:data/keeperfx"
+    // which result from resolving a relative INSTALL_PATH such as "./".
+    while (i >= 1 && buf[i] == '.' && (buf[i-1] == '/' || buf[i-1] == '\\'))
+    {
+        i -= 2; // drop the "/."
+        // strip any additional trailing separators left behind
+        while (i > 0 && (buf[i] == '/' || buf[i] == '\\'))
+            i--;
+    }
+    buf[i+1]='\0';
+    return true;
 }
 
 static void load_file_configuration(const char *fname, const char *sname, const char *config_textname, unsigned short flags)
@@ -340,7 +364,7 @@ static void load_file_configuration(const char *fname, const char *sname, const 
     WARNMSG("%s file \"%s\" is too large.",config_textname,sname);
     return;
   }
-  char* buf = (char*)calloc(len + 256, 1);
+  char* buf = (char*)KfxCalloc(len + 256, 1);
   if (buf == NULL)
     return;
   // Loading file data
@@ -372,6 +396,15 @@ static void load_file_configuration(const char *fname, const char *sname, const 
             break;
           }
           prepare_diskpath(install_info.inst_path,sizeof(install_info.inst_path));
+          // If the path is relative, resolve it against keeper_runtime_directory.
+          // This makes INSTALL_PATH=./ work on platforms where CWD != data dir.
+          if (install_info.inst_path[0] != '/' && strchr(install_info.inst_path, ':') == NULL) {
+              char resolved[304];
+              snprintf(resolved, sizeof(resolved), "%s/%s", keeper_runtime_directory, install_info.inst_path);
+              prepare_diskpath(resolved, sizeof(resolved));
+              strncpy(install_info.inst_path, resolved, sizeof(install_info.inst_path)-1);
+              install_info.inst_path[sizeof(install_info.inst_path)-1] = '\0';
+          }
           break;
       case 2: // INSTALL_TYPE
           // This command is just skipped...
@@ -904,6 +937,18 @@ static void load_file_configuration(const char *fname, const char *sname, const 
             default_tag_mode = i;
           }
           break;
+      case 42: // RENDERER
+          i = recognize_conf_parameter(buf,&pos,len,renderer_type_names);
+          if (i < 0)
+          {
+              CONFWRNLOG("Couldn't recognize \"%s\" command parameter in %s file.",
+                COMMAND_TEXT(cmd_num),config_textname);
+          }
+          else
+          {
+              cfg_renderer_type = i;
+          }
+          break;
       case ccr_comment:
           break;
       case ccr_endOfFile:
@@ -918,7 +963,7 @@ static void load_file_configuration(const char *fname, const char *sname, const 
   }
   SYNCDBG(7,"%s loaded", config_textname);
   // Freeing
-  free(buf);
+  KfxFree(buf);
 
 }
 
@@ -969,7 +1014,8 @@ short load_configuration(void)
   // Preparing config file name and checking the file
   strcpy(install_info.inst_path,"");
   // Set default runtime directory and load the config file
-  strcpy(keeper_runtime_directory,".");
+  strncpy(keeper_runtime_directory, PlatformManager_GetDataPath(), sizeof(keeper_runtime_directory)-1);
+  keeper_runtime_directory[sizeof(keeper_runtime_directory)-1] = '\0';
   // Config file variables
   const char* sname; // Filename
   const char* fname; // Filepath

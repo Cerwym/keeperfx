@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "frontend.h"
 
@@ -2366,7 +2367,7 @@ MenuNumber create_menu(struct GuiMenu *gmnu)
     update_radio_button_data(amnu);
     init_slider_bars(amnu);
     init_menu_buttons(amnu);
-    SYNCDBG(18,"Created menu ID %d at slot %d, pos (%d,%d) size (%d,%d)",(int)gmnu->ident,
+    SYNCMSG("Created menu ID %d at slot %d, pos (%d,%d) size (%d,%d)",(int)gmnu->ident,
         (int)mnu_num,(int)amnu->pos_x,(int)amnu->pos_y,(int)amnu->width,(int)amnu->height);
     return mnu_num;
 }
@@ -2631,6 +2632,12 @@ void reinit_all_menus(void)
     set_gui_visible(visible);
 }
 
+#ifdef PLATFORM_VITA
+// VitaSDK sceIo* ignores POSIX chdir(); this modifier prepends the ux0: data path
+// to all relative filenames so LbDataLoad() resolves them correctly on device.
+extern "C" const char* vita_modify_load_filename(const char*);
+#endif
+
 const char * mdlf_for_cd(const char * input)
 {
     if (input[0] != '*') {
@@ -2647,7 +2654,14 @@ void frontend_load_data_from_cd(void)
 
 void frontend_load_data_reset(void)
 {
+#ifdef PLATFORM_VITA
+  // VitaSDK sceIo* ignores POSIX chdir(), so we must always keep the ux0: prefix
+  // function active. Resetting to defaultModifyDataLoadFilename would break all
+  // subsequent LbDataLoad calls (e.g. data/slab0-0.dat at level start).
+  LbDataLoadSetModifyFilenameFunction(vita_modify_load_filename);
+#else
   LbDataLoadSetModifyFilenameFunction(defaultModifyDataLoadFilename);
+#endif
 }
 
 void initialise_tab_tags(MenuID menu_id)
@@ -3446,7 +3460,7 @@ void draw_debug_messages() {
         LbTextDraw(x, y, message->text);
         y += 32 / pixel_size;
         const auto next = message->next;
-        free(message);
+        KfxFree(message);
         message = next;
     }
     debug_messages_head = nullptr;

@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "magic_powers.h"
 
@@ -1896,7 +1897,7 @@ void process_magic_power_call_to_arms(PlayerNumber plyr_idx)
     TbBool free = ((slabmap_owner(slb) == plyr_idx) || dungeon->cta_free);
     if (!free)
     {
-        if ((game.conf.rules[plyr_idx].game.allies_share_cta) && (players_are_mutual_allies(plyr_idx, slabmap_owner(slb))))
+        if ((game.conf.rules[plyr_idx].gameplay.allies_share_cta) && (players_are_mutual_allies(plyr_idx, slabmap_owner(slb))))
         {
             free = true;
         }

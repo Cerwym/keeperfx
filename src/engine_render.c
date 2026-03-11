@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include <stddef.h>
 
@@ -63,6 +64,7 @@
 #include "vidfade.h"
 #include "vidmode.h"
 
+#include "platform/PlatformManager.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus
@@ -395,7 +397,7 @@ unsigned char const height_masks[] = {
 // View distance related
 struct MinMax minmaxs[MINMAX_LENGTH];
 unsigned char *getpoly;
-unsigned char poly_pool[POLY_POOL_SIZE];
+unsigned char *poly_pool = NULL;
 unsigned char *poly_pool_end;
 struct BasicQ *buckets[BUCKETS_COUNT];
 long cells_away;
@@ -741,7 +743,7 @@ void update_engine_settings(struct PlayerInfo *player)
  */
 static void poly_pool_end_reserve(int nitems)
 {
-    poly_pool_end = &poly_pool[sizeof(poly_pool)-(nitems*sizeof(struct BucketKindSlabSelector))];
+    poly_pool_end = poly_pool + PlatformManager_GetPolyPoolSize() - (nitems*sizeof(struct BucketKindSlabSelector));
 }
 
 static TbBool is_free_space_in_poly_pool(int nitems)
@@ -5054,12 +5056,10 @@ static void draw_engine_number(struct BucketKindFloatingGoldText *num)
     spr = get_button_sprite(GBS_fontchars_number_dig0);
     w = scale_ui_value(spr->SWidth) * scale_by_zoom;
     h = scale_ui_value(spr->SHeight) * scale_by_zoom;
-    struct Camera *active_cam = get_player_active_camera(player);
     if (
-        active_cam != NULL &&
-        (active_cam->view_mode == PVM_IsoWibbleView ||
-         active_cam->view_mode == PVM_FrontView ||
-         active_cam->view_mode == PVM_IsoStraightView)
+        player->acamera->view_mode == PVM_IsoWibbleView ||
+        player->acamera->view_mode == PVM_FrontView ||
+        player->acamera->view_mode == PVM_IsoStraightView
     ) {
         // Count digits to be displayed
         ndigits=0;
@@ -5090,7 +5090,7 @@ static void draw_engine_room_flagpole(struct BucketKindRoomFlag *rflg)
         return;
     }
     struct PlayerInfo *player = get_my_player();
-    const struct Camera *cam = get_local_camera(get_player_active_camera(player));
+    const struct Camera *cam = get_local_camera(player->acamera);
 
     if (
         cam->view_mode == PVM_IsoWibbleView ||
@@ -5249,7 +5249,7 @@ void fill_status_sprite_indexes(struct Thing *thing, struct CreatureControl *cct
 void draw_status_sprites(long scrpos_x, long scrpos_y, struct Thing *thing)
 {
     struct PlayerInfo *player = get_my_player();
-    const struct Camera *cam = get_local_camera(get_player_active_camera(player));
+    const struct Camera *cam = get_local_camera(player->acamera);
     if (cam == NULL)
     {
         return;
@@ -5488,7 +5488,7 @@ static void draw_engine_room_flag_top(struct BucketKindRoomFlag *rflg)
         return;
     }
     struct PlayerInfo *player = get_my_player();
-    const struct Camera *cam = get_local_camera(get_player_active_camera(player));
+    const struct Camera *cam = get_local_camera(player->acamera);
 
     if (
         cam->view_mode == PVM_IsoWibbleView ||
@@ -6712,7 +6712,7 @@ static void display_drawlist(void) // Draws isometric and 1st person view. Not f
                 break;
             case QK_JontyISOSprite: // Spinning key
                 player = get_my_player();
-                cam = get_local_camera(get_player_active_camera(player));
+                cam = get_local_camera(player->acamera);
                 if (cam != NULL)
                 {
                     if (cam->view_mode == PVM_IsoWibbleView || cam->view_mode == PVM_IsoStraightView) {
@@ -6845,7 +6845,7 @@ void draw_view(struct Camera *cam, unsigned char a2)
 
     getpoly = poly_pool;
     memset(buckets, 0, sizeof(buckets));
-    memset(poly_pool, 0, sizeof(poly_pool));
+    memset(poly_pool, 0, PlatformManager_GetPolyPoolSize());
     if (map_volume_box.visible)
     {
         poly_pool_end_reserve(14);
@@ -7490,7 +7490,7 @@ static unsigned short get_thing_shade(struct Thing* thing)
 {
     MapSubtlCoord stl_x;
     MapSubtlCoord stl_y;
-    long minimum_lightness = game.conf.rules[thing->owner].game.thing_minimum_illumination << 8;
+    long minimum_lightness = game.conf.rules[thing->owner].gameplay.thing_minimum_illumination << 8;
     long lgh[2][2]; // the dimensions are lgh[y][x]
     long shval;
     long fract_x;
@@ -7837,7 +7837,7 @@ static void prepare_jonty_remap_and_scale(int32_t *scale, const struct BucketKin
     long shade_factor;
     long fade;
     thing = jspr->thing;
-    long minimum_lightness = game.conf.rules[thing->owner].game.thing_minimum_illumination << 8;
+    long minimum_lightness = game.conf.rules[thing->owner].gameplay.thing_minimum_illumination << 8;
     if (lens_mode == 0)
     {
         fade = 65536;
@@ -7961,13 +7961,12 @@ static void draw_jonty_mapwho(struct BucketKindJontySprite *jspr)
     {
         if ((player->thing_under_hand == thing->index) && ((game.play_gameturn % (4 * gui_blink_rate)) >= 2 * gui_blink_rate))
         {
-          struct Camera *active_cam = get_player_active_camera(player);
-          if ((active_cam != NULL) && (active_cam->view_mode == PVM_IsoWibbleView || active_cam->view_mode == PVM_IsoStraightView))
+          if (player->acamera->view_mode == PVM_IsoWibbleView || player->acamera->view_mode == PVM_IsoStraightView)
           {
               lbDisplay.DrawFlags |= Lb_TEXT_UNDERLNSHADOW;
               lbSpriteReMapPtr = white_pal;
           }
-          else if ((active_cam != NULL) && (active_cam->view_mode == PVM_CreatureView))
+          else if (player->acamera->view_mode == PVM_CreatureView)
           {
               struct Thing *creatng = thing_get(player->influenced_thing_idx);
               if (thing_is_creature(creatng))

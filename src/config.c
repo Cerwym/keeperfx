@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config.h"
 
@@ -94,13 +95,13 @@ TbBool parameter_is_number(const char* parstr) {
     }
 
     // Check if the first character is a valid start for a number
-    if (!(parstr[0] == '-' || isdigit(parstr[0]))) {
+    if (!(parstr[0] == '-' || isdigit((unsigned char)parstr[0]))) {
         return false;
     }
 
     // Check the remaining characters
     for (int i = 1; i < len; ++i) {
-        if (!isdigit(parstr[i])) {
+        if (!isdigit((unsigned char)parstr[i])) {
             return false;
         }
     }
@@ -232,10 +233,10 @@ TbBool conf_get_block_name(const char * buf, int32_t * pos, long buflen, const c
   while (true) {
     if (*pos >= buflen) {
       return false;
-    } else if (isalpha(buf[*pos])) {
+    } else if (isalpha((unsigned char)buf[*pos])) {
       (*pos)++;
       continue;
-    } else if (isdigit(buf[*pos])) {
+    } else if (isdigit((unsigned char)buf[*pos])) {
       (*pos)++;
       continue;
     } else {
@@ -468,9 +469,9 @@ int64_t value_default(const struct NamedField* named_field, const char* value_te
 
 int64_t value_name(const struct NamedField* named_field, const char* value_text, const struct NamedFieldSet* named_fields_set, int idx, const char* src_str, unsigned char flags)
 {
-    size_t offset = named_fields_set->struct_size * idx;
-    strncpy((char*)named_field->field + offset, value_text, COMMAND_WORD_LEN - 1);
-    ((char*)named_field->field + offset)[COMMAND_WORD_LEN - 1] = '\0';
+    void* field_ptr = (char*)named_fields_set->get_struct_base() + named_fields_set->struct_size * idx + (ptrdiff_t)named_field->field;
+    strncpy(field_ptr, value_text, COMMAND_WORD_LEN - 1);
+    ((char*)field_ptr)[COMMAND_WORD_LEN - 1] = '\0';
     return 0;
 }
 
@@ -666,7 +667,7 @@ int64_t parse_named_field_value(const struct NamedField* named_field, const char
 
 int64_t get_named_field_value(const struct NamedField* named_field, const struct NamedFieldSet* named_fields_set, int idx)
 {
-    void* field = (char*)named_field->field + named_fields_set->struct_size * idx;
+    void* field = (char*)named_fields_set->get_struct_base() + named_fields_set->struct_size * idx + (ptrdiff_t)named_field->field;
     switch (named_field->type)
     {
     case dt_uchar:
@@ -713,7 +714,7 @@ void assign_null(const struct NamedField* named_field, int64_t value, const stru
 
 void assign_default(const struct NamedField* named_field, int64_t value, const struct NamedFieldSet* named_fields_set, int idx, const char* src_str, unsigned char flags)
 {
-    void* field = (char*)named_field->field + named_fields_set->struct_size * idx;
+    void* field = (char*)named_fields_set->get_struct_base() + named_fields_set->struct_size * idx + (ptrdiff_t)named_field->field;
     switch (named_field->type)
     {
     case dt_uchar:
@@ -980,7 +981,7 @@ TbBool parse_named_field_block(const char *buf, long len, const char *config_tex
 
 void set_defaults(const struct NamedFieldSet* named_fields_set, const char *config_textname)
 {
-  memset((void *)named_fields_set->struct_base, 0, named_fields_set->struct_size * named_fields_set->max_count);
+  memset(named_fields_set->get_struct_base(), 0, named_fields_set->struct_size * named_fields_set->max_count);
 
   const struct NamedField* name_NamedField = NULL;
 
@@ -1005,7 +1006,7 @@ void set_defaults(const struct NamedFieldSet* named_fields_set, const char *conf
   {
       for (int i = 0; i < named_fields_set->max_count; i++)
       {
-          named_fields_set->names[i].name = (char*)name_NamedField->field + i * named_fields_set->struct_size;
+          named_fields_set->names[i].name = (char*)named_fields_set->get_struct_base() + i * named_fields_set->struct_size + (ptrdiff_t)name_NamedField->field;
           named_fields_set->names[i].num = i;
       }
       named_fields_set->names[named_fields_set->max_count - 1].name = NULL; // must be null for get_id
@@ -1037,8 +1038,8 @@ TbBool parse_named_field_blocks(char *buf, long len, const char *config_textname
         const int i = natoi(&blockname[basename_len], blocknamelen - basename_len);
         if (i < 0 || i >= named_fields_set->max_count) {
             continue;
-        } else if (i >= *named_fields_set->count_field) {
-            *named_fields_set->count_field = i + 1;
+        } else if (i >= *named_fields_set->get_count()) {
+            *named_fields_set->get_count() = i + 1;
         }
         char blockname_null[COMMAND_WORD_LEN];
         strncpy(blockname_null, blockname, blocknamelen);
@@ -1254,7 +1255,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
       sdir="fxdata";
       break;
   case FGrp_LoData:
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir="ldata";
       break;
   case FGrp_HiData:
@@ -1266,7 +1267,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
       sdir="music";
       break;
   case FGrp_VarLevels:
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir="levels";
       break;
   case FGrp_Save:
@@ -1306,7 +1307,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.levels_location;
       break;
   case FGrp_CmpgCrtrs:
@@ -1314,7 +1315,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.creatures_location;
       break;
   case FGrp_CmpgConfig:
@@ -1322,7 +1323,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.configs_location;
       break;
   case FGrp_CmpgMedia:
@@ -1330,7 +1331,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.media_location;
       break;
   case FGrp_LandView:
@@ -1338,7 +1339,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
           mdir=NULL; sdir=NULL;
           break;
       }
-      mdir=install_info.inst_path;
+      mdir=install_info.inst_path[0] ? install_info.inst_path : keeper_runtime_directory;
       sdir=campaign.land_location;
       break;
   case FGrp_CrtrData:
@@ -1346,7 +1347,7 @@ char *prepare_file_path_buf_mod(char *dst, int dst_size, const char *mod_dir, sh
       sdir="creatrs";
       break;
   default:
-      mdir="./";
+      mdir=keeper_runtime_directory;
       sdir=NULL;
       break;
   }
@@ -1437,7 +1438,7 @@ unsigned char *load_data_file_to_buffer(int32_t *ldsize, short fgroup, const cha
        WARNMSG("File \"%s\" doesn't exist or is too small.", fname);
        return NULL;
   }
-  unsigned char* buf = calloc(fsize + 16, 1);
+  unsigned char* buf = KfxCalloc(fsize + 16, 1);
   if (buf == NULL)
   {
     WARNMSG("Can't allocate %ld bytes to load \"%s\".",fsize,fname);
@@ -1447,7 +1448,7 @@ unsigned char *load_data_file_to_buffer(int32_t *ldsize, short fgroup, const cha
   if (fsize < *ldsize)
   {
     WARNMSG("Reading file \"%s\" failed.",fname);
-    free(buf);
+    KfxFree(buf);
     return NULL;
   }
   memset(buf+fsize, '\0', 15);
@@ -1685,7 +1686,7 @@ TbBool setup_campaign_credits_data(struct GameCampaign *campgn)
     ERRORLOG("Campaign Credits file \"%s\" does not exist or can't be opened",campgn->credits_fname);
     return false;
   }
-  campgn->credits_data = (char *)calloc(filelen + 256, 1);
+  campgn->credits_data = (char *)KfxCalloc(filelen + 256, 1);
   if (campgn->credits_data == NULL)
   {
     ERRORLOG("Can't allocate memory for Campaign Credits file \"%s\"",campgn->credits_fname);

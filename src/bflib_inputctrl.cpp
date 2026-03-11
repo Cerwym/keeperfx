@@ -18,6 +18,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include <math.h>
 #include <map>
@@ -35,6 +36,8 @@
 #include "front_input.h"
 #include "game_legacy.h"
 #include "keeperfx.hpp"
+#include "platform/PlatformManager.h"
+#include "platform/IWindowSystem.h"
 #include <SDL2/SDL.h>
 #include "post_inc.h"
 
@@ -388,6 +391,7 @@ static void process_event(const SDL_Event *ev)
         {
             case SDL_WINDOWEVENT_FOCUS_GAINED:
             {
+                PlatformManager::Get()->GetWindowSystem()->OnFocusGained();
                 lbAppActive = true;
                 isMouseActive = true;
                 isMouseActivated = true;
@@ -405,6 +409,7 @@ static void process_event(const SDL_Event *ev)
             }
             case SDL_WINDOWEVENT_FOCUS_LOST:
             {
+                PlatformManager::Get()->GetWindowSystem()->OnFocusLost();
                 lbAppActive = false;
                 isMouseActive = false;
                 isMouseActivated = false;
@@ -471,6 +476,10 @@ static void process_event(const SDL_Event *ev)
 /******************************************************************************/
 TbBool LbWindowsControl(void)
 {
+    // Let the platform window system inject any non-SDL input (e.g. Vita
+    // virtual cursor from analog stick / touch) before processing events.
+    PlatformManager::Get()->GetWindowSystem()->PollInput();
+
     SDL_Event ev;
     //process events until event queue is empty
     while (SDL_PollEvent(&ev)) {
@@ -546,33 +555,24 @@ void LbMouseCheckPosition(TbBool grab_state_changed)
 
 void LbSetMouseGrab(TbBool grab_mouse)
 {
+    IWindowSystem* ws = PlatformManager::Get()->GetWindowSystem();
+    if (!ws->HasOSCursor())
+        return;
+
     TbBool previousGrabState = lbMouseGrabbed;
     lbMouseGrabbed = grab_mouse;
     if (lbMouseGrabbed)
     {
         LbMouseCheckPosition((previousGrabState != lbMouseGrabbed));
-        if (SDL_getenv("NO_RELATIVE_MOUSE"))
-        {
-            JUSTLOG("NO_RELATIVE_MOUSE is set");
-        }
-        else
-        {
-            SDL_SetRelativeMouseMode(SDL_TRUE);
-        }
+        ws->SetCursorGrab(true);
     }
     else
     {
-        if (SDL_getenv("NO_RELATIVE_MOUSE"))
-        {
-            JUSTLOG("NO_RELATIVE_MOUSE is set");
-        }
-        else
-        {
-            SDL_SetRelativeMouseMode(SDL_FALSE);
-        }
+        ws->SetCursorGrab(false);
         LbMouseCheckPosition((previousGrabState != lbMouseGrabbed));
     }
-    SDL_ShowCursor((lbAppActive ? SDL_DISABLE : SDL_ENABLE)); // show host OS cursor when window has lost focus
+    // Show host-OS cursor only when the game window does not have focus.
+    ws->SetCursorVisible(!lbAppActive);
 }
 
 void LbGrabMouseInit(void)
@@ -582,6 +582,12 @@ void LbGrabMouseInit(void)
 
 void LbGrabMouseCheck(long grab_event)
 {
+    // On platforms without an OS cursor (Vita, 3DS, Switch) there is nothing
+    // to grab or release, and the game struct may not yet be initialised when
+    // this is first called from LbMouseSetup during startup — bail out early.
+    if (!PlatformManager::Get()->GetWindowSystem()->HasOSCursor())
+        return;
+
     TbBool window_has_focus = lbAppActive;
     TbBool paused = ((game.operation_flags & GOF_Paused) != 0);
     TbBool possession_mode = (get_my_player()->view_type == PVT_CreatureContrl) && ((game.view_mode_flags & GNFldD_CreaturePasngr) == 0);

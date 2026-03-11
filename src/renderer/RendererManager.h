@@ -64,10 +64,6 @@ int RendererBeginFrame(void);
 /** Present the completed frame to the display. */
 void RendererEndFrame(void);
 
-/** Notify the active renderer that animated tile data in block_ptrs[] has been
- *  updated for this frame. No-op on non-Vita backends. */
-void RendererUpdateAnimatedTiles(void);
-
 /******************************************************************************/
 #ifdef __cplusplus
 }

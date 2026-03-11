@@ -30,6 +30,7 @@ extern "C" {
 /******************************************************************************/
 void LbErrorParachuteInstall(void);
 void LbErrorParachuteUpdate(void);
+/** Signal handler shared by platform implementations — logs, cleans up and re-raises. */
 void ctrl_handler(int sig_id);
 /******************************************************************************/
 #ifdef __cplusplus

@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "console_cmd.h"
 #include "globals.h"
@@ -1925,8 +1926,11 @@ TbBool cmd_toggle_classic_bug(PlayerNumber plyr_idx, char * args)
         bug = atoi(pr2str);
     }
     unsigned long flg = (bug > 2) ? (1 << (bug - 1)) : bug;
-    toggle_flag(game.conf.rules[plyr_idx].game.classic_bugs_flags, flg);
-    targeted_message_add(MsgType_Player, plyr_idx, plyr_idx, GUI_MESSAGES_DELAY, "%s %s", get_conf_parameter_text(rules_game_classicbugs_commands, bug), ((game.conf.rules[plyr_idx].game.classic_bugs_flags & flg) != 0) ? "enabled" : "disabled");
+#pragma push_macro("game")
+#undef game
+    toggle_flag(gpGame->conf.rules[plyr_idx].gameplay.classic_bugs_flags, flg);
+    targeted_message_add(MsgType_Player, plyr_idx, plyr_idx, GUI_MESSAGES_DELAY, "%s %s", get_conf_parameter_text(rules_game_classicbugs_commands, bug), ((gpGame->conf.rules[plyr_idx].gameplay.classic_bugs_flags & flg) != 0) ? "enabled" : "disabled");
+#pragma pop_macro("game")
     return true;
 }
 
@@ -2308,7 +2312,7 @@ void cmd_auto_completion(PlayerNumber plyr_idx, char *cmd_str, size_t cmd_size)
 
     size_t cmd_len = strlen(cmd_str);
 
-    int *same_idx = (int *)calloc(console_command_count, sizeof(int));
+    int *same_idx = (int *)KfxCalloc(console_command_count, sizeof(int));
     int same_count = 0;
     for (int i = 0; i < console_command_count; ++i) {
         if (strncasecmp(cmd_str, console_commands[i].name, cmd_len) == 0) {
@@ -2318,7 +2322,7 @@ void cmd_auto_completion(PlayerNumber plyr_idx, char *cmd_str, size_t cmd_size)
     }
 
     if (same_count == 0){
-        free(same_idx);
+        KfxFree(same_idx);
         targeted_message_add(MsgType_Player, plyr_idx, plyr_idx, GUI_MESSAGES_DELAY, "Unsupported command");
         return;
     }
@@ -2364,7 +2368,7 @@ void cmd_auto_completion(PlayerNumber plyr_idx, char *cmd_str, size_t cmd_size)
     else
     {
         // multiple possibilities, list these
-        char *poss_str = (char *)calloc(64, same_count);
+        char *poss_str = (char *)KfxCalloc(64, same_count);
         for (int i=0; i<same_count; i++)
         {
             int idx = same_idx[i];
@@ -2373,10 +2377,10 @@ void cmd_auto_completion(PlayerNumber plyr_idx, char *cmd_str, size_t cmd_size)
             strcat(poss_str, console_commands[idx].name);
         }
         targeted_message_add(MsgType_Player, plyr_idx, plyr_idx, GUI_MESSAGES_DELAY, "Possible commands: %s", poss_str);
-        free(poss_str);
+        KfxFree(poss_str);
     }
 
-    free(same_idx);
+    KfxFree(same_idx);
 }
 
 TbBool cmd_exec(PlayerNumber plyr_idx, char * args)

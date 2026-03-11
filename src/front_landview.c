@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "front_landview.h"
 
@@ -100,6 +101,7 @@ unsigned char *map_screen;
 long fe_net_level_selected;
 long net_map_limp_time;
 struct ScreenPacket net_screen_packet[NET_PLAYERS_COUNT];
+long players_currently_in_session;
 /******************************************************************************/
 #ifdef __cplusplus
 }
@@ -388,11 +390,11 @@ const struct TbSprite *get_ensign_sprite_for_level(struct LevelInformation *lvin
             default:
                 if (lvinfo->lvnum == get_extra_level(ExLv_NewMoon))
                 {
-                    i = get_disabled_flag_option(lvinfo->ensign, EnsNewMoon);
+                    i = get_disabled_flag_option(lvinfo->ensign, EnsFullMoon);
                 }
                 else
                 {
-                    i = get_disabled_flag_option(lvinfo->ensign, EnsFullMoon);
+                    i = get_disabled_flag_option(lvinfo->ensign, EnsNewMoon);
                 }
                 spr = get_map_ensign(i);
                 break;

@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "net_portforward.h"
 #include "bflib_basics.h"
@@ -72,12 +73,12 @@ static int is_cgnat_detected() {
     if (GetAdaptersInfo(NULL, &buffer_size) != ERROR_BUFFER_OVERFLOW) {
         return 0;
     }
-    IP_ADAPTER_INFO *adapter_info = (IP_ADAPTER_INFO *)malloc(buffer_size);
+    IP_ADAPTER_INFO *adapter_info = (IP_ADAPTER_INFO *)KfxAlloc(buffer_size);
     if (!adapter_info) {
         return 0;
     }
     if (GetAdaptersInfo(adapter_info, &buffer_size) != NO_ERROR) {
-        free(adapter_info);
+        KfxFree(adapter_info);
         return 0;
     }
     for (IP_ADAPTER_INFO *adapter = adapter_info; adapter; adapter = adapter->Next) {
@@ -86,7 +87,7 @@ static int is_cgnat_detected() {
             unsigned char first_octet = local_ip & 0xFF;
             unsigned char second_octet = (local_ip >> 8) & 0xFF;
             if (first_octet == 100 && second_octet >= 64 && second_octet <= 127) {
-                free(adapter_info);
+                KfxFree(adapter_info);
                 return 1;
             }
         }
@@ -95,12 +96,12 @@ static int is_cgnat_detected() {
             unsigned char first_octet = gateway_ip & 0xFF;
             unsigned char second_octet = (gateway_ip >> 8) & 0xFF;
             if (first_octet == 100 && second_octet >= 64 && second_octet <= 127) {
-                free(adapter_info);
+                KfxFree(adapter_info);
                 return 1;
             }
         }
     }
-    free(adapter_info);
+    KfxFree(adapter_info);
     return 0;
 }
 #else

@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "lvl_filesdk1.h"
 
@@ -135,7 +136,7 @@ unsigned char *load_single_map_file_to_buffer(LevelNumber lvnum,const char *fext
           SYNCMSG("Optional file \"map%05u.%s\" doesn't exist or is too small.", lvnum, fext);
       return NULL;
   }
-  unsigned char* buf = calloc(fsize + 16, 1);
+  unsigned char* buf = KfxCalloc(fsize + 16, 1);
   if (buf == NULL)
   {
     if ((flags & LMFF_Optional) == 0)
@@ -151,7 +152,7 @@ unsigned char *load_single_map_file_to_buffer(LevelNumber lvnum,const char *fext
       WARNMSG("Reading map file \"map%05u.%s\" failed.",lvnum,fext);
     else
       SYNCMSG("Reading optional file \"map%05u.%s\" failed.",lvnum,fext);
-    free(buf);
+    KfxFree(buf);
     return NULL;
   }
   *ldsize = fsize;
@@ -302,7 +303,7 @@ short level_lif_file_parse(const char *fname, char *buf, long buflen)
  */
 TbBool find_and_load_lif_files(void)
 {
-    unsigned char* buf = calloc(MAX_LIF_SIZE, 1);
+    unsigned char* buf = KfxCalloc(MAX_LIF_SIZE, 1);
     if (buf == NULL)
     {
         ERRORLOG("Can't allocate memory for .LIF files parsing.");
@@ -329,7 +330,7 @@ TbBool find_and_load_lif_files(void)
     } while (LbFileFindNext(ff, &fe) >= 0);
     LbFileFindEnd(ff);
   }
-  free(buf);
+  KfxFree(buf);
   return result;
 }
 
@@ -618,7 +619,7 @@ TbBool level_lof_file_parse(const char *fname, char *buf, long len)
 TbBool find_and_load_lof_files(void)
 {
     SYNCDBG(16,"Starting");
-    unsigned char* buf = calloc(MAX_LIF_SIZE, 1);
+    unsigned char* buf = KfxCalloc(MAX_LIF_SIZE, 1);
     if (buf == NULL)
     {
       ERRORLOG("Can't allocate memory for .LOF files parsing.");
@@ -645,7 +646,7 @@ TbBool find_and_load_lof_files(void)
         } while (LbFileFindNext(ff, &fe) >= 0);
         LbFileFindEnd(ff);
     }
-    free(buf);
+    KfxFree(buf);
     return result;
 }
 
@@ -682,7 +683,7 @@ TbBool load_column_file(LevelNumber lv_num)
         set_column_floor_filled_subtiles(colmn, n);
         i += sizeof(struct Column);
     }
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 
@@ -706,7 +707,7 @@ TbBool load_map_data_file(LevelNumber lv_num)
             i += 2;
         }
     }
-    free(buf);
+    KfxFree(buf);
     // Clear some bits and do some other setup
     for (y=0; y < (game.map_subtiles_y+1); y++)
     {
@@ -763,7 +764,7 @@ static TbBool load_thing_file(LevelNumber lv_num)
         thing_create_thing(&itng);
         i += sizeof(struct LegacyInitThing);
     }
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 
@@ -783,7 +784,7 @@ static TbBool load_kfx_toml_file(LevelNumber lv_num, const char *ext, const char
     if (toml_parse((char*)buf, err, sizeof(err), root_ptr))
     {
         WARNMSG("Unable to load %s file\n %s", msg_name, err);
-        free(buf);
+        KfxFree(buf);
         return false;
     }
     VALUE *common_section = value_dict_get(root_ptr, "common");
@@ -791,7 +792,7 @@ static TbBool load_kfx_toml_file(LevelNumber lv_num, const char *ext, const char
     {
         WARNMSG("No [common] in %s for level %d", msg_name, lv_num);
         value_fini(root_ptr);
-        free(buf);
+        KfxFree(buf);
         return false;
     }
     int32_t total;
@@ -811,7 +812,7 @@ static TbBool load_kfx_toml_file(LevelNumber lv_num, const char *ext, const char
     {
         WARNMSG("Bad amount of secions in %s file", msg_name);
         value_fini(root_ptr);
-        free(buf);
+        KfxFree(buf);
         return false;
     }
     if (total >= max_count)
@@ -846,7 +847,7 @@ static TbBool load_kfx_toml_file(LevelNumber lv_num, const char *ext, const char
         }
     }
     value_fini(root_ptr);
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 
@@ -892,7 +893,7 @@ TbBool load_action_point_file(LevelNumber lv_num)
           ERRORLOG("Cannot allocate action point %ld during APT load", k);
     i += sizeof(struct LegacyInitActionPoint);
   }
-  free(buf);
+  KfxFree(buf);
   return true;
 }
 
@@ -1054,7 +1055,7 @@ long load_map_wibble_file(unsigned long lv_num)
         set_mapblk_wibble_value(mapblk, k);
         i++;
       }
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 
@@ -1081,7 +1082,7 @@ short load_map_ownership_file(LevelNumber lv_num)
             set_slab_owner(subtile_slab(x),subtile_slab(y),PLAYER_NEUTRAL);
         i++;
       }
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 
@@ -1151,7 +1152,7 @@ TbBool load_map_wlb_file(unsigned long lv_num)
             }
         i++;
       }
-    free(buf);
+    KfxFree(buf);
     if (nfixes > 0)
     {
       ERRORLOG("WLB file is muddled - Fixed values for %lu tiles",nfixes);
@@ -1198,7 +1199,7 @@ short load_map_slab_file(unsigned long lv_num)
             i += 2;
         }
     }
-    free(buf);
+    KfxFree(buf);
     initialise_map_collides();
     initialise_map_health();
     initialise_extra_slab_info(lv_num);
@@ -1222,7 +1223,7 @@ short load_map_flag_file(unsigned long lv_num)
             i += 2;
         }
     }
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 
@@ -1272,7 +1273,7 @@ static TbBool load_static_light_file(unsigned long lv_num)
         }
         i += sizeof(struct LegacyInitLight);
     }
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 
@@ -1298,7 +1299,7 @@ short load_and_setup_map_info(unsigned long lv_num)
         return false;
     }
     game.texture_id = buf[0];
-    free(buf);
+    KfxFree(buf);
     return true;
 }
 
@@ -1350,7 +1351,7 @@ void load_map_string_data(struct GameCampaign *campgn, LevelNumber lvnum, short 
         return;
     }
     size_t size = filelen + 256;
-    level_strings_data = calloc(size, sizeof(char)); // we're allocating extra memory, which we can't just assume is already clear; this could cause weird issues
+    level_strings_data = KfxCalloc(size, sizeof(char)); // we're allocating extra memory, which we can't just assume is already clear; this could cause weird issues
     if (level_strings_data == NULL)
     {
         ERRORLOG("Can't allocate memory for Map Strings data");
@@ -1457,7 +1458,7 @@ void free_level_strings_data()
   // Resetting all values to empty strings
   reset_strings(level_strings, STRINGS_MAX);
   // Freeing memory
-  free(level_strings_data);
+  KfxFree(level_strings_data);
   level_strings_data = NULL;
 }
 /******************************************************************************/

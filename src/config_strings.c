@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config_strings.h"
 #include "globals.h"
@@ -96,7 +97,7 @@ static TbBool load_gui_strings_data_from_file(const char *fname, unsigned short 
     }
     return false;
   }
-  char *gui_strings_data = (char *)calloc(filelen + 256, 1);
+  char *gui_strings_data = (char *)KfxCalloc(filelen + 256, 1);
   if (gui_strings_data == NULL)
   {
     if ((flags & CnfLd_IgnoreErrors) == 0)
@@ -110,7 +111,7 @@ static TbBool load_gui_strings_data_from_file(const char *fname, unsigned short 
   long loaded_size = LbFileLoadAt(fname, gui_strings_data);
   if (loaded_size < 16)
   {
-    free(gui_strings_data);
+    KfxFree(gui_strings_data);
     if ((flags & CnfLd_IgnoreErrors) == 0)
     {
       ERRORLOG("GUI Strings file couldn't be loaded or is too small");
@@ -203,7 +204,7 @@ TbBool free_gui_strings_data(void)
   // Freeing memory
   for (int i=0; i<gui_strings_data_count; i++)
   {
-    free(gui_strings_data_list[i]);
+    KfxFree(gui_strings_data_list[i]);
     gui_strings_data_list[i] = NULL;
   }
   gui_strings_data_count = 0;
@@ -225,7 +226,7 @@ TbBool load_campaign_strings_data_from_file(const char *fname, unsigned short fl
     }
     return false;
   }
-  char *strings_data = (char *)calloc(filelen + 256, 1);
+  char *strings_data = (char *)KfxCalloc(filelen + 256, 1);
   if (strings_data == NULL)
   {
     if ((flags & CnfLd_IgnoreErrors) == 0)
@@ -238,7 +239,7 @@ TbBool load_campaign_strings_data_from_file(const char *fname, unsigned short fl
   long loaded_size = LbFileLoadAt(fname, strings_data);
   if (loaded_size < 16)
   {
-    free(strings_data);
+    KfxFree(strings_data);
     if ((flags & CnfLd_IgnoreErrors) == 0)
     {
       ERRORLOG("Campaign Strings file couldn't be loaded or is too small");

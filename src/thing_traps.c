@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "thing_traps.h"
 
@@ -664,12 +665,8 @@ void activate_trap_by_slap(struct PlayerInfo *player, struct Thing* traptng)
             {
             case TrpAcT_HeadforTarget90:
             case TrpAcT_CreatureShot:
-            {
-                struct Camera* camera = get_player_active_camera(player);
-                if (camera != NULL)
-                    external_activate_trap_shot_at_angle(traptng, camera->rotation_angle_x, trgtng);
+                external_activate_trap_shot_at_angle(traptng, player->acamera->rotation_angle_x, trgtng);
                 break;
-            }
             default:
                 ERRORLOG("Illegal trap activation type %d (idx=%d)", (int)trapst->activation_type, traptng->index);
                 break;
@@ -1115,7 +1112,7 @@ unsigned long remove_trap(struct Thing *traptng, int32_t *sell_value)
         {
             // Do the refund only if we were able to sell armed trap
             struct TrapConfigStats *trapst = get_trap_model_stats(traptng->model);
-            long i = compute_value_percentage(trapst->selling_value, game.conf.rules[traptng->owner].game.trap_sale_percent);
+            long i = compute_value_percentage(trapst->selling_value, game.conf.rules[traptng->owner].gameplay.trap_sale_percent);
             if (traptng->trap.num_shots == 0)
             {
                 // Trap not armed - try selling crate from workshop

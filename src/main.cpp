@@ -11,10 +11,15 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 
 #include "platform.h"
 #include "keeperfx.hpp"
+
+#ifdef VITA_PERF_LOG
+#include <SDL2/SDL.h>
+#endif
 
 #include "bflib_coroutine.h"
 #include "bflib_math.h"
@@ -124,6 +129,7 @@
 #include "KeeperSpeech.h"
 #include "config_settings.h"
 #include "config_keeperfx.h"
+#include "renderer/RendererManager.h"
 #include "game_legacy.h"
 #include "room_list.h"
 #include "steam_api.hpp"
@@ -133,10 +139,16 @@
 #include "frontmenu_ingame_map.h"
 #include <stdint.h>
 
+#ifdef PLATFORM_VITA
+#include <psp2/kernel/processmgr.h>
+#include <psp2/kernel/clib.h>
+#endif
+
 #ifdef FUNCTESTING
   #include "ftests/ftest.h"
 #endif
 
+#include "platform/kfx_breadcrumb.h"
 #include "post_inc.h"
 
 #ifdef _MSC_VER
@@ -351,10 +363,7 @@ void process_keeper_spell_aura(struct Thing *thing)
 
 unsigned long lightning_is_close_to_player(struct PlayerInfo *player, struct Coord3d *pos)
 {
-    struct Camera *camera = get_player_active_camera(player);
-    if (camera == NULL)
-        return false;
-    return get_chessboard_distance(&camera->mappos, pos) < subtile_coord(45,0);
+    return get_chessboard_distance(&player->acamera->mappos, pos) < subtile_coord(45,0);
 }
 
 void affect_nearby_stuff_with_vortex(struct Thing *thing)
@@ -471,7 +480,7 @@ long apply_wallhug_force_to_boulder(struct Thing *thing)
     {
       if ( (thing->model != ShM_SolidBoulder) && (collide == 0) )
       {
-        thing->health -= game.conf.rules[thing->owner].game.boulder_reduce_health_wall;
+        thing->health -= game.conf.rules[thing->owner].gameplay.boulder_reduce_health_wall;
       }
       slide_thing_against_wall_at(thing, &pos, blocked_flags);
       if ( blocked_flags & SlbBloF_WalledX )
@@ -558,7 +567,7 @@ long process_boulder_collision(struct Thing *boulder, struct Coord3d *pos, int d
             }
             if (boulder->model != ShM_SolidBoulder) // Solid Boulder (shot20) takes no damage when destroying guardposts
             {
-                boulder->health -= game.conf.rules[boulder->owner].game.boulder_reduce_health_room; // decrease boulder health
+                boulder->health -= game.conf.rules[boulder->owner].gameplay.boulder_reduce_health_room; // decrease boulder health
             }
             return 1; // guardpost destroyed
         }
@@ -811,24 +820,23 @@ TbBool any_player_close_enough_to_see(const struct Coord3d *pos)
         player = get_player(i);
         if ( (player_exists(player)) && ((player->allocflags & PlaF_CompCtrl) == 0))
         {
-            struct Camera *camera = get_player_active_camera(player);
-            if (camera == NULL)
+            if (player->acamera == NULL)
                 continue;
-            if (camera->view_mode != PVM_FrontView)
+            if (player->acamera->view_mode != PVM_FrontView)
             {
-                if (camera->zoom >= CAMERA_ZOOM_MIN)
+                if (player->acamera->zoom >= CAMERA_ZOOM_MIN)
                 {
-                    limit = SHRT_MAX - (2 * camera->zoom);
+                    limit = SHRT_MAX - (2 * player->acamera->zoom);
                 }
             }
             else
             {
-                if (camera->zoom >= FRONTVIEW_CAMERA_ZOOM_MIN)
+                if (player->acamera->zoom >= FRONTVIEW_CAMERA_ZOOM_MIN)
                 {
-                    limit = SHRT_MAX - (camera->zoom / 3);
+                    limit = SHRT_MAX - (player->acamera->zoom / 3);
                 }
             }
-            if (get_chessboard_distance(&camera->mappos, pos) <= limit)
+            if (get_chessboard_distance(&player->acamera->mappos, pos) <= limit)
             {
                 return true;
             }
@@ -926,7 +934,7 @@ void init_keeper(void)
     init_creature_scores();
     init_top_texture_to_cube_table();
     game.neutral_player_num = PLAYER_NEUTRAL;
-    poly_pool_end = &poly_pool[sizeof(poly_pool)-128];
+    poly_pool_end = poly_pool + PlatformManager_GetPolyPoolSize() - 128;
     lbDisplay.GlassMap = pixmap.ghost;
     lbDisplay.DrawColour = colours[15][15][15];
     game.comp_player_aggressive  = (comp_player_conf.player_assist_default == comp_player_conf.computer_assist_types[0]);
@@ -976,6 +984,15 @@ short setup_game(void)
 {
   struct CPU_INFO cpu_info; // CPU status variable
   short result;
+#if defined(VITA_PERF_LOG)
+  Uint32 _perf_start = SDL_GetTicks(), _perf_step = _perf_start;
+#define VITA_TICK(label) do { \
+    Uint32 _now = SDL_GetTicks(); \
+    JUSTLOG("[perf] %-32s  step %4ums  total %4ums", (label), _now - _perf_step, _now - _perf_start); \
+    _perf_step = _now; } while(0)
+#else
+#define VITA_TICK(label) ((void)0)
+#endif
   // Do only a very basic setup
   cpu_detect(&cpu_info);
   SYNCMSG("CPU %s type %d family %d model %d stepping %d features %08lx",cpu_info.vendor,
@@ -1021,6 +1038,7 @@ short setup_game(void)
       ERRORLOG("Configuration load error.");
       return 0;
   }
+  VITA_TICK("load_configuration");
 
   #ifdef FUNCTESTING
     start_params.startup_flags &= ~SFlg_Legal;
@@ -1038,6 +1056,7 @@ short setup_game(void)
       ERRORLOG("Error on allocation/loading of legal_load_files.");
       return 0;
   }
+  VITA_TICK("LbDataLoadAll(legal_load_files)");
 
   // Setup polyscans
   setup_bflib_render();
@@ -1048,6 +1067,26 @@ short setup_game(void)
       ERRORLOG("Unable to set display mode for legal screen");
       return 0;
   }
+  VITA_TICK("setup_screen_mode_zero (legal)");
+
+  // Initialise renderer backend (SDL window exists at this point)
+  if (!RendererInit((RendererType)cfg_renderer_type))
+  {
+      ERRORLOG("Failed to initialise renderer; falling back to software");
+      if (!RendererInit(RENDERER_SOFTWARE))
+      {
+          ERRORLOG("All renderers failed to initialise — cannot continue");
+#ifdef PLATFORM_VITA
+          // On Vita, SDL_GetWindowSurface is unsupported (GXM-only SDL2) so the
+          // software renderer always fails.  A blank screen is unacceptable;
+          // exit cleanly so the user sees a crash report rather than nothing.
+          sceClibPrintf("[keeperfx] FATAL: no renderer could be initialised\n");
+          sceKernelExitProcess(1);
+#endif
+          return 0;
+      }
+  }
+  VITA_TICK("RendererInit");
 
   if (flag_is_set(start_params.startup_flags, SFlg_Legal))
   {
@@ -1078,6 +1117,7 @@ short setup_game(void)
   // Start the sound system
   if (!init_sound())
     WARNMSG("Sound system disabled.");
+  VITA_TICK("init_sound");
   // Note: for some reason, signal handlers must be installed AFTER
   // init_sound(). This will probably change when we'll move sound
   // to SDL - then we'll put that line earlier, before setup_game().
@@ -1155,12 +1195,14 @@ short setup_game(void)
       if ( !initial_setup() )
         result = 0;
   }
+  VITA_TICK("initial_setup");
 
   if (result == 1)
   {
     load_settings();
     if ( !setup_gui_strings_data() )
       result = 0;
+    VITA_TICK("setup_gui_strings_data");
   }
 
   if (result == 1)
@@ -1171,6 +1213,8 @@ short setup_game(void)
       SetSoundMasterVolume(settings.sound_volume);
       setup_mesh_randomizers();
       setup_stuff();
+      init_lookups();
+      VITA_TICK("init_keeper + setup");
   }
 
   if (result == 1)
@@ -1552,6 +1596,7 @@ void reinit_level_after_load(void)
     player = get_my_player();
     player->lens_palette = 0;
     player->main_palette = engine_palette;
+    init_lookups();
     init_navigation();
     reinit_packets_after_load();
     game.easter_eggs_enabled = start_params.easter_egg;
@@ -1696,7 +1741,7 @@ void clear_players_for_save(void)
       set_flag_value(player->allocflags, PlaF_Allocated, ((saved_allocation_flags & PlaF_Allocated) != 0));
       set_flag_value(player->allocflags, PlaF_CompCtrl, ((saved_allocation_flags & PlaF_CompCtrl) != 0));
       memcpy(&player->cameras[CamIV_FirstPerson],&cammem,sizeof(struct Camera));
-      set_player_active_camera(player, CamIV_FirstPerson);
+      player->acamera = &player->cameras[CamIV_FirstPerson];
     }
 }
 
@@ -1898,7 +1943,7 @@ void level_lost_go_first_person(PlayerNumber plyr_idx)
         return;
     }
     spectator_breed = get_players_spectator_model(plyr_idx);
-    player->dungeon_camera_zoom = get_camera_zoom(get_player_active_camera(player));
+    player->dungeon_camera_zoom = get_camera_zoom(player->acamera);
     thing = create_and_control_creature_as_controller(player, spectator_breed, &dungeon->mappos);
     if (thing_is_invalid(thing)) {
         ERRORLOG("Unable to create spectator creature");
@@ -2034,6 +2079,25 @@ short complete_level(struct PlayerInfo *player)
     }
     quit_game = 1;
     return true;
+}
+
+void clear_lookups(void)
+{
+    long i;
+    SYNCDBG(8,"Starting");
+    for (i=0; i < THINGS_COUNT; i++)
+    {
+      game.things.lookup[i] = NULL;
+    }
+    game.things.end = NULL;
+
+    memset(&game.persons, 0, sizeof(struct Persons));
+
+    for (i=0; i < COLUMNS_COUNT; i++)
+    {
+      game.columns.lookup[i] = NULL;
+    }
+    game.columns.end = NULL;
 }
 
 void interp_fix_mouse_light_off_map(struct PlayerInfo *player)
@@ -2288,7 +2352,7 @@ void process_payday(void)
     PlayerNumber plyr_idx;
     for (plyr_idx=0; plyr_idx < PLAYERS_COUNT; plyr_idx++)
     {
-        game.pay_day_progress[plyr_idx] = game.pay_day_progress[plyr_idx] + (game.conf.rules[plyr_idx].game.pay_day_speed / 100);
+        game.pay_day_progress[plyr_idx] = game.pay_day_progress[plyr_idx] + (game.conf.rules[plyr_idx].gameplay.pay_day_speed / 100);
         if (player_is_roaming(plyr_idx) || (plyr_idx == game.neutral_player_num)) {
             continue;
         }
@@ -2303,7 +2367,7 @@ void process_payday(void)
     int player_paid_creatures_count;
     for (plyr_idx = 0; plyr_idx < PLAYERS_COUNT; plyr_idx++)
     {
-        if (game.conf.rules[plyr_idx].game.pay_day_gap <= game.pay_day_progress[plyr_idx])
+        if (game.conf.rules[plyr_idx].gameplay.pay_day_gap <= game.pay_day_progress[plyr_idx])
         {
             if (is_my_player_number(plyr_idx))
                 output_message(SMsg_Payday, 0);
@@ -2639,20 +2703,20 @@ void update_global_lighting()
 {
     // Check if any values have changed
     if (
-        game.conf.rules[0].game.global_ambient_light != game.lish.global_ambient_light ||
-        game.conf.rules[0].game.light_enabled != game.lish.light_enabled
+        game.conf.rules[0].gameplay.global_ambient_light != game.lish.global_ambient_light ||
+        game.conf.rules[0].gameplay.light_enabled != game.lish.light_enabled
     ){
 
         // GlobalAmbientLight
-        if (game.conf.rules[0].game.global_ambient_light != game.lish.global_ambient_light)
+        if (game.conf.rules[0].gameplay.global_ambient_light != game.lish.global_ambient_light)
         {
-            game.lish.global_ambient_light = game.conf.rules[0].game.global_ambient_light;
+            game.lish.global_ambient_light = game.conf.rules[0].gameplay.global_ambient_light;
         }
 
         // LightEnabled
-        if (game.conf.rules[0].game.light_enabled != game.lish.light_enabled)
+        if (game.conf.rules[0].gameplay.light_enabled != game.lish.light_enabled)
         {
-            game.lish.light_enabled = game.conf.rules[0].game.light_enabled;
+            game.lish.light_enabled = game.conf.rules[0].gameplay.light_enabled;
         }
 
         // Refresh the lights
@@ -2709,7 +2773,7 @@ void update(void)
             struct Thing *thing = thing_get(player->controlled_thing_idx);
             update_first_person_object_ambience(thing);
         }
-        update_footsteps_nearest_camera(get_player_active_camera(player));
+        update_footsteps_nearest_camera(player->acamera);
         PaletteFadePlayer(player);
         process_armageddon();
         update_global_lighting();
@@ -3182,7 +3246,21 @@ void engine(struct PlayerInfo *player, struct Camera *cam)
     setup_vecs(lbDisplay.GraphicsWindowPtr, 0, lbDisplay.GraphicsScreenWidth,
         ewnd.width, ewnd.height);
     camera_zoom = scale_camera_zoom_to_screen(cam->zoom);
+#if defined(VITA_PERF_LOG)
+    {
+        static Uint32 _dv_accum = 0;
+        static int    _dv_cnt   = 0;
+        Uint32 _dv_t0 = SDL_GetTicks();
+        draw_view(cam, 0);
+        _dv_accum += SDL_GetTicks() - _dv_t0;
+        if (++_dv_cnt >= 60) {
+            JUSTLOG("[perf] draw_view  avg %u ms/frame (60-frame window)", _dv_accum / 60u);
+            _dv_accum = 0; _dv_cnt = 0;
+        }
+    }
+#else
     draw_view(cam, 0);
+#endif
     lbDisplay.DrawFlags = flg_mem;
     thing_being_displayed = 0;
     LbScreenLoadGraphicsWindow(&grwnd);
@@ -3535,6 +3613,7 @@ void gameplay_loop_timestep()
 
 void keeper_gameplay_loop(void)
 {
+    KFX_BREADCRUMB("keeper_gameplay_loop");
     struct PlayerInfo *player;
     SYNCDBG(5,"Starting");
     player = get_my_player();
@@ -3901,6 +3980,7 @@ static TbBool wait_at_frontend(void)
 
 void game_loop(void)
 {
+    KFX_BREADCRUMB("game_loop");
     unsigned long total_play_turns;
     unsigned long playtime;
     playtime = 0;
@@ -4010,7 +4090,7 @@ short reset_game(void)
     LbMouseSuspend();
     LbIKeyboardClose();
     LbScreenReset(false);
-    LbDataFreeAllV2(game_load_files);
+    RendererShutdown();
     free_gui_strings_data();
     free_level_strings_data();
     FreeAudio();
@@ -4019,16 +4099,8 @@ short reset_game(void)
 
 short process_command_line(unsigned short argc, char *argv[])
 {
-  char fullpath[CMDLN_MAXLEN+1];
-  snprintf(fullpath, CMDLN_MAXLEN, "%s", argv[0]);
-  snprintf(keeper_runtime_directory, sizeof(keeper_runtime_directory), "%s", fullpath);
-  char *endpos = strrchr( keeper_runtime_directory, '\\');
-  if (endpos==NULL)
-      endpos=strrchr( keeper_runtime_directory, '/');
-  if (endpos!=NULL)
-      *endpos='\0';
-  else
-      strcpy(keeper_runtime_directory, ".");
+  snprintf(keeper_runtime_directory, sizeof(keeper_runtime_directory),
+           "%s", PlatformManager_GetDataPath());
 
   AssignCpuKeepers = 0;
   SoundDisabled = 0;
@@ -4346,7 +4418,7 @@ const char* determine_log_filename(unsigned short argument_count, char *argument
         if (argument_values[argument_index] && (argument_values[argument_index][0] == '-' || argument_values[argument_index][0] == '/')) {
             char* argument_name = argument_values[argument_index] + 1;
             if (strcasecmp(argument_name, "log") == 0 && argument_index + 1 < argument_count) {
-                remove("keeperfx.log");
+                remove(log_file_name);
                 return argument_values[argument_index + 1];
             }
         }
@@ -4359,9 +4431,15 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     short retval;
     retval=0;
 
+    // Give the platform the raw argv so desktop builds can compute the data path
+    // (must be before LbErrorLogSetup so GetDataPath() works on all platforms).
+    PlatformManager_SetArgv(argc, argv);
+
     // Determine correct log file based on command line flags
     const char* selected_log_file_name = determine_log_filename(argc, argv);
-    LbErrorLogSetup("/", selected_log_file_name, 5);
+    LbErrorLogSetup(PlatformManager_GetDataPath(), selected_log_file_name, 5);
+    SDL_Log("KeeperFX: LbBullfrogMain started, log at %s/%s",
+        PlatformManager_GetDataPath(), selected_log_file_name);
 
     retval = process_command_line(argc,argv);
     if (retval < 1)
@@ -4371,8 +4449,11 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
     }
 
     retval = true;
+    SDL_Log("KeeperFX: LbTimerInit...");
     retval &= (LbTimerInit() != Lb_FAIL);
+    SDL_Log("KeeperFX: LbScreenInitialize... (retval so far=%d)", retval);
     retval &= (LbScreenInitialize() != Lb_FAIL);
+    SDL_Log("KeeperFX: screen init done retval=%d", retval);
     LbSetTitle(PROGRAM_NAME);
     LbSetIcon(1);
     LbScreenSetDoubleBuffering(true);
@@ -4384,13 +4465,16 @@ int LbBullfrogMain(unsigned short argc, char *argv[])
 
     if (!retval)
     {
+        SDL_Log("KeeperFX: Basic engine initialization failed");
         static const char *msg_text="Basic engine initialization failed.\n";
         error_dialog_fatal(__func__, 1, msg_text);
         LbErrorLogClose();
         return 0;
     }
 
+    SDL_Log("KeeperFX: setup_game...");
     retval = setup_game();
+    SDL_Log("KeeperFX: setup_game returned %d", retval);
     if (retval == 1)
     {
         steam_api_init();

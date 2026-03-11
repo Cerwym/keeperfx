@@ -1,3 +1,4 @@
+#include "kfx_memory.h"
 #include "pre_inc.h"
 
 #include <lua.h>
@@ -233,7 +234,7 @@ const char* lua_get_serialised_data(size_t *len)
         }
 		const char *data = lua_tolstring(Lvl_script, -1, len);  // Get the result
         if (data) {
-            lua_serialized_data = (char*)malloc(*len);
+            lua_serialized_data = (char*)KfxAlloc(*len);
             memcpy(lua_serialized_data, data, *len);
             lua_pop(Lvl_script, 1);  // Pop the result
             return lua_serialized_data;
@@ -272,24 +273,28 @@ void lua_set_serialised_data(const char *data, size_t len)
 
 void cleanup_serialized_data() {
     if (lua_serialized_data != NULL) {
-        free(lua_serialized_data);
+        KfxFree(lua_serialized_data);
         lua_serialized_data = NULL;
     }
 }
 
 void generate_lua_types_file()
 {
-    const char *filename = "native_types.lua";
-    FILE *out = fopen(filename, "w");
+    char filepath[DISKPATH_SIZE];
+    snprintf(filepath, sizeof(filepath), "%s/native_types.lua", keeper_runtime_directory);
+    TbFileHandle out = LbFileOpen(filepath, Lb_FILE_MODE_NEW);
     if (!out) {
-        perror("Failed to open output file");
+        ERRORLOG("Failed to open output file: %s", filepath);
         return;
     }
-    fprintf(out, "---@meta native_types\n");
-    fprintf(out, "-- file not used by the game, but used for telling the IDE about what exists\n");
-    fprintf(out, "-- this file contains fields changeble through cfg files, the one here in fxdata is the default\n");
-    fprintf(out, "-- custom maps/campaigns can generate their own version, so all custom types are still recognized by the IDE\n\n");
-    fprintf(out, "-- to generate one with the values specific to your map use the !luatypedump on the specific map you'd like the file for\n\n");
+
+    #define lb_fprintf(h, ...) do { char _lbf[2048]; int _n = snprintf(_lbf, sizeof(_lbf), __VA_ARGS__); if (_n > 0 && _n < (int)sizeof(_lbf)) LbFileWrite(h, _lbf, (unsigned long)_n); } while(0)
+
+    lb_fprintf(out, "---@meta native_types\n");
+    lb_fprintf(out, "-- file not used by the game, but used for telling the IDE about what exists\n");
+    lb_fprintf(out, "-- this file contains fields changeble through cfg files, the one here in fxdata is the default\n");
+    lb_fprintf(out, "-- custom maps/campaigns can generate their own version, so all custom types are still recognized by the IDE\n\n");
+    lb_fprintf(out, "-- to generate one with the values specific to your map use the !luatypedump on the specific map you'd like the file for\n\n");
 
     #define GENERATE_ALIAS(alias_name, desc)            \
     do {                                                \
@@ -297,28 +302,28 @@ void generate_lua_types_file()
         for (int i = 0; desc[i].name != NULL; ++i) {    \
             if (desc[i].name[0] != '\0') ++count;       \
         }                                               \
-        fprintf(out, "---@alias %s ", alias_name);      \
+        lb_fprintf(out, "---@alias %s ", alias_name);      \
         if (count >= 90) {                              \
-            fprintf(out, "string|");                    \
+            lb_fprintf(out, "string|");                    \
         }                                               \
         int written = 0;                                \
         for (int i = 0; desc[i].name != NULL; ++i) {    \
             if (desc[i].name[0] == '\0') continue;      \
-            if (written > 0) fprintf(out, "|");         \
-            fprintf(out, "\"%s\"", desc[i].name);       \
+            if (written > 0) lb_fprintf(out, "|");         \
+            lb_fprintf(out, "\"%s\"", desc[i].name);       \
             ++written;                                  \
         }                                               \
-        fprintf(out, "\n");                             \
+        lb_fprintf(out, "\n");                             \
     } while (0)
 
     #define GENERATE_FIELDS(class_name, desc)               \
     do {                                                 \
-        fprintf(out, "---@class %s\n", class_name);       \
+        lb_fprintf(out, "---@class %s\n", class_name);       \
         for (int i = 0; desc[i].name != NULL; ++i) {      \
             if (desc[i].name[0] == '\0') continue; \
-            fprintf(out, "---@field %s integer\n", desc[i].name); \
+            lb_fprintf(out, "---@field %s integer\n", desc[i].name); \
         }                                                \
-        fprintf(out, "\n");                               \
+        lb_fprintf(out, "\n");                               \
         } while (0)
 
     // Generate sections
@@ -333,7 +338,7 @@ void generate_lua_types_file()
     GENERATE_ALIAS("effect_type", effect_desc);
     GENERATE_ALIAS("spell_type", spell_desc);
     GENERATE_ALIAS("slab_type", slab_desc);
-    fprintf(out, "\n");
+    lb_fprintf(out, "\n");
 
     GENERATE_FIELDS("roomfields", room_desc);
     GENERATE_FIELDS("creaturefields", creature_desc);
@@ -343,8 +348,9 @@ void generate_lua_types_file()
     // Cleanup
     #undef GENERATE_ALIAS
     #undef GENERATE_FIELDS
+    #undef lb_fprintf
 
-    fclose(out);
+    LbFileClose(out);
 }
 
 

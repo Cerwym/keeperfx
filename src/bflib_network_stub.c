@@ -16,7 +16,6 @@
 #include "bflib_basics.h"
 #include "bflib_network.h"
 #include "bflib_network_exchange.h"
-#include "bflib_network_internal.h"
 #include "bflib_enet.h"
 #include "bflib_coroutine.h"
 #include "net_resync.h"
@@ -106,6 +105,3 @@ unsigned int  GetClientPacketsLost(void) { return 0; }
 unsigned int  GetClientOutgoingDataTotal(void) { return 0; }
 unsigned int  GetClientIncomingDataTotal(void) { return 0; }
 unsigned int  GetClientReliableCommandsInFlight(void) { return 0; }
-
-/* netstate definition: defined in bflib_network.cpp when networking is ON */
-struct NetState netstate;

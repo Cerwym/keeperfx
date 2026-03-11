@@ -1,3 +1,4 @@
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_fmvids.h"
 #include "bflib_video.h"
@@ -6,6 +7,7 @@
 #include "bflib_vidsurface.h"
 #include "bflib_fileio.h"
 #include "kjm_input.h"
+#include "platform/PlatformManager.h"
 
 // See: https://trac.ffmpeg.org/ticket/3626
 extern "C" {
@@ -16,7 +18,7 @@ extern "C" {
     #pragma GCC diagnostic warning "-Wdeprecated-declarations"
 }
 
-#include <cstdio>
+
 #include <string>
 #include <memory>
 #include <stdexcept>
@@ -27,6 +29,29 @@ extern "C" {
 #include "post_inc.h"
 
 namespace {
+
+#ifdef PLATFORM_VITA
+// FFmpeg's URL parser treats 'ux0:' as an unknown protocol.
+// Use a custom AVIOContext backed by POSIX fopen instead; fopen("ux0:...")
+// is proven to work on VitaSDK (same as the sound bank loader uses).
+static int vita_avio_read(void *opaque, uint8_t *buf, int buf_size)
+{
+    long n = LbFileRead((TbFileHandle)opaque, buf, (unsigned long)buf_size);
+    return n > 0 ? (int)n : AVERROR_EOF;
+}
+static int64_t vita_avio_seek(void *opaque, int64_t offset, int whence)
+{
+    TbFileHandle f = (TbFileHandle)opaque;
+    if (whence == AVSEEK_SIZE) {
+        long cur = LbFilePosition(f);
+        LbFileSeek(f, 0, Lb_FILE_SEEK_END);
+        int64_t sz = LbFilePosition(f);
+        LbFileSeek(f, cur, Lb_FILE_SEEK_BEGINNING);
+        return sz;
+    }
+    return LbFileSeek(f, (long)offset, whence) == 0 ? (int64_t)LbFilePosition(f) : -1;
+}
+#endif
 
 void copy_to_screen_pxquad(unsigned char *srcbuf, unsigned char *dstbuf, long width, long dst_shift)
 {
@@ -277,6 +302,10 @@ struct movie_t {
 	time_point m_video_start;
 	AVRational m_time_base;
 	SDL_AudioDeviceID m_audio_device = 0;
+#ifdef PLATFORM_VITA
+	TbFileHandle m_avio_file = nullptr;
+	AVIOContext * m_avio_ctx = nullptr;
+#endif
 
 	int m_audio_index;
 	int m_video_index;
@@ -307,6 +336,17 @@ struct movie_t {
 		if (m_format_context) {
 			avformat_close_input(&m_format_context);
 		}
+#ifdef PLATFORM_VITA
+		if (m_avio_ctx) {
+			av_free(m_avio_ctx->buffer);
+			av_free(m_avio_ctx);
+			m_avio_ctx = nullptr;
+		}
+		if (m_avio_file) {
+			LbFileClose(m_avio_file);
+			m_avio_file = nullptr;
+		}
+#endif
 		if (m_audio_context) {
 			avcodec_free_context(&m_audio_context);
 		}
@@ -326,12 +366,34 @@ struct movie_t {
 			SDL_CloseAudioDevice(m_audio_device);
 			m_audio_device = 0;
 		}
+		IAudioPlatform* audio = PlatformManager_GetAudio();
+		if (audio) {
+			audio->FmvAudioClose();
+		}
 	}
 
 	void open_input(const char * filename) {
+#ifdef PLATFORM_VITA
+		// FFmpeg's URL parser treats 'ux0:' as an unknown protocol.
+		// Use a custom AVIOContext backed by fopen, which handles ux0: natively.
+		m_avio_file = LbFileOpen(filename, Lb_FILE_MODE_READ_ONLY);
+		if (!m_avio_file) throw std::runtime_error("Cannot open source file");
+		uint8_t *iobuf = (uint8_t *)av_malloc(32768);
+		if (!iobuf) { LbFileClose(m_avio_file); m_avio_file = nullptr; throw std::runtime_error("Cannot allocate AVIO buffer"); }
+		m_avio_ctx = avio_alloc_context(iobuf, 32768, 0, m_avio_file, vita_avio_read, nullptr, vita_avio_seek);
+		if (!m_avio_ctx) { av_free(iobuf); LbFileClose(m_avio_file); m_avio_file = nullptr; throw std::runtime_error("Cannot allocate AVIO context"); }
+		m_format_context = avformat_alloc_context();
+		m_format_context->pb = m_avio_ctx;
+		m_format_context->flags |= AVFMT_FLAG_CUSTOM_IO;
+		if (avformat_open_input(&m_format_context, "", nullptr, nullptr) != 0) {
+			m_format_context = nullptr;
+			throw std::runtime_error("Cannot open source file");
+		}
+#else
 		if (avformat_open_input(&m_format_context, filename, nullptr, nullptr) != 0) {
 			throw std::runtime_error("Cannot open source file");
 		}
+#endif
 	}
 
 	AVSampleFormat sdl_to_ffmpeg_format(SDL_AudioFormat format) {
@@ -359,27 +421,48 @@ struct movie_t {
 	}
 
 	void open_audio_device() {
-        if (!flag_is_set(m_flags, SMK_NoSound))
-        {
-            SDL_AudioSpec desired, obtained;
-            desired.freq = 44100;
-            desired.format = AUDIO_F32SYS;
-            desired.channels = 2;
-            desired.silence = 0;
-            desired.samples = 0;
-            desired.padding = 0;
-            desired.size = 0;
-            desired.callback = nullptr;
-            desired.userdata = nullptr;
-            m_audio_device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
-            if (m_audio_device <= 0) {
-                throw std::runtime_error("Cannot open audio device");
+        if (flag_is_set(m_flags, SMK_NoSound))
+            return;
+
+        // If the platform provides a native audio path, use it.
+        // This avoids SDL audio entirely on platforms such as Vita where
+        // SDL_INIT_AUDIO is never initialised and sceAudio* is preferred.
+        IAudioPlatform* audio = PlatformManager_GetAudio();
+        if (audio) {
+            // Vita sceAudio requires S16 stereo; set the resampler target now.
+            m_output_audio_channels  = 2;
+            m_output_audio_frequency = 48000;
+            m_output_audio_format    = AV_SAMPLE_FMT_S16;
+            m_output_audio_layout    = AV_CHANNEL_LAYOUT_STEREO;
+            if (!audio->FmvAudioOpen(m_output_audio_frequency, m_output_audio_channels)) {
+                WARNLOG("FMV: Cannot open native audio device — playing silent");
+                m_flags |= SMK_NoSound;
             }
-            m_output_audio_channels = obtained.channels;
-            m_output_audio_frequency = obtained.freq;
-            m_output_audio_format = sdl_to_ffmpeg_format(obtained.format);
-            m_output_audio_layout = channels_to_ffmpeg_layout(obtained.channels);
+            return;
         }
+
+        // Desktop path: use SDL audio.
+        SDL_InitSubSystem(SDL_INIT_AUDIO);
+        SDL_AudioSpec desired, obtained;
+        desired.freq = 44100;
+        desired.format = AUDIO_F32SYS;
+        desired.channels = 2;
+        desired.silence = 0;
+        desired.samples = 0;
+        desired.padding = 0;
+        desired.size = 0;
+        desired.callback = nullptr;
+        desired.userdata = nullptr;
+        m_audio_device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, SDL_AUDIO_ALLOW_ANY_CHANGE);
+        if (m_audio_device <= 0) {
+            WARNLOG("FMV: Cannot open SDL audio device (%s) — playing silent", SDL_GetError());
+            m_flags |= SMK_NoSound;
+            return;
+        }
+        m_output_audio_channels = obtained.channels;
+        m_output_audio_frequency = obtained.freq;
+        m_output_audio_format = sdl_to_ffmpeg_format(obtained.format);
+        m_output_audio_layout = channels_to_ffmpeg_layout(obtained.channels);
 	}
 
 	void find_stream_info() {
@@ -512,8 +595,13 @@ struct movie_t {
 #endif
 			m_frame->nb_samples
 		);
-		SDL_QueueAudio(m_audio_device, buffer, num_samples * sample_size);
-		SDL_PauseAudioDevice(m_audio_device, 0);
+		IAudioPlatform* audio = PlatformManager_GetAudio();
+		if (audio) {
+			audio->FmvAudioQueue(buffer, num_samples * sample_size);
+		} else {
+			SDL_QueueAudio(m_audio_device, buffer, num_samples * sample_size);
+			SDL_PauseAudioDevice(m_audio_device, 0);
+		}
 		av_freep(&buffer);
 	}
 
@@ -525,6 +613,12 @@ struct movie_t {
 			palette[i].b = m_frame->data[1][(i * 4) + 0]; // blue
 			palette[i].g = m_frame->data[1][(i * 4) + 1]; // green
 			palette[i].r = m_frame->data[1][(i * 4) + 2]; // red
+			// RendererVita (and vitaGL) read lbPalette[] directly (6-bit values).
+			// SDL_SetPaletteColors only updates lbDrawSurface->format->palette which
+			// those renderers never read. Update lbPalette here so the video is visible.
+			lbPalette[i*3+0] = palette[i].r >> 2;
+			lbPalette[i*3+1] = palette[i].g >> 2;
+			lbPalette[i*3+2] = palette[i].b >> 2;
 		}
 		LbScreenWaitVbi(); // this is a no-op today
 		// LbPaletteSet expects values in range 0-63 for reasons, nuking 75% of the color range
@@ -556,10 +650,24 @@ struct movie_t {
 
 	void wait_for_pts() {
 		const duration pts = nanoseconds((int64_t(m_frame->pts) * (1000000000 / m_time_base.den)) * m_time_base.num);
-		const auto now = time_since_video_start();
-		const auto delta = pts - now;
-		if (delta > duration()) {
-			std::this_thread::sleep_for(delta);
+		IAudioPlatform* audio = PlatformManager_GetAudio();
+		const int64_t audio_pts_ns = audio ? audio->FmvAudioPtsNs() : -1;
+		if (audio_pts_ns >= 0) {
+			// Audio-slaved sync: wait until the hardware audio clock reaches
+			// the video PTS.  This ties video to the DMA hardware clock,
+			// preventing drift and eliminating frame drops from wall-clock skew.
+			const duration audio_now = nanoseconds(audio_pts_ns);
+			const auto delta = pts - audio_now;
+			if (delta > duration()) {
+				std::this_thread::sleep_for(delta);
+			}
+		} else {
+			// Desktop / headless: use wall clock.
+			const auto now = time_since_video_start();
+			const auto delta = pts - now;
+			if (delta > duration()) {
+				std::this_thread::sleep_for(delta);
+			}
 		}
 	}
 
@@ -1207,13 +1315,13 @@ short anim_open(char *fname, int arg1, short arg2, int width, int height, int bp
 		SYNCLOG("Starting to record new movie, \"%s\".",fname);
 		memset(&animation, 0, sizeof(Animation));
 		animation.state_flags |= flags;
-		animation.videobuf = static_cast<unsigned char *>(calloc(2 * height*width, 1));
+		animation.videobuf = static_cast<unsigned char *>(KfxCalloc(2 * height*width, 1));
 		if (animation.videobuf==NULL) {
 			ERRORLOG("Cannot allocate video buffer.");
 			return false;
 		}
 		long max_chunk_size = anim_buffer_size(width,height,bpp);
-		animation.chunkdata = static_cast<unsigned char *>(calloc(max_chunk_size, 1));
+		animation.chunkdata = static_cast<unsigned char *>(KfxCalloc(max_chunk_size, 1));
 		if (animation.chunkdata==NULL) {
 			ERRORLOG("Cannot allocate chunk buffer.");
 			return false;
@@ -1267,7 +1375,7 @@ short anim_open(char *fname, int arg1, short arg2, int width, int height, int bp
 		}
 		// Now we can allocate chunk buffer
 		long max_chunk_size = anim_buffer_size(animation.header.width,animation.header.height,animation.header.depth);
-		animation.chunkdata = static_cast<unsigned char *>(calloc(max_chunk_size, 1));
+		animation.chunkdata = static_cast<unsigned char *>(KfxCalloc(max_chunk_size, 1));
 		if (animation.chunkdata==NULL) {
 			return false;
 		}
@@ -1409,7 +1517,7 @@ extern "C" short anim_stop()
 		return false;
 	}
 	animation.outfhndl = nullptr;
-	free(animation.chunkdata);
+	KfxFree(animation.chunkdata);
 	animation.chunkdata=NULL;
 	animation.state_flags = 0;
 	return true;

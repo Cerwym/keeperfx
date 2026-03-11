@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_vidsurface.h"
 
@@ -36,7 +37,8 @@ SDL_Surface * lbScreenSurface;
 /** Internal drawing surface structure.
  *  Sometimes may be same as screen surface. */
 SDL_Surface * lbDrawSurface;
-/** Intermediate surface for format conversion before scaling (RendererSoftware). */
+/** Intermediate surface used when the draw surface needs format conversion before
+ *  being scaled up to the physical window surface (e.g. 8bpp→16bpp on Vita). */
 SDL_Surface * lbScaleSurface;
 
 /******************************************************************************/

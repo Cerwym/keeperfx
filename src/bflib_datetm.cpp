@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include <chrono>
 #include <time.h>
@@ -25,10 +26,7 @@
 #include "bflib_basics.h"
 #include "game_legacy.h"
 
-#if defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#endif
+#include <SDL2/SDL.h>
 #include "post_inc.h"
 
 #ifdef __cplusplus
@@ -307,9 +305,7 @@ TbResult LbDateTimeDecode(const time_t *datetime,struct TbDate *curr_date,struct
 
 inline void LbDoMultitasking(void)
 {
-#if defined(_WIN32)
-    Sleep(LARGE_DELAY_TIME>>1); // This switches to other tasks
-#endif
+    SDL_Delay(LARGE_DELAY_TIME >> 1);
 }
 
 TbBool LbSleepFor(TbClockMSec delay)

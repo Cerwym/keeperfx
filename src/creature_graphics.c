@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "creature_graphics.h"
 
@@ -602,7 +603,7 @@ void creature_table_load_unpack(unsigned char *src_buf, size_t disk_size)
 {
     size_t items = disk_size / sizeof(struct KeeperSpriteDisk);
     struct KeeperSpriteDisk* src = (struct KeeperSpriteDisk*)src_buf;
-    struct KeeperSprite *tmp = malloc(items * sizeof(struct KeeperSprite));
+    struct KeeperSprite *tmp = KfxAlloc(items * sizeof(struct KeeperSprite));
     for (int i = 0; i < items; i++, src++)
     {
         tmp[i].DataOffset = src->DataOffset;
@@ -620,7 +621,7 @@ void creature_table_load_unpack(unsigned char *src_buf, size_t disk_size)
         tmp[i].frame_flags = 0;
     }
     memcpy(src_buf, tmp, items * sizeof(struct KeeperSprite));
-    free(tmp);
+    KfxFree(tmp);
 }
 
 /******************************************************************************/

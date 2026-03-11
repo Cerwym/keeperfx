@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "frontmenu_ingame_map.h"
 
@@ -265,10 +266,9 @@ int draw_overlay_call_to_arms(struct PlayerInfo *player, long units_per_px, long
     int i;
     int n;
     SYNCDBG(18,"Starting");
-    struct Camera *active_cam = get_player_active_camera(player);
-    if (active_cam == NULL)
+    if (player->acamera == NULL)
         return 0;
-    struct Camera *cam = get_local_camera(active_cam);
+    struct Camera *cam = get_local_camera(player->acamera);
     n = 0;
     const struct StructureList *slist = get_list_for_thing_class(TCls_Object);
     k = 0;
@@ -325,10 +325,9 @@ int draw_overlay_traps(struct PlayerInfo *player, long units_per_px, long scaled
     int i;
     int n;
     SYNCDBG(18,"Starting");
-    struct Camera *active_cam = get_player_active_camera(player);
-    if (active_cam == NULL)
+    if (player->acamera == NULL)
         return 0;
-    struct Camera *cam = get_local_camera(active_cam);
+    struct Camera *cam = get_local_camera(player->acamera);
     n = 0;
     k = 0;
     const struct StructureList *slist = get_list_for_thing_class(TCls_Trap);
@@ -404,10 +403,9 @@ int draw_overlay_spells_and_boxes(struct PlayerInfo *player, long units_per_px, 
     int i;
     int n;
     SYNCDBG(18,"Starting");
-    struct Camera *active_cam = get_player_active_camera(player);
-    if (active_cam == NULL)
+    if (player->acamera == NULL)
         return 0;
-    struct Camera *cam = get_local_camera(active_cam);
+    struct Camera *cam = get_local_camera(player->acamera);
     n = 0;
     const struct StructureList *slist = get_list_for_thing_class(TCls_Object);
     k = 0;
@@ -494,7 +492,7 @@ void panel_map_draw_creature_dot(long mapos_x, long mapos_y, RealScreenCoord bas
 int draw_overlay_possessed_thing(struct PlayerInfo* player, long mapos_x, long mapos_y, RealScreenCoord basepos, TbPixel col, long basic_zoom, TbBool isLowRes)
 {
     const struct Camera* cam;
-    cam = get_local_camera(get_player_active_camera(player));
+    cam = get_local_camera(player->acamera);
     if (cam == NULL)
         return 0;
     if (cam->view_mode != PVM_CreatureView)
@@ -534,10 +532,9 @@ int draw_overlay_creatures(struct PlayerInfo *player, long units_per_px, long zo
     int i;
     int n;
     SYNCDBG(18,"Starting");
-    struct Camera *active_cam = get_player_active_camera(player);
-    if (active_cam == NULL)
+    if (player->acamera == NULL)
         return 0;
-    struct Camera *cam = get_local_camera(active_cam);
+    struct Camera *cam = get_local_camera(player->acamera);
     n = 0;
     k = 0;
     const struct StructureList *slist = get_list_for_thing_class(TCls_Creature);
@@ -670,10 +667,9 @@ int draw_overlay_creatures(struct PlayerInfo *player, long units_per_px, long zo
  */
 int draw_line_to_heart(struct PlayerInfo *player, long units_per_px, long zoom)
 {
-    struct Camera *active_cam = get_player_active_camera(player);
-    if (active_cam == NULL)
+    if (player->acamera == NULL)
         return 0;
-    struct Camera *cam = get_local_camera(active_cam);
+    struct Camera *cam = get_local_camera(player->acamera);
     struct Thing *thing = get_player_soul_container(player->id_number);
 
     if (!thing_exists(thing)) {
@@ -854,7 +850,7 @@ static void do_map_rotate_stuff(long relpos_x, long relpos_y, int32_t *stl_x, in
 {
     const struct PlayerInfo *player = get_my_player();
     const struct Camera *cam;
-    cam = get_local_camera(get_player_active_camera(player));
+    cam = get_local_camera(player->acamera);
     int angle;
     angle = cam->rotation_angle_x & ANGLE_MASK_4;
     int shift_x;
@@ -966,12 +962,12 @@ void setup_background(long units_per_px)
     if (MapDiagonalLength != 2*(PANEL_MAP_RADIUS*units_per_px/16))
     {
         MapDiagonalLength = 2*(PANEL_MAP_RADIUS*units_per_px/16);
-        free(MapBackground);
-        MapBackground = calloc(MapDiagonalLength*MapDiagonalLength, sizeof(TbPixel));
-        free(MapShapeStart);
-        MapShapeStart = (int32_t *)calloc(MapDiagonalLength, sizeof(int32_t));
-        free(MapShapeEnd);
-        MapShapeEnd = (int32_t *)calloc(MapDiagonalLength, sizeof(int32_t));
+        KfxFree(MapBackground);
+        MapBackground = KfxCalloc(MapDiagonalLength*MapDiagonalLength, sizeof(TbPixel));
+        KfxFree(MapShapeStart);
+        MapShapeStart = (int32_t *)KfxCalloc(MapDiagonalLength, sizeof(int32_t));
+        KfxFree(MapShapeEnd);
+        MapShapeEnd = (int32_t *)KfxCalloc(MapDiagonalLength, sizeof(int32_t));
     }
     if ((MapBackground == NULL) || (MapShapeStart == NULL) || (MapShapeEnd == NULL)) {
         MapDiagonalLength = 0;
@@ -1278,7 +1274,7 @@ void panel_map_draw_slabs(long x, long y, long units_per_px, long zoom)
     auto_gen_tables(units_per_px);
     update_panel_colors();
     struct PlayerInfo *player = get_my_player();
-    struct Camera *cam = get_local_camera(get_player_active_camera(player));
+    struct Camera *cam = get_local_camera(player->acamera);
 
     if ((cam == NULL) || (MapDiagonalLength < 1))
         return;

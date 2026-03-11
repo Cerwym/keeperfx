@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_mouse.h"
 
@@ -135,7 +136,8 @@ TbResult LbMouseSetPosition(long x, long y)
       }
       window = lbWindow;
   }
-  SDL_WarpMouseInWindow(window, x, y);
+  if (window != NULL)
+      SDL_WarpMouseInWindow(window, x, y);
   return Lb_SUCCESS;
 }
 

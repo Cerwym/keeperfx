@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "creature_control.h"
 #include "globals.h"
@@ -48,7 +49,7 @@ struct CreatureControl *creature_control_get(CctrlIndex cctrl_idx)
 {
   if ((cctrl_idx < 1) || (cctrl_idx >= CREATURES_COUNT))
     return INVALID_CRTR_CONTROL;
-  return &game.cctrl_data[cctrl_idx];
+  return game.persons.cctrl_lookup[cctrl_idx];
 }
 
 /**
@@ -59,7 +60,7 @@ struct CreatureControl *creature_control_get_from_thing(const struct Thing *thin
 {
   if ((thing->ccontrol_idx < 1) || (thing->ccontrol_idx >= CREATURES_COUNT))
     return INVALID_CRTR_CONTROL;
-  return &game.cctrl_data[thing->ccontrol_idx];
+  return game.persons.cctrl_lookup[thing->ccontrol_idx];
 }
 
 /**
@@ -67,9 +68,7 @@ struct CreatureControl *creature_control_get_from_thing(const struct Thing *thin
  */
 TbBool creature_control_invalid(const struct CreatureControl *cctrl)
 {
-  if (cctrl == NULL)
-    return true;
-  return (cctrl <= &game.cctrl_data[0]);
+  return (cctrl <= game.persons.cctrl_lookup[0]) || (cctrl == NULL);
 }
 
 TbBool creature_control_exists(const struct CreatureControl *cctrl)
@@ -85,7 +84,7 @@ CctrlIndex i_can_allocate_free_control_structure(void)
 {
     for (CctrlIndex i = 1; i < CREATURES_COUNT; i++)
     {
-        struct CreatureControl* cctrl = &game.cctrl_data[i];
+        struct CreatureControl* cctrl = game.persons.cctrl_lookup[i];
         if (!creature_control_invalid(cctrl))
         {
             if ((cctrl->creature_control_flags & CCFlg_Exists) == 0)
@@ -99,7 +98,7 @@ struct CreatureControl *allocate_free_control_structure(void)
 {
     for (long i = 1; i < CREATURES_COUNT; i++)
     {
-        struct CreatureControl* cctrl = &game.cctrl_data[i];
+        struct CreatureControl* cctrl = game.persons.cctrl_lookup[i];
         if (!creature_control_invalid(cctrl))
         {
             if ((cctrl->creature_control_flags & CCFlg_Exists) == 0)
@@ -148,7 +147,7 @@ struct Thing *create_and_control_creature_as_controller(struct PlayerInfo *playe
         toggle_status_menu(0);
         turn_off_roaming_menus();
     }
-    const struct Camera* cam = get_player_active_camera(player);
+    const struct Camera* cam = player->acamera;
     set_selected_creature(player, thing);
     player->view_mode_restore = cam->view_mode;
     thing->alloc_flags |= TAlF_IsControlled;

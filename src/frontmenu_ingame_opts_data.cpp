@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "frontmenu_ingame_opts.h"
 #include "globals.h"
@@ -46,23 +47,20 @@ void maintain_compsetting_button(struct GuiButton* gbtn);
 /******************************************************************************/
 struct MsgBoxInfo MsgBox;
 
-// Non-NULL no-op callback so that the controller snapping logic does not ignore the button
-static void no_op(struct GuiButton* gbtn) {}
-
 struct GuiButtonInit options_menu_buttons[] = {
   {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,               0, 999,  10, 999,  10,155, 32, gui_area_text,                     1, GUIStr_MnuOptions,          0,       {0},          0, NULL },
-  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, no_op,               NULL,        NULL,              0,  12,  36,  12,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_load, GUIStr_LoadGameDesc,     &load_menu, {0},          0, maintain_loadsave },
-  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, no_op,               NULL,        NULL,              0,  60,  36,  60,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_save, GUIStr_SaveGameDesc,     &save_menu, {0},          0, maintain_loadsave },
-  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, no_op,               NULL,        NULL,              0, 108,  36, 108,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_graphc, GUIStr_GraphicsMenuDesc, &video_menu,{0},          0, NULL },
-  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, no_op,               NULL,        NULL,              0, 156,  36, 156,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_sound, GUIStr_SoundMenuDesc,    &sound_menu,{0},          0, NULL },
-  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, no_op,               NULL,        NULL,              0, 204,  36, 204,  36, 46, 64, gui_area_compsetting_button, GPS_options_cassist_btn_black_a, GUIStr_ComputerAssistDesc,&autopilot_menu,{0},     0, NULL },
-  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, no_op,               NULL,        NULL,              0, 252,  36, 252,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_exit, GUIStr_QuitGameDesc,     &quit_menu, {0},          0, NULL },
+  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, NULL,               NULL,        NULL,               0,  12,  36,  12,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_load, GUIStr_LoadGameDesc,     &load_menu, {0},          0, maintain_loadsave },
+  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, NULL,               NULL,        NULL,               0,  60,  36,  60,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_save, GUIStr_SaveGameDesc,     &save_menu, {0},          0, maintain_loadsave },
+  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, NULL,               NULL,        NULL,               0, 108,  36, 108,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_graphc, GUIStr_GraphicsMenuDesc, &video_menu,{0},          0, NULL },
+  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, NULL,               NULL,        NULL,               0, 156,  36, 156,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_sound, GUIStr_SoundMenuDesc,    &sound_menu,{0},          0, NULL },
+  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, NULL,               NULL,        NULL,               0, 204,  36, 204,  36, 46, 64, gui_area_compsetting_button, GPS_options_cassist_btn_black_a, GUIStr_ComputerAssistDesc,&autopilot_menu,{0},     0, NULL },
+  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, NULL,               NULL,        NULL,               0, 252,  36, 252,  36, 46, 64, gui_area_no_anim_button, GBS_options_button_exit, GUIStr_QuitGameDesc,     &quit_menu, {0},          0, NULL },
   {              -1,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,               0,   0,   0,   0,   0,  0,  0, NULL,                              0, 0,                       0,          {0},          0, NULL },
 };
 
 struct GuiButtonInit quit_menu_buttons[] = {
   {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,               0, 999,  10, 999,  10,210, 32, gui_area_text,                     1, GUIStr_ConfirmYouSure,   0,       {0},            0, NULL },
-  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, no_op,               NULL,        NULL,              0,  70,  24,  72,  58, 46, 32, gui_area_normal_button, GBS_options_button_smd_no, GUIStr_ConfirmNo,        0,       {0},            0, NULL },
+  {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, NULL,               NULL,        NULL,               0,  70,  24,  72,  58, 46, 32, gui_area_normal_button, GBS_options_button_smd_no, GUIStr_ConfirmNo,        0,       {0},            0, NULL },
   {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 1, gui_quit_game,      NULL,        NULL,               0, 136,  24, 138,  58, 46, 32, gui_area_normal_button, GBS_options_button_smd_yes, GUIStr_ConfirmYes,       0,       {0},            0, NULL },
   {              -1,  BID_DEFAULT, 0, 0, NULL,               NULL,        NULL,               0,   0,   0,   0,   0,  0,  0, NULL,                              0,   0,                     0,       {0},            0, NULL },
 };
@@ -100,6 +98,8 @@ struct GuiButtonInit video_menu_buttons[] = {
   {LbBtnT_ToggleBtn,  BID_DEFAULT, 0, 0, gui_video_cluedo_mode,         NULL,                           NULL,  0,  28, 100,  30, 100,  46, 64, gui_area_no_anim_button, GBS_options_button_grph_wall_hi, GUIStr_OptionWallHeightDesc,        0, {.ptr = &video_cluedo_mode},1, gui_video_cluedo_maintain },
   {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, gui_video_gamma_correction,    NULL,                           NULL,  0,  76, 100,  78, 100,  46, 64, gui_area_no_anim_button, GBS_options_button_grph_gamma, GUIStr_OptionGammaCorrectionDesc,   0, {.ptr = &video_gamma_correction}, 0, NULL },
   {LbBtnT_NormalBtn,  BID_DEFAULT, 0, 0, gui_switch_video_mode,         gui_display_current_resolution, NULL,  0, 124, 100, 126, 100,  46, 64, gui_area_no_anim_button, GBS_optionsbutton_resolution, GUIStr_DisplayResolution,           0, {0}, 0, NULL },
+  // Renderer toggle: cycles video_renderer between 0 (software) and 1 (opengl); uses shadow sprite as placeholder
+  {LbBtnT_ToggleBtn,  BID_DEFAULT, 0, 0, gui_video_renderer,            NULL,                           NULL,  0,  28, 140,  30, 140,  46, 64, gui_area_no_anim_button, GBS_options_button_grph_shadow0, GUIStr_OptionRendererDesc,          0, {.ptr = &video_renderer}, 2, NULL },
   {              -1,  BID_DEFAULT, 0, 0, NULL,                          NULL,                           NULL,  0,   0,   0,   0,   0,   0,  0, NULL,                              0,                                     0, 0, {0},            0, NULL },
 };
 
@@ -137,7 +137,7 @@ struct GuiMenu autopilot_menu =
  { GMnu_AUTOPILOT,    0, 4, autopilot_menu_buttons,     POS_GAMECTR,POS_GAMECTR,224, 120, gui_pretty_background,       0, NULL,    NULL,                    0, 1, 0,};
 
 struct GuiMenu video_menu =
- { GMnu_VIDEO, 0, 4, video_menu_buttons,         POS_GAMECTR,POS_GAMECTR,200, 180, gui_pretty_background,       0, NULL,    init_video_menu,         0, 1, 0,};
+ { GMnu_VIDEO, 0, 4, video_menu_buttons,         POS_GAMECTR,POS_GAMECTR,200, 215, gui_pretty_background,       0, NULL,    init_video_menu,         0, 1, 0,};
 struct GuiMenu sound_menu =
  { GMnu_SOUND, 0, 4, sound_menu_buttons,         POS_GAMECTR,POS_GAMECTR,280, 225, gui_pretty_background,       0, NULL,    init_audio_menu,         0, 1, 0,};
 

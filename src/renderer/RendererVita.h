@@ -20,8 +20,6 @@
 #include <vitaGL.h>
 #include "renderer/vita/VitaBlitShader.h"
 #include "renderer/vita/VitaPassthroughPass.h"
-#include "renderer/vita/VitaTileAtlas.h"
-#include "renderer/vita/VitaSpriteLayer.h"
 
 /**
  * Vita renderer backend — vitaGL GPU palette shader path.
@@ -44,12 +42,6 @@ public:
     bool SupportsRuntimeSwitch() const override { return false; }
     bool SupportsGPUPasses() const override { return true; }
 
-    bool PresentRawPalFrame(const uint8_t* pixels, int width, int height,
-                            int linesize, const uint8_t* palette_6bit) override;
-
-    VitaTileAtlas&   GetTileAtlas()   { return m_tile_atlas; }
-    VitaSpriteLayer& GetSpriteLayer() { return m_sprite_layer; }
-
 private:
     static const int k_gameW = 640;
     static const int k_gameH = 480;
@@ -61,8 +53,6 @@ private:
 
     VitaBlitShader m_blit;      /**< fullscreen palette-decode blit shader */
     VitaPassthroughPass m_passthrough; /**< stage-3 final blit to screen (960x544) */
-    VitaTileAtlas m_tile_atlas; /**< GPU tile atlas — 32 RGBA8 2048x1024 textures */
-    VitaSpriteLayer m_sprite_layer; /**< GPU UI sprite batch — Tier 1 */
 
     /** Post-process FBOs — ping-pong between m_pass_fbo_a/b for GPU passes.
      *  m_scene_fbo holds the RGBA-decoded scene produced by m_blit.

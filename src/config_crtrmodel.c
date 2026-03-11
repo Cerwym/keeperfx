@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "config_crtrmodel.h"
 #include "globals.h"
@@ -2502,7 +2503,7 @@ static TbBool load_creaturemodel_config_file(long crtr_model, const char *fname,
     {
         return false;
     }
-    char* buf = (char*)calloc(len + 256, 1);
+    char* buf = (char*)KfxCalloc(len + 256, 1);
     if (buf == NULL)
         return false;
     // Loading file data
@@ -2522,7 +2523,7 @@ static TbBool load_creaturemodel_config_file(long crtr_model, const char *fname,
         parse_creaturemodel_sounds_blocks(crtr_model, buf, len, fname, flags);
     }
     // Freeing and exiting
-    free(buf);
+    KfxFree(buf);
     return result;
 }
 

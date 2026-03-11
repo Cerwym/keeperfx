@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "creature_states.h"
 #include "globals.h"
@@ -2979,7 +2980,7 @@ TbBool init_creature_state(struct Thing *creatng)
     // Check job which we can do after dropping at these coordinates
     if (is_neutral_thing(creatng))
     {
-        if ((game.conf.rules[creatng->owner].game.classic_bugs_flags & ClscBug_PassiveNeutrals))
+        if ((game.conf.rules[creatng->owner].gameplay.classic_bugs_flags & ClscBug_PassiveNeutrals))
         {
             SYNCDBG(3,"Trying to assign initial job at (%ld,%ld) for neutral %s index %d owner %d",stl_x,stl_y,thing_model_name(creatng),creatng->index,creatng->owner);
             return false;
@@ -3160,7 +3161,7 @@ short creature_take_salary(struct Thing *creatng)
     set_start_state(creatng);
     struct CreatureModelConfig* crconf = creature_stats_get_from_thing(creatng);
     struct Thing* efftng = create_price_effect(&creatng->mappos, creatng->owner, received);
-    if (!(game.conf.rules[creatng->owner].game.classic_bugs_flags & ClscBug_FullyHappyWithGold))
+    if (!(game.conf.rules[creatng->owner].gameplay.classic_bugs_flags & ClscBug_FullyHappyWithGold))
     {
         anger_apply_anger_to_creature_all_types(creatng, crconf->annoy_got_wage);
     }
@@ -3197,7 +3198,7 @@ void make_creature_unconscious(struct Thing *creatng)
     clear_creature_instance(creatng);
     set_creature_size_stuff(creatng);
     struct CreatureControl* cctrl = creature_control_get_from_thing(creatng);
-    if (game.conf.rules[creatng->owner].game.classic_bugs_flags & ClscBug_ResurrectRemoved)
+    if (game.conf.rules[creatng->owner].gameplay.classic_bugs_flags & ClscBug_ResurrectRemoved)
     {
         // If the classic bug is enabled, fainted units are also added to resurrect creature.
         update_dead_creatures_list_for_owner(creatng);
@@ -3523,7 +3524,7 @@ long setup_head_for_empty_treasure_space(struct Thing *thing, struct Room *room)
     struct Thing* gldtng = find_gold_hoarde_at(slab_subtile_center(slb_x), slab_subtile_center(slb_y));
 
     // If the random slab has enough space to drop all gold, go there to drop it
-    long wealth_size_holds = game.conf.rules[room->owner].game.gold_per_hoard / get_wealth_size_types_count();
+    long wealth_size_holds = game.conf.rules[room->owner].gameplay.gold_per_hoard / get_wealth_size_types_count();
     GoldAmount max_hoard_size_in_room = wealth_size_holds * room->total_capacity / room->slabs_count;
     if ((max_hoard_size_in_room - gldtng->valuable.gold_stored) >= thing->creature.gold_carried)
     {
@@ -3966,8 +3967,7 @@ char new_slab_tunneller_check_for_breaches(struct Thing *creatng)
         if ((col->bitfields & CLF_CEILING_MASK) != 0)
             continue;
 
-        struct Thing* hearttng = thing_get(dgn->dnheart_idx);
-        if (!creature_can_navigate_to(creatng, &hearttng->mappos, NavRtF_Default))
+        if (!creature_can_navigate_to(creatng, &game.things.lookup[dgn->dnheart_idx]->mappos, NavRtF_Default))
             continue;
 
         set_flag(cctrl->party.player_broken_into_flags, to_flag(i));

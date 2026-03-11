@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "front_simple.h"
 
@@ -301,8 +302,8 @@ short clear_bitmap_screen(struct ActiveBitmap *actv_bmp)
  */
 short free_bitmap_screen(struct ActiveBitmap *actv_bmp)
 {
-  free(actv_bmp->raw_data);
-  free(actv_bmp->pal_data);
+  KfxFree(actv_bmp->raw_data);
+  KfxFree(actv_bmp->pal_data);
   return clear_bitmap_screen(actv_bmp);
 }
 
@@ -345,7 +346,7 @@ TbBool init_bitmap_screen(struct ActiveBitmap *actv_bmp,int stype)
   if (buf == NULL)
   {
     ERRORLOG("Couldn't load raw bitmap file for %s screen",rbmp->name);
-    free(actv_bmp->pal_data);
+    KfxFree(actv_bmp->pal_data);
     clear_bitmap_screen(actv_bmp);
     return false;
   }

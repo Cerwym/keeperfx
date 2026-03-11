@@ -202,6 +202,9 @@ struct Game {
     unsigned char applied_lens_type;
     struct PlayerInfo players[PLAYERS_COUNT];
     struct Column columns_data[COLUMNS_COUNT];
+    struct Things things;
+    struct Persons persons;
+    struct Columns columns;
     unsigned short slabset_num;
     struct SlabSet slabset[SLABSET_COUNT];
     unsigned short slabobjs_num;
@@ -377,7 +380,8 @@ struct Game {
 
 #pragma pack()
 /******************************************************************************/
-extern struct Game game;
+extern struct Game *gpGame;
+#define game (*gpGame)
 extern int32_t game_num_fps;
 
 extern int32_t game_num_fps_draw_current;

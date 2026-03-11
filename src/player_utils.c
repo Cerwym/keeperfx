@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "player_utils.h"
 
@@ -164,7 +165,7 @@ void set_player_as_lost_level(struct PlayerInfo *player)
         turn_off_all_menus();
         clear_transfered_creatures();
     }
-    if ((game.conf.rules[player->id_number].game.classic_bugs_flags & ClscBug_NoHandPurgeOnDefeat) == 0) {
+    if ((game.conf.rules[player->id_number].gameplay.classic_bugs_flags & ClscBug_NoHandPurgeOnDefeat) == 0) {
         clear_things_in_hand(player);
         dungeon->num_things_in_hand = 0;
     }
@@ -1129,7 +1130,7 @@ void process_player_states(void)
             if ( (player->work_state == PSt_CreatrInfo) || (player->work_state == PSt_CreatrInfoAll) )
             {
                 struct Thing* thing = thing_get(player->controlled_thing_idx);
-                struct Camera* cam = get_player_active_camera(player);
+                struct Camera* cam = player->acamera;
                 if ((cam != NULL) && thing_exists(thing)) {
                     cam->mappos.x.val = thing->mappos.x.val;
                     cam->mappos.y.val = thing->mappos.y.val;
@@ -1229,7 +1230,7 @@ TbBool player_sell_door_at_subtile(PlayerNumber plyr_idx, MapSubtlCoord stl_x, M
     struct DoorConfigStats *doorst = get_door_model_stats(thing->model);
     struct Dungeon* dungeon = get_players_num_dungeon(thing->owner);
     dungeon->camera_deviate_jump = 192;
-    GoldAmount sell_value = compute_value_percentage(doorst->selling_value, game.conf.rules[plyr_idx].game.door_sale_percent);
+    GoldAmount sell_value = compute_value_percentage(doorst->selling_value, game.conf.rules[plyr_idx].gameplay.door_sale_percent);
     dungeon->doors_sold++;
     dungeon->manufacture_gold += sell_value;
     destroy_door(thing);

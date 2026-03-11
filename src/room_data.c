@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "room_data.h"
 #include "globals.h"
@@ -54,7 +55,6 @@
 #include "frontmenu_ingame_map.h"
 #include "keeperfx.hpp"
 #include "config_spritecolors.h"
-#include "lua_triggers.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus
@@ -3555,7 +3555,7 @@ static void change_ownership_or_delete_object_thing_in_room(struct Room *room, s
         destroy_object(thing);
         return;
     }
-    if ((game.conf.rules[room->owner].game.classic_bugs_flags & ClscBug_ClaimRoomAllThings) != 0) {
+    if ((game.conf.rules[room->owner].gameplay.classic_bugs_flags & ClscBug_ClaimRoomAllThings) != 0) {
         // Preserve classic bug - object is claimed with the room
         thing->owner = newowner;
         return;
@@ -3839,7 +3839,6 @@ long claim_room(struct Room *room, struct Thing *claimtng)
     room->health = compute_room_max_health(room->slabs_count, room->efficiency);
     add_room_to_players_list(room, claimtng->owner);
     change_room_map_element_ownership(room, claimtng->owner);
-    lua_on_room_owner_change(room, oldowner);
     redraw_room_map_elements(room);
     do_room_unprettying(room, claimtng->owner);
     event_create_event(subtile_coord_center(room->central_stl_x), subtile_coord_center(room->central_stl_y),
@@ -3871,7 +3870,6 @@ long claim_enemy_room(struct Room *room, struct Thing *claimtng)
     room->health = compute_room_max_health(room->slabs_count, room->efficiency);
     add_room_to_players_list(room, claimtng->owner);
     change_room_map_element_ownership(room, claimtng->owner);
-    lua_on_room_owner_change(room, oldowner);
     redraw_room_map_elements(room);
     do_room_unprettying(room, claimtng->owner);
     event_create_event(subtile_coord_center(room->central_stl_x), subtile_coord_center(room->central_stl_y),
@@ -3903,7 +3901,6 @@ long take_over_room(struct Room* room, PlayerNumber newowner)
         room->health = compute_room_max_health(room->slabs_count, room->efficiency);
         add_room_to_players_list(room, newowner);
         change_room_map_element_ownership(room, newowner);
-        lua_on_room_owner_change(room, oldowner);
         redraw_room_map_elements(room);
         do_room_unprettying(room, newowner);
         do_room_integration(room);
@@ -3927,7 +3924,7 @@ void destroy_room_leaving_unclaimed_ground(struct Room *room, TbBool create_rubb
 {
     unsigned long k = 0;
     unsigned long count = room->slabs_count;
-    SlabCodedCoords* slbs = malloc(count * sizeof(SlabCodedCoords));
+    SlabCodedCoords* slbs = KfxAlloc(count * sizeof(SlabCodedCoords));
     SlabCodedCoords i = room->slabs_list;
     while (i != 0)
     {
@@ -3950,7 +3947,7 @@ void destroy_room_leaving_unclaimed_ground(struct Room *room, TbBool create_rubb
         }
         delete_room_slab(slb_x, slb_y, 1); // Note that this function might also delete the whole room
     }
-    free(slbs);
+    KfxFree(slbs);
 }
 
 void destroy_dungeon_heart_room(PlayerNumber plyr_idx, const struct Thing *heartng)

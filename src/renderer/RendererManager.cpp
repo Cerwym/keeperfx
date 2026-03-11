@@ -203,12 +203,3 @@ void RendererEndFrame(void)
     if (s_activeRenderer)
         s_activeRenderer->EndFrame();
 }
-
-void RendererUpdateAnimatedTiles(void)
-{
-#ifdef PLATFORM_VITA
-    RendererVita* r = dynamic_cast<RendererVita*>(s_activeRenderer);
-    if (r)
-        r->GetTileAtlas().UpdateAnimatedTiles();
-#endif
-}

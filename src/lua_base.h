@@ -20,13 +20,18 @@
 #include "globals.h"
 #include "bflib_basics.h"
 #include "bflib_basics.h"
+
+#ifdef KEEPERFX_LUA_AVAILABLE
 #include <lua.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#ifdef KEEPERFX_LUA_AVAILABLE
 TbBool CheckLua(lua_State *L, int result,const char* func);
+#endif
 TbBool open_lua_script(LevelNumber lvnum);
 void close_lua_script();
 
@@ -44,7 +49,9 @@ void lua_set_random_seed(unsigned int seed);
 
 void generate_lua_types_file();
 
+#ifdef KEEPERFX_LUA_AVAILABLE
 extern struct lua_State *Lvl_script;
+#endif
 
 #ifdef __cplusplus
 }

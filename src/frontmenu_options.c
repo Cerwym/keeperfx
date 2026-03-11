@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "frontmenu_options.h"
 #include "globals.h"
@@ -41,9 +42,12 @@
 #include "lvl_script_commands.h"
 #include "lvl_script.h"
 #include "sounds.h"
+#include "renderer/RendererManager.h"
 #include "post_inc.h"
 
+#ifdef SDL_MIXER_AVAILABLE
 #include <SDL2/SDL_mixer.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -102,6 +106,7 @@ char video_cluedo_mode;
 char video_shadows;
 char video_textures;
 char video_view_distance_level;
+char video_renderer;
 /******************************************************************************/
 #ifdef __cplusplus
 }
@@ -286,6 +291,12 @@ void gui_video_gamma_correction(struct GuiButton *gbtn)
     set_players_packet_action(player, PckA_SetGammaLevel, video_gamma_correction, 0, 0, 0);
 }
 
+void gui_video_renderer(struct GuiButton *gbtn)
+{
+    // Cycle between software (0) and opengl (1) — maps to RendererType values 1 and 2
+    RendererSwitch((RendererType)(video_renderer + 1));
+}
+
 int make_audio_slider_linear(int a)
 {
     // slider has a range of 0..255
@@ -392,6 +403,8 @@ void init_video_menu(struct GuiMenu *gmnu)
     video_textures = settings.video_textures;
     video_cluedo_mode = settings.video_cluedo_mode;
     video_gamma_correction = settings.gamma_correction;
+    // Map active renderer type (1=software, 2=opengl) to 0-based toggle index
+    video_renderer = (char)(RendererGetActiveType() - 1);
 }
 
 /**

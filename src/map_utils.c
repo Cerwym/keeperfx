@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "map_utils.h"
 
@@ -196,9 +197,9 @@ void slabs_fill_iterate_from_slab(MapSlabCoord src_slab_x, MapSlabCoord src_slab
 {
     long max_slb_dim_x = (game.map_subtiles_x / STL_PER_SLB);
     long max_slb_dim_y = (game.map_subtiles_y / STL_PER_SLB);
-    MapSlabCoord* stack_x = malloc(max_slb_dim_x * max_slb_dim_y);
-    MapSlabCoord* stack_y = malloc(max_slb_dim_x * max_slb_dim_y);
-    char* visited = malloc(max_slb_dim_x * max_slb_dim_y);
+    MapSlabCoord* stack_x = KfxAlloc(max_slb_dim_x * max_slb_dim_y);
+    MapSlabCoord* stack_y = KfxAlloc(max_slb_dim_x * max_slb_dim_y);
+    char* visited = KfxAlloc(max_slb_dim_x * max_slb_dim_y);
     if (stack_x != NULL && stack_y != NULL && visited != NULL)
     {
         memset(visited, 0, max_slb_dim_x * max_slb_dim_y);
@@ -241,9 +242,9 @@ void slabs_fill_iterate_from_slab(MapSlabCoord src_slab_x, MapSlabCoord src_slab
             }
         }
     }
-    free(stack_x);
-    free(stack_y);
-    free(visited);
+    KfxFree(stack_x);
+    KfxFree(stack_y);
+    KfxFree(visited);
 }
 
 /** Retrieves index for small_around[] array which leads to the area closer to given destination.

@@ -20,6 +20,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "game_legacy.h"
 #include "kjm_input.h"
@@ -1405,10 +1406,7 @@ void process_build_roomspace_inputs(PlayerNumber plyr_idx)
                 looseness = disable_tolerance_layers;
             }
         }
-        if (looseness != player->roomspace_detection_looseness || player->roomspace_mode != roomspace_detection_mode)
-        {
-            set_packet_action(pckt, PckA_SetRoomspaceAuto, looseness, 0, 0, 0);
-        }
+        set_packet_action(pckt, PckA_SetRoomspaceAuto, looseness, 0, 0, 0);
     }
     else if (is_game_key_pressed(Gkey_SquareRoomSpace, &keycode, true)) // Define square room (mouse scroll-wheel changes size - default is 5x5)
     {

@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "engine_redraw.h"
 
@@ -514,7 +515,7 @@ void set_engine_view(struct PlayerInfo *player, long val)
     switch ( val )
     {
     case PVM_EmptyView:
-        set_player_active_camera(player, CamIV_Isometric);
+        player->acamera = &player->cameras[CamIV_Isometric];
         // Allow view mode 0 only for non-local-human players
         if (!is_my_player(player))
             break;
@@ -525,7 +526,7 @@ void set_engine_view(struct PlayerInfo *player, long val)
         val = PVM_CreatureView;
         // fall through
     case PVM_CreatureView:
-        set_player_active_camera(player, CamIV_FirstPerson);
+        player->acamera = &player->cameras[CamIV_FirstPerson];
         sync_local_camera(player);
         if (!is_my_player(player))
             break;
@@ -537,10 +538,8 @@ void set_engine_view(struct PlayerInfo *player, long val)
         break;
     case PVM_IsoWibbleView:
     case PVM_IsoStraightView:
-    {
-        struct Camera *camera = &player->cameras[CamIV_Isometric];
-        set_player_active_camera(player, CamIV_Isometric);
-        camera->view_mode = val;
+        player->acamera = &player->cameras[CamIV_Isometric];
+        player->acamera->view_mode = val;
         sync_local_camera(player);
         if (!is_my_player(player))
             break;
@@ -550,9 +549,8 @@ void set_engine_view(struct PlayerInfo *player, long val)
         S3DSetLineOfSightFunction(dummy_sound_line_of_sight);
         S3DSetDeadzoneRadius(1280);
         break;
-    }
     case PVM_ParchmentView:
-        set_player_active_camera(player, CamIV_Parchment);
+        player->acamera = &player->cameras[CamIV_Parchment];
         sync_local_camera(player);
         if (!is_my_player(player))
             break;
@@ -564,7 +562,7 @@ void set_engine_view(struct PlayerInfo *player, long val)
         // In fade states, keep the settings unchanged
         break;
     case PVM_FrontView:
-        set_player_active_camera(player, CamIV_FrontView);
+        player->acamera = &player->cameras[CamIV_FrontView];
         sync_local_camera(player);
         if (!is_my_player(player))
             break;
@@ -581,8 +579,7 @@ void set_engine_view(struct PlayerInfo *player, long val)
 void draw_overlay_compass(long base_x, long base_y)
 {
     struct PlayerInfo* player = get_my_player();
-    struct Camera* camera = get_player_active_camera(player);
-    struct Camera* cam = get_local_camera(camera);
+    struct Camera* cam = get_local_camera(player->acamera);
     unsigned short flg_mem = lbDisplay.DrawFlags;
     LbTextSetFont(winfont);
     lbDisplay.DrawFlags |= Lb_SPRITE_TRANSPAR4;
@@ -682,7 +679,7 @@ void redraw_isometric_view(void)
     SYNCDBG(6,"Starting");
 
     struct PlayerInfo* player = get_my_player();
-    if (player_invalid(player) || (get_player_active_camera(player) == NULL))
+    if (player->acamera == NULL)
         return;
     TbGraphicsWindow ewnd;
     memset(&ewnd, 0, sizeof(TbGraphicsWindow));
