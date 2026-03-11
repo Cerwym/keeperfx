@@ -110,8 +110,14 @@ enum CustomLoadFlags {
     CLF_LensMists = 0x8
 };
 
+// big_scratch is the permanent gameplay scratch buffer.
+// It is defined in platform_shims.c for all constrained platforms and allocated
+// in PlatformVita::SystemInit() before any gameplay code runs.
+// On PC it is a static array here.
+#ifndef PLATFORM_VITA
 static unsigned char big_scratch_data[1024*1024*16] = {0};
 unsigned char *big_scratch = big_scratch_data;
+#endif
 
 static void compress_raw(struct TbHugeSprite *sprite, unsigned char *src_buf, int x, int y, int w, int h);
 

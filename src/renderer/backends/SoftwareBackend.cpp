@@ -85,7 +85,7 @@ void SoftwareBackend::OnSpriteSheetFreed(const struct TbSpriteSheet* sheet)
     // Software backend uses main RAM sheets - no GPU VRAM management needed
 }
 
-void SoftwareBackend::OnPaletteSet(const unsigned char* lbPalette)
+void SoftwareBackend::OnPaletteSet(const unsigned char* palette)
 {
     // Software backend uses main RAM palette - no GPU texture upload needed
 }

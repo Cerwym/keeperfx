@@ -36,6 +36,8 @@ SDL_Surface * lbScreenSurface;
 /** Internal drawing surface structure.
  *  Sometimes may be same as screen surface. */
 SDL_Surface * lbDrawSurface;
+/** Intermediate surface for format conversion before scaling (RendererSoftware). */
+SDL_Surface * lbScaleSurface;
 
 /******************************************************************************/
 void LbScreenSurfaceInit(struct SSurface *surf)

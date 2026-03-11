@@ -26,6 +26,7 @@
 #include "bflib_vidsurface.h"
 #include "globals.h"
 #include "renderer/RenderPass.h"
+#include "renderer/RenderPass_C.h"
 #include "renderer/IPostProcessPass.h"
 #include "kfx/lense/LensManager.h"
 #include "renderer/vita/VitaTileAtlas.h"
@@ -225,20 +226,9 @@ void RendererVita::EndFrame()
             { 0.0f, 0.0f }, { u1, 0.0f }, { 0.0f, v1 }, { u1, v1 },
         };
 
-        // Collect GPU-side post-process passes from active lens effects.
-        // These run on the GPU instead of the CPU lens path in LensManager.
+        // GPU lens post-process passes (GetEffects/GetGPUPass not yet implemented)
         std::vector<IPostProcessPass*> gpu_passes;
-        {
-            LensManager* lm = LensManager::GetInstance();
-            if (lm && lm->IsReady()) {
-                for (LensEffect* e : lm->GetEffects()) {
-                    if (e->IsEnabled()) {
-                        IPostProcessPass* p = e->GetGPUPass();
-                        if (p) gpu_passes.push_back(p);
-                    }
-                }
-            }
-        }
+        // TODO: when LensEffect::GetGPUPass() is added, collect here:
 
         // Stage 1 — palette decode: index_tex + palette_tex → (scene FBO when GPU
         //   passes are active, directly to screen when running CPU-only effects).

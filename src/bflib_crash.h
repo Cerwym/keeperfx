@@ -30,6 +30,7 @@ extern "C" {
 /******************************************************************************/
 void LbErrorParachuteInstall(void);
 void LbErrorParachuteUpdate(void);
+void ctrl_handler(int sig_id);
 /******************************************************************************/
 #ifdef __cplusplus
 }

@@ -8,6 +8,7 @@
 
 #include "RenderPassProfiler.h"
 #include "bflib_basics.h"
+#include "../globals.h"
 
 RenderPassProfiler* RenderPassProfiler::s_instance = nullptr;
 

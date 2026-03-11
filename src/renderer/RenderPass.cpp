@@ -198,7 +198,7 @@ TbBool RenderPass_Initialize(int backend_type)
     }
     
     return RenderPassSystem::GetInstance().Initialize(bt) ? 1 : 0; // TRUE or FALSE
-
+}
 
 void RenderPass_Shutdown(void)
 {

@@ -16,6 +16,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 
 #include "bflib_basics.h"
@@ -894,21 +895,26 @@ HitPoints get_thing_max_health(const struct Thing *thing)
 {
     switch (thing->class_id)
     {
-    case TCls_Creature:
+    case TCls_Creature: {
         struct CreatureControl* cctrl = creature_control_get_from_thing(thing);
         return cctrl->max_health;
-    case TCls_Object:
+    }
+    case TCls_Object: {
         struct ObjectConfigStats* objst = get_object_model_stats(thing->model);
         return objst->health;
-    case TCls_Door:
+    }
+    case TCls_Door: {
         struct DoorConfigStats* doorst = get_door_model_stats(thing->model);
         return doorst->health;
-    case TCls_Shot:
+    }
+    case TCls_Shot: {
         struct ShotConfigStats* shotst = get_shot_model_stats(thing->model);
         return shotst->health;
-    case TCls_Trap:
+    }
+    case TCls_Trap: {
         struct TrapConfigStats* trapst = get_trap_model_stats(thing->model);
         return trapst->health;
+    }
     case TCls_EffectElem:
     case TCls_EffectGen:
     default:

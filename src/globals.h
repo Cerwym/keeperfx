@@ -31,11 +31,13 @@
 #include <time.h>
 #include <assert.h>
 
-#if defined(unix) && !defined(GO32)
+#if (defined(unix) && !defined(GO32)) || defined(__vita__) || defined(__3DS__) || defined(__SWITCH__)
 #include <unistd.h>
 #include <signal.h>
+#ifndef __vita__
 #include <sys/ioctl.h>
 #include <termios.h>
+#endif
 #if !defined(stricmp)
 #define stricmp strcasecmp
 #endif
@@ -69,10 +71,10 @@ extern "C" {
 
 // Basic Definitions
 
-#if defined(unix) && !defined (GO32)
-#define SEPARATOR "/"
-#else
+#ifdef _WIN32
 #define SEPARATOR "\\"
+#else
+#define SEPARATOR "/"
 #endif
 
 #ifndef __cplusplus

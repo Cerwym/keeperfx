@@ -18,6 +18,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_vidraw.h"
 
@@ -33,6 +34,7 @@
 #include "bflib_sprite.h"
 #include "bflib_mouse.h"
 #include "bflib_render.h"
+#include "renderer/RenderPass_C.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus

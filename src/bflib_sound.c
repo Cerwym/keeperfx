@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_sound.h"
 
@@ -797,10 +798,12 @@ long speech_sample_playing(void)
          return false;
      }
      SYNCDBG(17,"Starting");
+#ifdef SDL_MIXER_AVAILABLE
      if (Mix_Playing(MIX_SPEECH_CHANNEL))
      {
          return true;
      }
+#endif
      long sp_emiter = SpeechEmitter;
      if (sp_emiter != 0)
      {

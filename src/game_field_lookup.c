@@ -15,6 +15,9 @@
 #include "globals.h"
 #include <string.h>
 
+/* gpGame points to the single Game instance defined in game_legacy.c */
+#define gpGame (&game)
+
 /******************************************************************************/
 
 /**
@@ -84,7 +87,7 @@ static const GameFieldDef game_field_defs[] = {
 
 void* game_resolve_field(const char *field_name)
 {
-    if (!field_name || !gpGame) {
+    if (!field_name) {
         return NULL;
     }
     
