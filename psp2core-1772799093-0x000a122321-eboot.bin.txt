@@ -1,0 +1,126 @@
+﻿=== THREADS ===
+    KFXV00001
+        ID: 0x40010003
+        Stop reason: 0x30004 (Data abort exception)
+        Status: 0x1 (Running)
+        PC: 0x81208ee4 (keeperfx@1 + 0x1c8ee4)
+    SceCommonDialogWorker
+        ID: 0x400100c3
+        Stop reason: 0x0 (No reason)
+        Status: 0x8 (Waiting)
+        PC: 0xe0011c14 (SceLibKernel@1 + 0x6304)
+    Garbage Collector
+        ID: 0x4001015b
+        Stop reason: 0x0 (No reason)
+        Status: 0x8 (Waiting)
+        PC: 0xe0011c14 (SceLibKernel@1 + 0x6304)
+    SceGxmDisplayQueue
+        ID: 0x40010167
+        Stop reason: 0x0 (No reason)
+        Status: 0x8 (Waiting)
+        PC: 0xe0012024 (SceLibKernel@1 + 0x6714)
+
+=== THREAD "KFXV00001" <0x40010003> CRASHED (Data abort exception) ===
+
+DISASSEMBLY AROUND PC: 0x81208ee4 (ARM):
+[90m[0m
+[90m811c8ed4 <LbGrabMouseCheck+0xe>:[0m
+[90m811c8ed4:	13b2      	asrs	r2, r6, #14[0m
+[90m811c8ed6:	781b      	ldrb	r3, [r3, #0][0m
+[90m811c8ed8:	73bb      	strb	r3, [r7, #14][0m
+[90m811c8eda:	f242 63e0 	movw	r3, #9952	; 0x26e0[0m
+[90m811c8ede:	f2c8 13ab 	movt	r3, #33195	; 0x81ab[0m
+[90m811c8ee2:	681b      	ldr	r3, [r3, #0][0m
+[91m!!! 		795b      	ldrb	r3, [r3, #5] !!![0m
+[90m811c8ee6:	f003 0301 	and.w	r3, r3, #1[0m
+[90m811c8eea:	2b00      	cmp	r3, #0[0m
+[90m811c8eec:	bf14      	ite	ne[0m
+[90m811c8eee:	2301      	movne	r3, #1[0m
+[90m811c8ef0:	2300      	moveq	r3, #0[0m
+[90m811c8ef2:	b2db      	uxtb	r3, r3[0m
+[90m[0m
+
+DISASSEMBLY AROUND LR: 0x81208ec2 (Thumb):
+[90m[0m
+[90m811c8eb2 <LbSetMouseGrab+0x118>:[0m
+[90m811c8eb2:	3710      	adds	r7, #16[0m
+[90m811c8eb4:	46bd      	mov	sp, r7[0m
+[90m811c8eb6:	bd80      	pop	{r7, pc}[0m
+[90m[0m
+[90m811c8eb8 <LbGrabMouseInit>:[0m
+[90m811c8eb8:	b580      	push	{r7, lr}[0m
+[90m811c8eba:	af00      	add	r7, sp, #0[0m
+[90m811c8ebc:	2001      	movs	r0, #1[0m
+[90m811c8ebe:	f000 f802 	bl	811c8ec6 <LbGrabMouseCheck>[0m
+[91m!!! 		bf00      	nop !!![0m
+[90m811c8ec4:	bd80      	pop	{r7, pc}[0m
+[90m[0m
+[90m811c8ec6 <LbGrabMouseCheck>:[0m
+[90m811c8ec6:	b580      	push	{r7, lr}[0m
+[90m811c8ec8:	b084      	sub	sp, #16[0m
+[90m811c8eca:	af00      	add	r7, sp, #0[0m
+[90m811c8ecc:	6078      	str	r0, [r7, #4][0m
+[90m811c8ece:	f64d 13c4 	movw	r3, #55748	; 0xd9c4[0m
+[90m[0m
+REGISTERS:
+    R0: 0x1
+    R1: 0x81860e18
+    R2: 0x0
+    R3: 0x0
+    R4: 0x280
+    R5: 0x0
+    R6: 0x4
+    R7: 0x83600d20
+    R8: 0xdeadbeef
+    R9: 0xdeadbeef
+    R10: 0xdeadbeef
+    R11: 0xdeadbeef
+    R12: 0x100400
+    SP: 0x83600d20
+    PC: 0x81208ee4 (keeperfx@1 + 0x1c8ee4)
+    LR: 0x81208ec3 (keeperfx@1 + 0x1c8ec3)
+
+STACK CONTENTS AROUND SP:
+          0x83600ce0: 0x83600ce8
+          0x83600ce4: 0x8120b18f (keeperfx@1 + 0x1cb18f)
+          0x83600ce8: 0x81860e18 (keeperfx@2 + 0x160e18)
+          0x83600cec: 0x83600d0c
+          0x83600cf0: 0x83600cf8
+          0x83600cf4: 0x8120ac1b (keeperfx@1 + 0x1cac1b)
+          0x83600cf8: 0x280
+          0x83600cfc: 0x0
+          0x83600d00: 0x0
+          0x83600d04: 0x81c2da08 (keeperfx@2 + 0x52da08)
+          0x83600d08: 0x8bda93c0
+          0x83600d0c: 0x81c2da0c (keeperfx@2 + 0x52da0c)
+          0x83600d10: 0x83600d28
+          0x83600d14: 0x280
+          0x83600d18: 0x83600d28
+          0x83600d1c: 0x8120a2cd (keeperfx@1 + 0x1ca2cd)
+    SP => 0x83600d20: 0x1e0
+          0x83600d24: 0x1
+          0x83600d28: 0x1e0
+          0x83600d2c: 0x10280
+          0x83600d30: 0x83600d38
+          0x83600d34: 0x81208ec3 (keeperfx@1 + 0x1c8ec3)
+          0x83600d38: 0x83600d40
+          0x83600d3c: 0x81209eeb (keeperfx@1 + 0x1c9eeb)
+          0x83600d40: 0x0
+          0x83600d44: 0x0
+          0x83600d48: 0x1e0
+          0x83600d4c: 0x280
+          0x83600d50: 0x0
+          0x83600d54: 0x280
+          0x83600d58: 0x83600d60
+          0x83600d5c: 0x81200e8d (keeperfx@1 + 0x1c0e8d)
+          0x83600d60: 0x1e0
+          0x83600d64: 0x280
+          0x83600d68: 0x80
+          0x83600d6c: 0x1
+          0x83600d70: 0x0
+          0x83600d74: 0x2
+          0x83600d78: 0x83600d88
+          0x83600d7c: 0x812012c9 (keeperfx@1 + 0x1c12c9)
+
+=== Symbolicated call stack ===
+

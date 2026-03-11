@@ -1,0 +1,106 @@
+=== THREADS ===
+    KFXV00001
+        ID: 0x40010003
+        Stop reason: 0x30004 (Data abort exception)
+        Status: 0x1 (Running)
+        PC: 0x811b9a1c (keeperfx@1 + 0x14da1c)
+    SceCommonDialogWorker
+        ID: 0x400100c3
+        Stop reason: 0x0 (No reason)
+        Status: 0x8 (Waiting)
+        PC: 0xe0011c14 (SceLibKernel@1 + 0x6304)
+
+=== THREAD "KFXV00001" <0x40010003> CRASHED (Data abort exception) ===
+
+DISASSEMBLY AROUND PC: 0x811b9a1c (ARM):
+[90m[0m
+[90m8114da0c <set_packet_pause_toggle+0x1c2>:[0m
+[90m8114da0c:	e000      	b.n	8114da10 <set_packet_pause_toggle+0x1c6>[0m
+[90m8114da0e:	bf00      	nop[0m
+[90m8114da10:	370c      	adds	r7, #12[0m
+[90m8114da12:	46bd      	mov	sp, r7[0m
+[90m8114da14:	bd90      	pop	{r4, r7, pc}[0m
+[90m[0m
+[90m8114da16 <__wrap_malloc>:[0m
+[90m8114da16:	b590      	push	{r4, r7, lr}[0m
+[90m8114da18:	b085      	sub	sp, #20[0m
+[90m8114da1a:	af00      	add	r7, sp, #0[0m
+[91m!!! 		6078      	str	r0, [r7, #4] !!![0m
+[90m8114da1e:	f642 2094 	movw	r0, #10900	; 0x2a94[0m
+[90m8114da22:	f2c8 1060 	movt	r0, #33120	; 0x8160[0m
+[90m8114da26:	f355 fbff 	bl	814a3228 <__emutls_get_address>[0m
+[90m8114da2a:	4603      	mov	r3, r0[0m
+[90m[0m
+
+DISASSEMBLY AROUND LR: 0x8150f146 (Thumb):
+[90m[0m
+[90m814a3136 <emutls_alloc+0x2>:[0m
+[90m814a3136:	4604      	mov	r4, r0[0m
+[90m814a3138:	e9d0 6500 	ldrd	r6, r5, [r0][0m
+[90m814a313c:	2d04      	cmp	r5, #4[0m
+[90m814a313e:	d80e      	bhi.n	814a315e <emutls_alloc+0x2a>[0m
+[90m814a3140:	1d30      	adds	r0, r6, #4[0m
+[90m814a3142:	f4aa fc68 	bl	8114da16 <__wrap_malloc>[0m
+[91m!!! 		b1f8      	cbz	r0, 814a3188 <emutls_alloc+0x54> !!![0m
+[90m814a3148:	68e1      	ldr	r1, [r4, #12][0m
+[90m814a314a:	1d03      	adds	r3, r0, #4[0m
+[90m814a314c:	6000      	str	r0, [r0, #0][0m
+[90m814a314e:	4632      	mov	r2, r6[0m
+[90m814a3150:	4618      	mov	r0, r3[0m
+[90m814a3152:	b1a1      	cbz	r1, 814a317e <emutls_alloc+0x4a>[0m
+[90m814a3154:	Address 0x00000000814a3154 is out of bounds.[0m
+[90m[0m
+[90m[0m
+REGISTERS:
+    R0: 0x8
+    R1: 0x1
+    R2: 0x1
+    R3: 0x1
+    R4: 0x81702a94
+    R5: 0x4
+    R6: 0x4
+    R7: 0x83200ff0
+    R8: 0xdeadbeef
+    R9: 0xdeadbeef
+    R10: 0xdeadbeef
+    R11: 0xdeadbeef
+    R12: 0x0
+    SP: 0x83200ff0
+    PC: 0x811b9a1c (keeperfx@1 + 0x14da1c)
+    LR: 0x8150f147 (keeperfx@1 + 0x4a3147)
+
+STACK CONTENTS AROUND SP:
+          0x83201000: 0x1ca73695
+          0x83201004: 0x81702a94 (keeperfx@2 + 0x2a94)
+          0x83201008: 0x83201040
+          0x8320100c: 0x8150f147 (keeperfx@1 + 0x4a3147)
+          0x83201010: 0x81702a94 (keeperfx@2 + 0x2a94)
+          0x83201014: 0x81702a94 (keeperfx@2 + 0x2a94)
+          0x83201018: 0x4
+          0x8320101c: 0x8150f27b (keeperfx@1 + 0x4a327b)
+          0x83201020: 0x1
+          0x83201024: 0x81702a94 (keeperfx@2 + 0x2a94)
+          0x83201028: 0x4
+          0x8320102c: 0x4
+          0x83201030: 0x83201040
+          0x83201034: 0xdeadbeef
+          0x83201038: 0xdeadbeef
+          0x8320103c: 0x811b9a2b (keeperfx@1 + 0x14da2b)
+          0x83201040: 0xffffffff
+          0x83201044: 0x8
+          0x83201048: 0xffffffff
+          0x8320104c: 0xffffffff
+
+=== Symbolicated call stack ===
+  keeperfx@1+0x14da1c  =>  0x8114da1c
+__wrap_malloc
+/src/src/platform/vita_malloc_wrap.c:50
+  keeperfx@1+0x14da2b  =>  0x8114da2b
+__wrap_malloc
+/src/src/platform/vita_malloc_wrap.c:51
+  keeperfx@1+0x4a3147  =>  0x814a3147
+emutls_alloc
+emutls.c:?
+  keeperfx@1+0x4a327b  =>  0x814a327b
+__emutls_get_address
+??:?

@@ -1,0 +1,14 @@
+/* vita_blit_f.cg — Vita palette-blit fragment shader
+ * Samples an 8-bit index texture (GL_LUMINANCE), uses the index as an X
+ * coordinate into a 256x1 RGBA palette texture to produce the final colour.
+ * Compiled at build time with: psp2cgc -profile sce_fp_psp2 -Wperf -O2
+ */
+void main(
+    float2 vUV : TEXCOORD0,
+    out float4 fragColor : COLOR,
+    uniform sampler2D indexTex   : TEXUNIT0,
+    uniform sampler2D paletteTex : TEXUNIT1
+) {
+    float idx = tex2D(indexTex, vUV).r;
+    fragColor = tex2D(paletteTex, float2(idx, 0.5f));
+}

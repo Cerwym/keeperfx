@@ -2,6 +2,7 @@
 #include "backends/IBackend.h"
 #include "backends/SoftwareBackend.h"
 #include "backends/VitaGPUBackend.h"
+#include "RenderPassProfiler.h"
 #include "bflib_basics.h"
 #include <cstdio>
 
@@ -37,21 +38,17 @@ bool RenderPassSystem::Initialize(BackendType backend)
     // Select backend
     switch (backend) {
         case BACKEND_GPU_VITA:
-            SYNCLOG("RenderPassSystem: Selecting GPU_VITA backend");
             m_backend = new VitaGPUBackend();
             break;
             
         case BACKEND_SOFTWARE:
-            SYNCLOG("RenderPassSystem: Selecting SOFTWARE backend");
             m_backend = new SoftwareBackend();
             break;
             
         case BACKEND_AUTO:
 #if defined(__VITA__)
-            SYNCLOG("RenderPassSystem: Auto-selecting GPU_VITA backend (Vita platform)");
             m_backend = new VitaGPUBackend();
 #else
-            SYNCLOG("RenderPassSystem: Auto-selecting SOFTWARE backend (non-Vita platform)");
             m_backend = new SoftwareBackend();
 #endif
             break;
@@ -79,14 +76,12 @@ bool RenderPassSystem::Initialize(BackendType backend)
     }
 #endif
     
-    SYNCLOG("RenderPassSystem initialized with backend: %s", GetBackendName());
     return true;
 }
 
 void RenderPassSystem::Shutdown()
 {
     if (m_backend) {
-        SYNCLOG("RenderPassSystem: Shutting down (%s)", GetBackendName());
         delete m_backend;
         m_backend = nullptr;
     }
@@ -103,53 +98,33 @@ const char* RenderPassSystem::GetBackendName() const
 TbResult RenderPassSystem::SubmitSprite(long x, long y, const struct TbSprite* spr, 
                                         unsigned int draw_flags)
 {
-    if (!m_backend) {
-        ERRORLOG("SubmitSprite called without initialized backend");
+    if (!m_backend || !spr) {
         return Lb_FAIL;
     }
     
-    if (!spr) {
-        ERRORLOG("SubmitSprite called with NULL sprite");
-        return Lb_FAIL;
-    }
-    
+    RenderPassProfiler::GetInstance().RecordSubmission();
     return m_backend->SubmitSprite(x, y, spr, draw_flags);
 }
 
 TbResult RenderPassSystem::SubmitSpriteOneColour(long x, long y, const struct TbSprite* spr,
                                                  unsigned char colour, unsigned int draw_flags)
 {
-    if (!m_backend) {
-        ERRORLOG("SubmitSpriteOneColour called without initialized backend");
+    if (!m_backend || !spr) {
         return Lb_FAIL;
     }
     
-    if (!spr) {
-        ERRORLOG("SubmitSpriteOneColour called with NULL sprite");
-        return Lb_FAIL;
-    }
-    
+    RenderPassProfiler::GetInstance().RecordSubmission();
     return m_backend->SubmitSpriteOneColour(x, y, spr, colour, draw_flags);
 }
 
 TbResult RenderPassSystem::SubmitSpriteRemap(long x, long y, const struct TbSprite* spr,
                                              const unsigned char* colortable, unsigned int draw_flags)
 {
-    if (!m_backend) {
-        ERRORLOG("SubmitSpriteRemap called without initialized backend");
+    if (!m_backend || !spr || !colortable) {
         return Lb_FAIL;
     }
     
-    if (!spr) {
-        ERRORLOG("SubmitSpriteRemap called with NULL sprite");
-        return Lb_FAIL;
-    }
-    
-    if (!colortable) {
-        ERRORLOG("SubmitSpriteRemap called with NULL color table");
-        return Lb_FAIL;
-    }
-    
+    RenderPassProfiler::GetInstance().RecordSubmission();
     return m_backend->SubmitSpriteRemap(x, y, spr, colortable, draw_flags);
 }
 
@@ -162,6 +137,7 @@ TbResult RenderPassSystem::SubmitUISprite(long x, long y, const struct TbSprite*
 
 void RenderPassSystem::BeginFrame()
 {
+    RenderPassProfiler::GetInstance().BeginFrame();
     if (!m_backend) {
         return;
     }
@@ -174,16 +150,12 @@ void RenderPassSystem::EndFrame()
         return;
     }
     m_backend->EndFrame();
+    RenderPassProfiler::GetInstance().EndFrame();
 }
 
 void RenderPassSystem::OnSpriteSheetLoaded(const struct TbSpriteSheet* sheet)
 {
-    if (!m_backend) {
-        return;
-    }
-    
-    if (!sheet) {
-        ERRORLOG("OnSpriteSheetLoaded called with NULL sheet");
+    if (!m_backend || !sheet) {
         return;
     }
     
@@ -192,12 +164,7 @@ void RenderPassSystem::OnSpriteSheetLoaded(const struct TbSpriteSheet* sheet)
 
 void RenderPassSystem::OnSpriteSheetFreed(const struct TbSpriteSheet* sheet)
 {
-    if (!m_backend) {
-        return;
-    }
-    
-    if (!sheet) {
-        ERRORLOG("OnSpriteSheetFreed called with NULL sheet");
+    if (!m_backend || !sheet) {
         return;
     }
     
@@ -206,12 +173,7 @@ void RenderPassSystem::OnSpriteSheetFreed(const struct TbSpriteSheet* sheet)
 
 void RenderPassSystem::OnPaletteSet(const unsigned char* lbPalette)
 {
-    if (!m_backend) {
-        return;
-    }
-    
-    if (!lbPalette) {
-        ERRORLOG("OnPaletteSet called with NULL palette");
+    if (!m_backend || !lbPalette) {
         return;
     }
     
@@ -232,12 +194,11 @@ TbBool RenderPass_Initialize(int backend_type)
         case 1: bt = RenderPassSystem::BACKEND_GPU_VITA; break;
         case 2: bt = RenderPassSystem::BACKEND_SOFTWARE; break;
         default:
-            ERRORLOG("RenderPass_Initialize: Invalid backend type: %d", backend_type);
             return 0; // FALSE
     }
     
     return RenderPassSystem::GetInstance().Initialize(bt) ? 1 : 0; // TRUE or FALSE
-}
+
 
 void RenderPass_Shutdown(void)
 {

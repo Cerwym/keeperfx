@@ -1,0 +1,134 @@
+name: CI Homebrew
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  build-homebrew:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.container }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: PS Vita
+            preset: vita-release
+            container: ghcr.io/${{ github.repository_owner }}/build-vitasdk:latest
+            artifact-name: keeperfx-vita
+
+          - name: PS Vita Debug
+            preset: vita-debug
+            container: ghcr.io/${{ github.repository_owner }}/build-vitasdk:latest
+            artifact-name: keeperfx-vita-debug
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Mark git directory as safe
+        run: git config --global --add safe.directory '*'
+
+      # PS Vita: fish47/FFmpeg-vita provides hardware-accelerated SCE decoders
+      # (aac_vita, mp3_vita, h264_vita) needed for audio/video on real hardware.
+      # Cached by a version tag — bump 'v1' here to force a rebuild.
+      - name: Cache FFmpeg-vita
+        if: matrix.preset == 'vita-release'
+        id: cache-ffmpeg-vita
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/vitasdk/arm-vita-eabi/lib/libavformat.a
+            /usr/local/vitasdk/arm-vita-eabi/lib/libavcodec.a
+            /usr/local/vitasdk/arm-vita-eabi/lib/libavutil.a
+            /usr/local/vitasdk/arm-vita-eabi/lib/libswresample.a
+            /usr/local/vitasdk/arm-vita-eabi/include/libavformat
+            /usr/local/vitasdk/arm-vita-eabi/include/libavcodec
+            /usr/local/vitasdk/arm-vita-eabi/include/libavutil
+            /usr/local/vitasdk/arm-vita-eabi/include/libswresample
+          key: ffmpeg-vita-fish47-v3
+
+      - name: Build FFmpeg-vita
+        if: matrix.preset == 'vita-release' && steps.cache-ffmpeg-vita.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/fish47/FFmpeg-vita.git /tmp/FFmpeg-vita
+          cd /tmp/FFmpeg-vita
+          # fish47/FFmpeg-vita omits Smacker source files. Inject them from mainline
+          # FFmpeg 6.0.1 (same base version: libavformat 60.3.100). The Makefile entries
+          # and allformats/allcodecs registrations are already present in the fork.
+          curl -fsSL https://raw.githubusercontent.com/FFmpeg/FFmpeg/n6.0.1/libavformat/smacker.c \
+               -o libavformat/smacker.c
+          curl -fsSL https://raw.githubusercontent.com/FFmpeg/FFmpeg/n6.0.1/libavcodec/smacker.c \
+               -o libavcodec/smacker.c
+          ./configure \
+            --target-os=vita \
+            --enable-vita \
+            --disable-shared \
+            --disable-programs \
+            --disable-doc \
+            --disable-debug \
+            --enable-static \
+            --enable-small \
+            --prefix=$VITASDK/arm-vita-eabi \
+            --disable-everything \
+            --enable-decoder=aac_vita,mp3_vita,aac,adpcm_ima_qt,alac,flac,mp3,opus,pcm_s16le,pcm_s24le,pcm_s32le,vorbis,smacker,smackaud \
+            --enable-demuxer=aac,mp3,mp4,m4a,matroska,flac,ogg,opus,wav,smacker \
+            --enable-muxer=null \
+            --enable-parser=aac,mpegaudio,vorbis,opus \
+            --enable-protocol=file \
+            --disable-network \
+            --disable-bzlib
+          make -j$(nproc)
+          make install
+
+      # All vita presets use vitaGL. Install vitashark + mathneon (vitaGL compile/link deps)
+      # via vdpm. vitaGL itself is built from source by CMake's ExternalProject_Add (flags
+      # live in CMakeLists.txt). Cache the ExternalProject output so CI doesn't re-clone
+      # and rebuild vitaGL on every run; cache key includes CMakeLists.txt so it
+      # invalidates automatically when the build flags change.
+      - name: Install vitaGL dependencies (vitashark, mathneon)
+        run: |
+          set -eux
+          $VITASDK/bin/vdpm vitashark mathneon
+
+      - name: Cache vitaGL (ExternalProject build)
+        uses: actions/cache@v4
+        with:
+          path: |
+            out/build/${{ matrix.preset }}/_deps/vitagl-src
+            out/build/${{ matrix.preset }}/_deps/vitagl-src-stamp
+            /usr/local/vitasdk/arm-vita-eabi/lib/libvitaGL.a
+            /usr/local/vitasdk/arm-vita-eabi/include/vitaGL.h
+          key: vitagl-externalproject-${{ matrix.preset }}-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Configure CMake
+        uses: lukka/run-cmake@v10
+        with:
+          configurePreset: ${{ matrix.preset }}
+
+      - name: Build
+        uses: lukka/run-cmake@v10
+        with:
+          buildPreset: ${{ matrix.preset }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: |
+            out/build/${{ matrix.preset }}/*.3dsx
+            out/build/${{ matrix.preset }}/*.cia
+            out/build/${{ matrix.preset }}/*.vpk
+            out/build/${{ matrix.preset }}/*.nro
+            out/build/${{ matrix.preset }}/*.elf
+          if-no-files-found: warn

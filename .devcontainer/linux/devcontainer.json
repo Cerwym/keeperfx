@@ -1,0 +1,54 @@
+// KeeperFX Dev Container — Linux x64 (native build)
+//
+// Opens the repository inside the keeperfx-build-linux Docker image —
+// the same environment used by CI. Native gcc/g++ build with system
+// SDL2, OpenAL, FFmpeg, LuaJIT, and all dev headers pre-installed.
+//
+// Worktree-safe: uses /workspaces/ mount path (not /src) so the Dev
+// Containers extension auto-detects git worktrees and mounts the main
+// .git directory alongside the workspace.
+//
+// Usage:
+//   1. Install the "Dev Containers" extension (ms-vscode-remote.remote-containers)
+//   2. Cmd/Ctrl+Shift+P → "Dev Containers: Reopen in Container"
+//   3. Select "KeeperFX — Linux (native x64 build)"
+//
+// Inside the container, build with cmake directly — no docker compose wrapper:
+//   cmake --preset linux-x64-release && cmake --build --preset linux-x64-release
+{
+	"name": "KeeperFX — Linux (native x64 build)",
+	"image": "ghcr.io/cerwym/keeperfx-build-linux:latest",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind",
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools",
+				"eamodio.gitlens",
+				"github.vscode-pull-request-github"
+			],
+			"settings": {
+				"C_Cpp.default.configurationName": "Linux x64",
+				"C_Cpp.default.compileCommands": "${workspaceFolder}/out/build/linux-x64-release/compile_commands.json",
+				"C_Cpp.default.compilerPath": "/usr/bin/gcc",
+				"C_Cpp.default.intelliSenseMode": "linux-gcc-x64",
+				"C_Cpp.default.cStandard": "gnu11",
+				"C_Cpp.default.cppStandard": "gnu++20",
+				"cmake.configureOnOpen": false,
+				"cmake.autoSelectActiveFolder": false
+			}
+		}
+	},
+
+	// Bind-mount sibling Vita reference repos from the Windows host.
+	// These are read-only references and are not committed to SCM.
+	"mounts": [
+		"source=C:/Users/peter/source/repos/vita/d3es-vita,target=/workspaces/d3es-vita,type=bind,readonly",
+		"source=C:/Users/peter/source/repos/vita/vitaQuakeIII,target=/workspaces/vitaQuakeIII,type=bind,readonly"
+	],
+
+	// Fix broken git worktree pointers (host paths don't exist in container),
+	// then ensure compile_commands.json has correct /workspaces/ paths.
+	"postStartCommand": "bash .devcontainer/fix-git-worktree.sh && bash .devcontainer/fix-intellisense.sh linux-x64-release"
+}
