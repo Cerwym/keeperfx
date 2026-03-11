@@ -1,84 +1,38 @@
 {
     "configurations": [
         {
-            "name": "WSL MinGW",
-            "includePath": [
-                "${workspaceFolder}/src",
-                "${workspaceFolder}/deps/zlib/include",
-                "${workspaceFolder}/deps/spng/include",
-                "${workspaceFolder}/sdl/include",
-                "${workspaceFolder}/sdl/include/SDL2",
-                "${workspaceFolder}/deps/enet/include",
-                "${workspaceFolder}/deps/centijson/include",
-                "${workspaceFolder}/deps/astronomy/include",
-                "${workspaceFolder}/deps/openal/include",
-                "${workspaceFolder}/deps/luajit/include",
-                "${workspaceFolder}/deps/miniupnpc/include",
-                "${workspaceFolder}/deps/libnatpmp/include"
-            ],
-            "defines": [
-                "SPNG_STATIC=1",
-                "AL_LIBTYPE_STATIC",
-                "USE_PRE_FILE=1",
-                "BFDEBUG_LEVEL=0"
-            ],
+            // IntelliSense for Windows x86 desktop build (cross-compiled via Docker mingw32).
+            // Run "Generate compile_commands.json" task first to populate the database.
+            "name": "Docker MinGW (Windows x86 Debug)",
+            "compileCommands": "${workspaceFolder}/out/build/windows-x86-debug/compile_commands.json",
             "cStandard": "gnu11",
-            "cppStandard": "gnu++14",
-            "intelliSenseMode": "windows-gcc-x86",
-            "compileCommands": "${workspaceFolder}/compile_commands.json"
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "windows-gcc-x86"
         },
         {
-            "name": "Linux MinGW",
-            "includePath": [
-                "${workspaceFolder}/src",
-                "${workspaceFolder}/deps/zlib/include",
-                "${workspaceFolder}/deps/spng/include",
-                "${workspaceFolder}/sdl/include",
-                "${workspaceFolder}/sdl/include/SDL2",
-                "${workspaceFolder}/deps/enet/include",
-                "${workspaceFolder}/deps/centijson/include",
-                "${workspaceFolder}/deps/astronomy/include",
-                "${workspaceFolder}/deps/openal/include",
-                "${workspaceFolder}/deps/luajit/include",
-                "${workspaceFolder}/deps/miniupnpc/include",
-                "${workspaceFolder}/deps/libnatpmp/include"
-            ],
-            "defines": [
-                "SPNG_STATIC=1",
-                "AL_LIBTYPE_STATIC",
-                "USE_PRE_FILE=1",
-                "BFDEBUG_LEVEL=0"
-            ],
-            "compilerPath": "/usr/bin/i686-w64-mingw32-gcc",
+            // IntelliSense for PS Vita builds. Run "Build Vita Debug" task first to
+            // populate compile_commands.json. Paths in the file are /src/... (Docker
+            // mount) — cpptools resolves them via the compileCommands database.
+            "name": "PS Vita (vita-debug)",
+            "compileCommands": "${workspaceFolder}/out/build/vita-debug/compile_commands.json",
             "cStandard": "gnu11",
-            "cppStandard": "gnu++14",
-            "intelliSenseMode": "linux-gcc-x86"
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-arm"
         },
         {
-            "name": "Windows MinGW",
-            "includePath": [
-                "${workspaceFolder}/src",
-                "${workspaceFolder}/deps/zlib/include",
-                "${workspaceFolder}/deps/spng/include",
-                "${workspaceFolder}/sdl/include",
-                "${workspaceFolder}/sdl/include/SDL2",
-                "${workspaceFolder}/deps/enet/include",
-                "${workspaceFolder}/deps/centijson/include",
-                "${workspaceFolder}/deps/astronomy/include",
-                "${workspaceFolder}/deps/openal/include",
-                "${workspaceFolder}/deps/luajit/include",
-                "${workspaceFolder}/deps/miniupnpc/include",
-                "${workspaceFolder}/deps/libnatpmp/include"
-            ],
-            "defines": [
-                "SPNG_STATIC=1",
-                "AL_LIBTYPE_STATIC",
-                "USE_PRE_FILE=1",
-                "BFDEBUG_LEVEL=0"
-            ],
-            "compilerPath": "C:\\msys64\\mingw32\\bin\\gcc.exe",
+            // Linux native build IntelliSense. Run "Build Linux x64" task first.
+            "name": "Linux x64",
+            "compileCommands": "${workspaceFolder}/out/build/linux-x64-release/compile_commands.json",
             "cStandard": "gnu11",
-            "cppStandard": "gnu++14",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64"
+        },
+        {
+            // Windows x86 release build IntelliSense. Run "Build Windows x86 Release" task first.
+            "name": "Docker MinGW (Windows x86 Release)",
+            "compileCommands": "${workspaceFolder}/out/build/windows-x86-release/compile_commands.json",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++17",
             "intelliSenseMode": "windows-gcc-x86"
         }
     ],
