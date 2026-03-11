@@ -10,6 +10,6 @@ FROM ghcr.io/cerwym/build-vitasdk:latest
 # gdb-multiarch works as a drop-in replacement for remote debugging.
 # python3-pip + pyelftools: needed by tools/vita-parse-crash.sh (crash dump parser).
 RUN apt-get update -qq \
-    && apt-get install -y -qq --no-install-recommends gdb-multiarch python3-pip \
+    && apt-get install -y -qq --no-install-recommends gdb-multiarch python3-pip netcat-openbsd \
     && pip3 install --no-cache-dir pyelftools \
     && rm -rf /var/lib/apt/lists/*
