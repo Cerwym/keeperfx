@@ -17,6 +17,7 @@
  *     (at your option) any later version.
  */
 /******************************************************************************/
+#include "kfx_memory.h"
 #include "pre_inc.h"
 #include "bflib_basics.h"
 #include "globals.h"
@@ -29,10 +30,11 @@
 
 #include "bflib_datetm.h"
 #include "bflib_fileio.h"
+#include "platform/PlatformManager.h"
 #include "post_inc.h"
 
 
-char consoleLogArray[MAX_CONSOLE_LOG_COUNT][MAX_TEXT_LENGTH];
+char (*consoleLogArray)[MAX_TEXT_LENGTH] = NULL;
 size_t consoleLogArraySize = 0;
 int debug_display_consolelog = 0;
 
@@ -97,6 +99,22 @@ unsigned long saturate_set_unsigned(unsigned long long val,unsigned short nbits)
 
 /******************************************************************************/
 const char *log_file_name=DEFAULT_LOG_FILENAME;
+
+const char* LbSafeStr(const char* str)
+{
+  if (str == NULL) {
+    return "(null)";
+  }
+#ifdef PLATFORM_VITA
+  {
+    uintptr_t addr = (uintptr_t)str;
+    if (addr < 0x80000000u) {
+      return "(badptr)";
+    }
+  }
+#endif
+  return str;
+}
 
 /**
  * Appends a string to the end of a buffer.
@@ -308,21 +326,24 @@ int LbErrorLogSetup(const char *directory, const char *filename, TbBool flag)
     filename = "error.log";
   }
   char log_filename[DISKPATH_SIZE];
-  int result;
-  if ( LbFileMakeFullPath(true, directory, filename, log_filename, DISKPATH_SIZE) != 1 ) {
-    return -1;
+  if (directory != NULL && directory[0] != '\0') {
+    snprintf(log_filename, sizeof(log_filename), "%s/%s", directory, filename);
+  } else {
+    snprintf(log_filename, sizeof(log_filename), "%s", filename);
   }
   ulong flags = (flag == 0) + 1;
   flags |= LbLog_TimeInHeader | LbLog_DateInHeader | 0x04;
-  if ( LbLogSetup(&error_log, log_filename, flags) == 1 )
-  {
-    error_log_initialised = 1;
-    result = 1;
-  } else
-  {
-    result = -1;
-  }
-  return result;
+  if ( LbLogSetup(&error_log, log_filename, flags) != 1 )
+    return -1;
+
+  // Eagerly create the file and verify write access before returning success.
+  TbFileHandle f = LbFileOpen(log_filename, Lb_FILE_MODE_NEW);
+  if (f == NULL)
+    return -1;
+  LbFileClose(f);
+
+  error_log_initialised = 1;
+  return 1;
 }
 
 int LbErrorLogClose(void)
@@ -332,20 +353,32 @@ int LbErrorLogClose(void)
     return LbLogClose(&error_log);
 }
 
-FILE *file = NULL;
+TbFileHandle file = NULL;
 
 void write_log_to_array_for_live_viewing(const char* fmt_str, va_list args, const char* add_log_prefix) {
+#if defined(PLATFORM_VITA) || defined(PLATFORM_3DS) || defined(PLATFORM_SWITCH)
+  (void)fmt_str;
+  (void)args;
+  (void)add_log_prefix;
+  return;
+#else
+    if (consoleLogArray == NULL) {
+    // This buffer is only for optional in-game live log viewing.
+    // If allocation fails on memory-constrained targets (e.g. Vita),
+    // keep running and just skip mirroring logs into this array.
+    consoleLogArray = (char (*)[MAX_TEXT_LENGTH])calloc(MAX_CONSOLE_LOG_COUNT, MAX_TEXT_LENGTH);
+    if (consoleLogArray == NULL) {
+      return;
+    }
+    }
     if (consoleLogArraySize >= MAX_CONSOLE_LOG_COUNT) {
         // Array is full - so clear it. This is a bit of a stopgap solution, it will lose us the older entries.
-        memset(consoleLogArray, 0, sizeof(consoleLogArray));
+        memset(consoleLogArray, 0, MAX_CONSOLE_LOG_COUNT * MAX_TEXT_LENGTH);
         consoleLogArraySize = 0;
     }
 
     char formattedString[MAX_TEXT_LENGTH];
-    va_list copy;
-    va_copy(copy, args);
-    vsnprintf(formattedString, sizeof(formattedString), fmt_str, copy);
-    va_end(copy);
+    vsnprintf(formattedString, sizeof(formattedString), fmt_str, args);
 
     char buffer[MAX_TEXT_LENGTH];
     snprintf(buffer, sizeof(buffer), "%s%s", add_log_prefix, formattedString); // merge prefix and formatted string
@@ -354,6 +387,7 @@ void write_log_to_array_for_live_viewing(const char* fmt_str, va_list args, cons
     strncpy(consoleLogArray[consoleLogArraySize], buffer, MAX_TEXT_LENGTH);
     consoleLogArray[consoleLogArraySize][MAX_TEXT_LENGTH - 1] = '\0';
     consoleLogArraySize++;
+  #endif
 }
 
 int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
@@ -369,6 +403,7 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
   if ( log->Suspended )
     return 1;
   char header = NONE;
+  char wbuf[512];
   short need_initial_newline = false;
   if ( !log->Created )
   {
@@ -388,15 +423,15 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
         header = CREATE;
       }
   }
-   const char *accmode;
+   unsigned char lb_mode;
     if ((log->Created) || ((log->flags & 0x01) == 0))
-      accmode = "a";
+      lb_mode = Lb_FILE_MODE_APPEND;
     else
-      accmode = "w";
+      lb_mode = Lb_FILE_MODE_NEW;
     // Only load log if it's not already open
     if (file == NULL)
     {
-      file = fopen(log->filename, accmode);
+      file = LbFileOpen(log->filename, lb_mode);
       // Couldn't open. Abort
       if (file == NULL)
         return -1;
@@ -405,25 +440,28 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
     if (header != NONE)
     {
       if ( need_initial_newline )
-        fprintf(file, "\n");
+        LbFileWrite(file, "\n", 1);
       const char *actn;
       if (header == CREATE)
       {
-        fprintf(file, PROGRAM_NAME" ver "VER_STRING" (%s release) git:%s\n", (BFDEBUG_LEVEL>7)?"heavylog":"standard", GIT_REVISION);
+        snprintf(wbuf, sizeof(wbuf), PROGRAM_NAME" ver "VER_STRING" (%s release)\n", (BFDEBUG_LEVEL>7)?"heavylog":"standard");
+        LbFileWrite(file, wbuf, strlen(wbuf));
         actn = "CREATED";
       } else
       {
         actn = "APPENDED";
       }
-      fprintf(file, "LOG %s", actn);
+      snprintf(wbuf, sizeof(wbuf), "LOG %s", actn);
+      LbFileWrite(file, wbuf, strlen(wbuf));
       short at_used = 0;
       if ((log->flags & LbLog_TimeInHeader) != 0)
       {
         struct TbTime curr_time;
         if (LbTime(&curr_time) == Lb_SUCCESS)
         {
-            fprintf(file, "  @ %02u:%02u:%02u",
+            snprintf(wbuf, sizeof(wbuf), "  @ %02u:%02u:%02u",
                 curr_time.Hour,curr_time.Minute,curr_time.Second);
+            LbFileWrite(file, wbuf, strlen(wbuf));
             at_used = 1;
         }
       }
@@ -437,17 +475,19 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
               sep = " ";
             else
               sep = "  @ ";
-            fprintf(file," %s%02u-%02u-%u",sep,curr_date.Day,curr_date.Month,curr_date.Year);
+            snprintf(wbuf, sizeof(wbuf), " %s%02u-%02u-%u",sep,curr_date.Day,curr_date.Month,curr_date.Year);
+            LbFileWrite(file, wbuf, strlen(wbuf));
         }
       }
-      fprintf(file, "\n\n");
+      LbFileWrite(file, "\n\n", 2);
     }
     if ((log->flags & LbLog_DateInLines) != 0)
     {
         struct TbDate curr_date;
         if (LbDate(&curr_date) == Lb_SUCCESS)
         {
-            fprintf(file,"%02u-%02u-%u ",curr_date.Day,curr_date.Month,curr_date.Year);
+            snprintf(wbuf, sizeof(wbuf), "%02u-%02u-%u ",curr_date.Day,curr_date.Month,curr_date.Year);
+            LbFileWrite(file, wbuf, strlen(wbuf));
         }
     }
     if ((log->flags & LbLog_TimeInLines) != 0)
@@ -455,23 +495,42 @@ int LbLog(struct TbLog *log, const char *fmt_str, va_list arg)
         struct TbTime curr_time;
         if (LbTime(&curr_time) == Lb_SUCCESS)
         {
-            fprintf(file, "%02u:%02u:%02u ",
+            snprintf(wbuf, sizeof(wbuf), "%02u:%02u:%02u ",
                 curr_time.Hour,curr_time.Minute,curr_time.Second);
+            LbFileWrite(file, wbuf, strlen(wbuf));
         }
     }
   if (log->prefix[0] != '\0') {
-      fputs(log->prefix, file);
+      LbFileWrite(file, log->prefix, strlen(log->prefix));
   }
 
   // Write formatted message to the array
-  write_log_to_array_for_live_viewing(fmt_str, arg, log->prefix);
+  va_list array_args;
+  va_copy(array_args, arg);
+  write_log_to_array_for_live_viewing(fmt_str, array_args, log->prefix);
+  va_end(array_args);
 
-  vfprintf(file, fmt_str, arg);
-  log->position = ftell(file);
+  // Format the line into a buffer so we can write to the file and also
+  // route to the platform's secondary log channel (e.g. sceClibPrintf on Vita).
+  char linebuf[2048];
+  va_list line_args;
+  va_copy(line_args, arg);
+  vsnprintf(linebuf, sizeof(linebuf), fmt_str, line_args);
+  va_end(line_args);
+  LbFileWrite(file, linebuf, strlen(linebuf));
+  if (log->prefix[0] != '\0') {
+      // Build prefixed message for platform routing
+      char fullbuf[2048];
+      snprintf(fullbuf, sizeof(fullbuf), "%s%s", log->prefix, linebuf);
+      PlatformManager_LogWrite(fullbuf);
+  } else {
+      PlatformManager_LogWrite(linebuf);
+  }
+  log->position = LbFilePosition(file);
   // fclose is slow and automatically happens on normal program exit.
   // Opening/closing every time we log something hits performance hard.
   // fclose(file);
-  fflush(file);
+  LbFileFlush(file);
   return 1;
 }
 
@@ -503,7 +562,7 @@ int LbLogSetup(struct TbLog *log, const char *filename, ulong flags)
   if (strlen(filename) > DISKPATH_SIZE || strlen(filename) == 0) {
     return -1;
   }
-  snprintf(log->filename, DISKPATH_SIZE, "%s", filename);
+  snprintf(log->filename, DISKPATH_SIZE, "%.*s", DISKPATH_SIZE - 1, filename);
   log->flags = flags;
   log->Initialised = true;
   log->position = 0;
@@ -542,7 +601,7 @@ void make_uppercase(char * string) {
 int natoi(const char * str, int len) {
   int value = -1;
   for (int i = 0; i < len; ++i) {
-    if (!isdigit(str[i])) {
+    if (!isdigit((unsigned char)str[i])) {
       return value;
     } else if (value < 0) {
       value = 0;
