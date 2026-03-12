@@ -172,6 +172,17 @@ def main():
             crash_log_content = f.read()
         print(f"On-device crash log: {crash_log_path}", file=sys.stderr)
 
+    # Harvest log files written by "Fetch Vita Logs" task (out/vita-logs/)
+    vita_logs: dict = {}
+    logs_dir = os.path.join(source_root, "out", "vita-logs")
+    if os.path.isdir(logs_dir):
+        for fname in ("kfx_boot.log", "kfx_preinit.log", "keeperfx.log", "vitaGL.log"):
+            fpath = os.path.join(logs_dir, fname)
+            if os.path.isfile(fpath) and os.path.getsize(fpath) > 0:
+                with open(fpath, "r", errors="replace") as f:
+                    vita_logs[fname] = f.read()
+                print(f"Log harvested: {fname} ({os.path.getsize(fpath):,} bytes)", file=sys.stderr)
+
     # Generate reports
     os.makedirs(args.output, exist_ok=True)
 
@@ -188,7 +199,8 @@ def main():
 
     html_path = None
     if args.format in ("html", "all"):
-        html_content = format_html(dump, traces, source_root, register_symbols)
+        html_content = format_html(dump, traces, source_root, register_symbols,
+                                   vita_logs=vita_logs or None)
         html_path = os.path.join(args.output, "crash_report.html")
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html_content)

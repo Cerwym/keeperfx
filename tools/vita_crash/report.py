@@ -718,7 +718,8 @@ def _load_banner_b64() -> str:
 
 def format_html(dump: CoreDump, traces: List[StackTrace],
                 source_root: Optional[str] = None,
-                register_symbols: Optional[Dict[int, SourceLocation]] = None) -> str:
+                register_symbols: Optional[Dict[int, SourceLocation]] = None,
+                vita_logs: Optional[Dict[str, str]] = None) -> str:
     """Generate a self-contained HTML crash report."""
     ct = dump.crashed_thread
     h = html.escape
@@ -755,14 +756,47 @@ def format_html(dump: CoreDump, traces: List[StackTrace],
             parts.append(f"<p><strong>LR:</strong> <code>0x{ct.regs.lr:08x}</code></p>")
         parts.append("</div></div>")
 
-    # Diagnosis box
+    # Diagnosis box — tabbed: Diagnosis hints + one tab per harvested log
     diag = _diagnose(dump, ct)
-    if diag:
+    _LOG_ORDER = ["kfx_boot.log", "kfx_preinit.log", "keeperfx.log", "vitaGL.log"]
+    log_tabs = []
+    if vita_logs:
+        log_tabs = sorted(vita_logs.keys(),
+                          key=lambda k: (_LOG_ORDER.index(k) if k in _LOG_ORDER else len(_LOG_ORDER)))
+    if diag or log_tabs:
         parts.append("<div class='content-box diagnosis'>")
         parts.append("<div class='content-header'><h2>Diagnosis</h2></div>")
         parts.append("<div class='content-body'>")
-        for d in diag:
-            parts.append(f"<p>{h(d)}</p>")
+        # Build tab list: always start with 'hints' if there are any hints
+        all_tabs = []
+        if diag:
+            all_tabs.append(("diag-hints", "Hints"))
+        for fname in log_tabs:
+            tab_id = "diag-log-" + fname.replace(".", "-").replace("_", "-")
+            label = fname.removesuffix(".log") if hasattr(str, 'removesuffix') else fname[:-4] if fname.endswith(".log") else fname
+            all_tabs.append((tab_id, label))
+        if len(all_tabs) > 1:
+            # Render tab strip
+            parts.append("<div class='diag-tabs'>")
+            for i, (tid, tlabel) in enumerate(all_tabs):
+                active = " active" if i == 0 else ""
+                parts.append(f"<button class='diag-tab{active}' data-tab='{tid}'>{h(tlabel)}</button>")
+            parts.append("</div>")
+        # Render tab panels
+        for i, (tid, _) in enumerate(all_tabs):
+            hidden = "" if i == 0 else " style='display:none'"
+            parts.append(f"<div class='diag-panel' id='{tid}'{hidden}>")
+            if tid == "diag-hints":
+                for d in diag:
+                    parts.append(f"<p>{h(d)}</p>")
+            else:
+                fname = next(f for f in log_tabs if ("diag-log-" + f.replace(".", "-").replace("_", "-")) == tid)
+                content = vita_logs[fname]
+                if content.strip():
+                    parts.append(f"<pre class='log-content'>{h(content.rstrip())}</pre>")
+                else:
+                    parts.append("<p><em>(empty)</em></p>")
+            parts.append("</div>")
         parts.append("</div></div>")
 
     # Crashed thread stack trace
@@ -1025,6 +1059,21 @@ td { border: 0; padding: 4px 8px; }
 .psr-decode strong { color: #89b4fa; font-family: 'Cinzel', serif; }
 .threads .crashed { background: rgba(30, 8, 8, 0.7); }
 
+/* Diagnosis tabs */
+.diag-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 2px solid #1c1c1c; padding-bottom: 4px; flex-wrap: wrap; }
+.diag-tab { background: rgba(20,20,20,0.7); border: 2px solid #1c1c1c; color: rgb(215, 197, 182);
+            padding: 5px 14px; cursor: pointer; font-family: 'Cinzel', serif; font-size: 0.85em;
+            transition: background 0.15s; }
+.diag-tab:hover { background: rgba(40,40,40,0.9); color: #efefef; }
+.diag-tab.active { background: rgba(40,10,0,0.7); border-color: #cd8e00; color: #cd8e00; }
+.diag-panel p { padding-left: 8px; margin: 6px 0; }
+/* Log content (inside diagnosis tabs) — scrollable code block */
+.log-content { max-height: 500px; overflow-y: auto; margin: 0;
+               background: rgba(6, 6, 6, 0.666); border: 2px solid #1c1c1c;
+               border-left: 4px solid #1c1c1c; padding: 10px 14px;
+               font-size: 0.82em; color: rgb(215, 197, 182);
+               white-space: pre-wrap; word-break: break-all; font-family: monospace; }
+
 /* Details/summary — section toggles */
 details { margin-top: 30px; }
 summary { cursor: pointer; color: #ff4217; font-weight: 600; padding: 8px 0;
@@ -1063,6 +1112,20 @@ _TOOLTIP_JS = """
     tip.style.left = x + 'px';
     tip.style.top = y + 'px';
   }
+
+  // Diagnosis tab switching
+  document.querySelectorAll('.diag-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var target = btn.getAttribute('data-tab');
+      btn.closest('.content-body').querySelectorAll('.diag-tab').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+      btn.closest('.content-body').querySelectorAll('.diag-panel').forEach(function(panel) {
+        panel.style.display = panel.id === target ? '' : 'none';
+      });
+    });
+  });
 })();
 </script>
 """
