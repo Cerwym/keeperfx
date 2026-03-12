@@ -793,7 +793,13 @@ def format_html(dump: CoreDump, traces: List[StackTrace],
                 fname = next(f for f in log_tabs if ("diag-log-" + f.replace(".", "-").replace("_", "-")) == tid)
                 content = vita_logs[fname]
                 if content.strip():
-                    parts.append(f"<pre class='log-content'>{h(content.rstrip())}</pre>")
+                    parts.append("<div class='stack-trace'>")
+                    for lineno, line in enumerate(content.splitlines(), 1):
+                        parts.append("<div class='frame'>")
+                        parts.append(f"<span class='frame-idx'>{lineno}</span>")
+                        parts.append(f"<code class='addr'>{h(line)}</code>")
+                        parts.append("</div>")
+                    parts.append("</div>")
                 else:
                     parts.append("<p><em>(empty)</em></p>")
             parts.append("</div>")
@@ -1067,12 +1073,9 @@ td { border: 0; padding: 4px 8px; }
 .diag-tab:hover { background: rgba(40,40,40,0.9); color: #efefef; }
 .diag-tab.active { background: rgba(40,10,0,0.7); border-color: #cd8e00; color: #cd8e00; }
 .diag-panel p { padding-left: 8px; margin: 6px 0; }
-/* Log content (inside diagnosis tabs) — scrollable code block */
-.log-content { max-height: 500px; overflow-y: auto; margin: 0;
-               background: rgba(6, 6, 6, 0.666); border: 2px solid #1c1c1c;
-               border-left: 4px solid #1c1c1c; padding: 10px 14px;
-               font-size: 0.82em; color: rgb(215, 197, 182);
-               white-space: pre-wrap; word-break: break-all; font-family: monospace; }
+/* Log content (inside diagnosis tabs) */
+.diag-panel .stack-trace { max-height: 500px; overflow-y: auto; }
+.diag-panel .frame code.addr { color: rgb(215, 197, 182); white-space: pre-wrap; word-break: break-all; margin-left: 0; font-size: 0.85em; }
 
 /* Details/summary — section toggles */
 details { margin-top: 30px; }
