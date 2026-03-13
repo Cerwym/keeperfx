@@ -45,11 +45,11 @@ TbBool setup_heap_manager(void)
     SYNCDBG(8,"Starting");
     long i;
 #ifdef SPRITE_FORMAT_V2
-    const char* fname = prepare_file_fmtpath(FGrp_StdData,"thingspr-%d.jty",32);
+    const char* fname = get_game_file_path_fmt(FGrp_StdData,"thingspr-%d.jty",32);
 #else
     const char* fname = prepare_file_path(FGrp_StdData, "creature.jty");
 #endif
-    JUSTLOG("setup_heap_manager: opening \"%s\"", fname);
+    JUSTLOG("setup_heap_manager: opening \"%s\"", fname != NULL ? fname : "");
     jty_file_handle = LbFileOpen(fname, Lb_FILE_MODE_READ_ONLY);
     if (!jty_file_handle) {
         ERRORLOG("Can not open JTY file, \"%s\"",fname);

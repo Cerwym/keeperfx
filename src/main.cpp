@@ -52,6 +52,7 @@
 #include "frontmenu_net.h"
 #include "gui_parchment.h"
 #include "gui_frontmenu.h"
+#include "ui_init.h"
 #include "gui_msgs.h"
 #include "scrcapt.h"
 #include "vidmode.h"
@@ -957,7 +958,7 @@ TbBool initial_setup(void)
     SYNCDBG(6,"Starting");
     // setting this will force video mode change, even if previous one is same
     MinimalResolutionSetup = true;
-    // Set size of static textures buffer
+    // setting this will force video mode change, even if previous one is same
     game_load_files[1].SLength = max((ulong)TEXTURE_BLOCKS_STAT_COUNT_A*block_dimension*block_dimension,(ulong)LANDVIEW_MAP_WIDTH*LANDVIEW_MAP_HEIGHT);
     if (LbDataLoadAllV2(game_load_files))
     {
@@ -1618,6 +1619,7 @@ void reinit_level_after_load(void)
     load_texture_map_file(game.texture_id, get_loaded_level_number(), get_level_fgroup(get_loaded_level_number()));
     init_animating_texture_maps();
     init_gui();
+    init_gameplay_ui(UIPROLE_ACTIVE_PLAYER, game.active_players_count > 1);
     reset_gui_based_on_player_mode();
     erstats_clear();
     player = get_my_player();

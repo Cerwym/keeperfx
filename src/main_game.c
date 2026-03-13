@@ -288,6 +288,7 @@ void startup_saved_packet_game(void)
     struct CatalogueEntry centry;
     clear_packets();
     open_packet_file_for_load(game.packet_fname,&centry);
+    
     if (!change_campaign(centry.campaign_fname))
     {
         ERRORLOG("Unable to load campaign associated with packet file");
