@@ -193,6 +193,18 @@
         },
 
         {
+            "name": "linux-x64-asan",
+            "displayName": "Linux x64 ASAN",
+            "description": "Linux native build with AddressSanitizer + UndefinedBehaviorSanitizer",
+            "inherits": "linux-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "KEEPERFX_SANITIZERS": "ON",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+            }
+        },
+
+        {
             "name": "wasm-release",
             "displayName": "WebAssembly Release",
             "description": "Emscripten WebAssembly build",
@@ -239,6 +251,7 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VITASDK}/share/vita.toolchain.cmake",
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "PLATFORM_VITA": "ON",
+                "KFX_DEBUG_MEMORY": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -254,6 +267,7 @@
                 "PLATFORM_VITA": "ON",
                 "VITA_PERF_LOG": "ON",
                 "VITA_SCE_DIAG": "ON",
+                "KFX_DEBUG_MEMORY": "ON",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
             }
         },
@@ -392,6 +406,13 @@
             "displayName": "Linux x64 Release",
             "inherits": "StandardLog",
             "configurePreset": "linux-x64-release"
+        },
+
+        {
+            "name": "linux-x64-asan",
+            "displayName": "Linux x64 ASAN",
+            "inherits": "Base",
+            "configurePreset": "linux-x64-asan"
         },
 
         {

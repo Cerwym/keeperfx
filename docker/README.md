@@ -80,6 +80,31 @@ docker compose -f docker/compose.yml run linux `
   bash -c "cmake --preset linux-x64-release && cmake --build --preset linux-x64-release"
 ```
 
+### Build Linux x86_64 with AddressSanitizer
+
+Runs the same Linux image with ASan + UBSan enabled.  Catches heap overflows,
+use-after-free, double-free, and undefined behaviour — no special toolchain
+needed (GCC ships with libasan).
+
+```pwsh
+# Build
+docker compose -f docker/compose.yml run linux-asan `
+  bash -c "cmake --preset linux-x64-asan && cmake --build --preset linux-x64-asan"
+
+# Run unit tests under sanitizers
+docker compose -f docker/compose.yml run linux-asan `
+  ./out/build/linux-x64-asan/tests
+```
+
+The `linux-asan` service sets `ASAN_OPTIONS` and `UBSAN_OPTIONS` automatically.
+Override them if needed:
+
+```pwsh
+$env:ASAN_OPTIONS = "detect_leaks=1:halt_on_error=0"
+docker compose -f docker/compose.yml run linux-asan `
+  ./out/build/linux-x64-asan/tests
+```
+
 ### Build WebAssembly
 
 ```pwsh

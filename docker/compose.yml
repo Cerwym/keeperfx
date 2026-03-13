@@ -40,6 +40,14 @@ services:
     <<: *build-base
     image: ghcr.io/${DOCKER_ORG:-cerwym}/keeperfx-build-linux:latest
 
+  linux-asan:
+    <<: *build-base
+    image: ghcr.io/${DOCKER_ORG:-cerwym}/keeperfx-build-linux:latest
+    environment:
+      CMAKE_BUILD_PARALLEL_LEVEL: "${CMAKE_BUILD_PARALLEL_LEVEL:-4}"
+      ASAN_OPTIONS: "detect_leaks=0:halt_on_error=1:print_stats=1"
+      UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+
   wasm:
     <<: *build-base
     image: ghcr.io/${DOCKER_ORG:-cerwym}/keeperfx-build-wasm:latest

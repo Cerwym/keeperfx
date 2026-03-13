@@ -41,14 +41,8 @@
 		}
 	},
 
-	// Bind-mount sibling Vita reference repos from the Windows host.
-	// These are read-only references and are not committed to SCM.
-	"mounts": [
-		"source=C:/Users/peter/source/repos/vita/d3es-vita,target=/workspaces/d3es-vita,type=bind,readonly",
-		"source=C:/Users/peter/source/repos/vita/vitaQuakeIII,target=/workspaces/vitaQuakeIII,type=bind,readonly"
-	],
-
-	// Fix broken git worktree pointers (host paths don't exist in container),
-	// then ensure compile_commands.json has correct /workspaces/ paths.
-	"postStartCommand": "bash .devcontainer/fix-git-worktree.sh && bash .devcontainer/fix-intellisense.sh linux-x64-release"
+	// Reconfigure only when CMake cache has stale paths (e.g. /src from Docker
+	// Compose builds) or doesn't exist yet. Skips the slow cmake step on
+	// subsequent container starts when paths already match /workspaces/.
+	"postStartCommand": "if ! grep -q 'CMAKE_HOME_DIRECTORY:INTERNAL=/workspaces' out/build/linux-x64-release/CMakeCache.txt 2>/dev/null; then rm -rf out/build/linux-x64-release/CMakeCache.txt out/build/linux-x64-release/CMakeFiles && cmake --preset linux-x64-release 2>&1 | tail -20; fi && echo '\u2713 IntelliSense ready (linux-x64-release).'"
 }

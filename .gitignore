@@ -40,3 +40,16 @@ res/keeperfx_icon.ico
 keeperfx.log
 crash_log.txt
 .local/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Generated documentation/audit reports
+*_AUDIT_REPORT.md
+*_DEPENDENCIES_*.md
+*_SECURITY_AUDIT.md
+VITAGL_SECURITY_AUDIT.md

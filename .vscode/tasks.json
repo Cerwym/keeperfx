@@ -176,14 +176,15 @@
 
 {
 "label": "Parse Vita Crash Dump",
-"type": "shell",
-"command": "bash '${workspaceFolder}/tools/vita-parse-crash.sh' --interactive --open",
-"windows": {
-"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1' -Interactive; if (Test-Path '${workspaceFolder}\\out\\vita-dumps\\crash_report.html') { code '${workspaceFolder}\\out\\vita-dumps\\crash_report.html' }"
-},
-"problemMatcher": [],
-"group": "build",
-"presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false, "close": false }
+    "detail": "Auto-download latest crash dump from Vita and generate report",
+    "type": "shell",
+    "command": "bash '${workspaceFolder}/tools/vita-parse-crash.sh' --open",
+    "windows": {
+        "command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\tools\\vita-parse-crash.ps1'; if (Test-Path '${workspaceFolder}\\out\\vita-dumps\\crash_report.html') { code '${workspaceFolder}\\out\\vita-dumps\\crash_report.html' }"
+    },
+    "problemMatcher": [],
+    "group": "build",
+    "presentation": { "reveal": "always", "focus": true, "panel": "dedicated", "showReuseMessage": false, "close": false }
 },
 
 {
@@ -282,9 +283,9 @@
 
 {
     "label": "Build & Deploy Vita",
-    "detail": "Build → deploy → launch on Vita with live PrincessLog output",
+    "detail": "Build → deploy → launch on Vita",
     "type": "shell",
-    "command": "echo '--- PrincessLog listener on port ${input:princessLogPort} ---' && nc -kl ${input:princessLogPort} &\nLOG_PID=$! && trap 'kill $LOG_PID 2>/dev/null' EXIT && cmake --preset ${input:vitaPreset} && cmake --build --preset ${input:vitaPreset} && VITA_PRESET='${input:vitaPreset}' bash '${workspaceFolder}/tools/vita-companion.sh' deploy-launch && echo '--- Vita launched. PrincessLog output below (Ctrl+C to stop) ---' && wait $LOG_PID",
+    "command": "cmake --preset ${input:vitaPreset} && cmake --build --preset ${input:vitaPreset} && VITA_PRESET='${input:vitaPreset}' bash '${workspaceFolder}/tools/vita-companion.sh' deploy-launch",
     "problemMatcher": "$gcc",
     "group": "build",
     "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
@@ -313,7 +314,7 @@
 
 {
     "label": "Fetch Vita Logs",
-    "detail": "Download kfx_boot.log, kfx_preinit.log, keeperfx.log from Vita → out/vita-logs/",
+    "detail": "Download kfx_boot.log, kfx_preinit.log, keeperfx.log, profiler.log, vitaGL.log from Vita → out/vita-logs/",
     "type": "shell",
     "command": "bash '${workspaceFolder}/tools/vita-companion.sh' fetch-logs",
     "problemMatcher": [],
