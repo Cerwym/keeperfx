@@ -52,6 +52,13 @@ bool VitaOverlayPass::Init()
     if (!m_configured)
         return false;
 
+    // Validate dimensions before using them (max 4096×4096)
+    if (m_pending_w <= 0 || m_pending_w > 4096 || m_pending_h <= 0 || m_pending_h > 4096) {
+        ERRORLOG("VitaOverlayPass: invalid dimensions w=%d h=%d (must be 1-4096)", 
+                 m_pending_w, m_pending_h);
+        return false;
+    }
+
     m_program = vita_build_pass_program(k_overlay_frag);
     if (!m_program)
         return false;

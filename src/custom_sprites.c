@@ -370,8 +370,8 @@ static void load_sprites_for_mod_one(LevelNumber lvnum, const struct ModConfigIt
 
     if (mod_state->cmpg_lvls)
     {
-        fname = prepare_file_fmtpath_mod(mod_dir, FGrp_CmpgLvls, "map%05lu.zip", lvnum);
-        if (strlen(fname) > 0 && LbFileExists(fname))
+        fname = get_mod_file_path_fmt(mod_dir, FGrp_CmpgLvls, "map%05lu.zip", lvnum);
+        if (fname && strlen(fname) > 0 && LbFileExists(fname))
         {
             sprintf(desc, "Mod[%s] CmpgLvls file", mod_item->name);
             load_file_sprites(fname, desc);
@@ -493,8 +493,8 @@ void init_custom_sprites(LevelNumber lvnum)
         /* --- Level tier (map ZIP + after_map) --- */
         sprite_cache_begin_phase(2);
         {
-            char *fpath = prepare_file_fmtpath(get_level_fgroup(lvnum), "map%05lu.zip", lvnum);
-            strncpy(s_lvl_zip, fpath, sizeof(s_lvl_zip) - 1);
+            char *fpath = get_game_file_path_fmt(get_level_fgroup(lvnum), "map%05lu.zip", lvnum);
+            strncpy(s_lvl_zip, fpath != NULL ? fpath : "", sizeof(s_lvl_zip) - 1);
         }
         level_hit = sprite_cache_try_load_level(s_lvl_zip, &cache_ctx, &campaign_snap);
         if (!level_hit) {
@@ -524,8 +524,8 @@ void init_custom_sprites(LevelNumber lvnum)
         load_dir_sprites(dname, "Main CmpgConfig dir");
         if (mods_conf.after_campaign_cnt > 0)
             load_sprites_for_mod_list(lvnum, mods_conf.after_campaign_item, mods_conf.after_campaign_cnt);
-        char *fname = prepare_file_fmtpath(get_level_fgroup(lvnum), "map%05lu.zip", lvnum);
-        if (LbFileExists(fname))
+        char *fname = get_game_file_path_fmt(get_level_fgroup(lvnum), "map%05lu.zip", lvnum);
+        if (fname && LbFileExists(fname))
             load_file_sprites(fname, "Main CmpgLvls file");
         if (mods_conf.after_map_cnt > 0)
             load_sprites_for_mod_list(lvnum, mods_conf.after_map_item, mods_conf.after_map_cnt);
@@ -1065,10 +1065,10 @@ static void load_rgb_to_pal_table()
         ERRORLOG("Cannot allocate rgb conversion table");
         return;
     }
-    const char * fname = prepare_file_fmtpath(FGrp_StdData, "png_conv_pal.dat");
-    if (!LbFileExists(fname))
+    const char * fname = get_game_file_path_fmt(FGrp_StdData, "png_conv_pal.dat");
+    if (!fname || !LbFileExists(fname))
     {
-        WARNMSG("Palette file \"%s\" doesn't exist.", fname);
+        WARNMSG("Palette file \"%s\" doesn't exist.", fname != NULL ? fname : "");
         return;
     }
     uint8_t palette[768];

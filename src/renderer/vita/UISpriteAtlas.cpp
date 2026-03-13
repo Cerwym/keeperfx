@@ -31,7 +31,26 @@ static inline uintptr_t sprite_key(const TbSprite* spr)
 // ---------------------------------------------------------------------------
 bool UISpriteAtlas::EnsureScratch(int w, int h)
 {
-    int need = w * h * 2;  // 2 bytes per pixel: [palette_index, alpha]
+    // Validate sprite dimensions before calculating size (prevent integer overflow)
+    // Max reasonable sprite size: 4096×4096 (typical GPU texture limit)
+    if (w <= 0 || h <= 0 || w > 4096 || h > 4096) {
+        ERRORLOG("UISpriteAtlas: invalid scratch dimensions w=%d h=%d", w, h);
+        return false;
+    }
+    
+    // Use int64_t to prevent signed integer overflow: w * h * 2
+    // Example overflow: 65535 * 65535 * 2 = 0x10000FDFE, truncates to garbage when cast to int32
+    int64_t need64 = (int64_t)w * (int64_t)h * 2;
+    
+    // Enforce max 16MB scratch buffer (typical for single sprite decoding)
+    const int64_t MAX_SCRATCH = 16 * 1024 * 1024;
+    if (need64 > MAX_SCRATCH) {
+        ERRORLOG("UISpriteAtlas: scratch size too large (%lld bytes, max %lld)", need64, MAX_SCRATCH);
+        return false;
+    }
+    
+    int need = (int)need64;  // Safe cast: we've verified need64 fits in int
+    
     if (need <= m_scratch_capacity) return true;
     uint8_t* nb = (uint8_t*)realloc(m_scratch, need);
     if (!nb) {
@@ -130,6 +149,12 @@ bool UISpriteAtlas::AllocPage()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    // Validate page size (2048×2048 is a fixed constant)
+    if (k_atlas_page_size <= 0 || k_atlas_page_size > 4096) {
+        ERRORLOG("UISpriteAtlas: invalid page size %d (must be 1-4096)", k_atlas_page_size);
+        glDeleteTextures(1, &tex);
+        return false;
+    }
     // Allocate storage: zero-filled (all transparent, index=0, alpha=0).
     glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE_ALPHA,
                  k_atlas_page_size, k_atlas_page_size, 0,

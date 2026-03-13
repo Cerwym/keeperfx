@@ -61,7 +61,10 @@ static inline GLuint vita_compile_shader(GLenum type, const char* src)
 {
     GLuint s = glCreateShader(type);
     if (!s) return 0;
-    glShaderSource(s, 1, &src, nullptr);
+    // Use explicit length instead of nullptr to prevent vitaGL from calling strlen()
+    // on potentially corrupted pointers. strlen() reads unbounded memory.
+    GLint len = src ? (GLint)strlen(src) : 0;
+    glShaderSource(s, 1, &src, &len);
     glCompileShader(s);
     GLint ok = 0;
     glGetShaderiv(s, GL_COMPILE_STATUS, &ok);

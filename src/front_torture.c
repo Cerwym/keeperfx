@@ -145,8 +145,11 @@ void fronttorture_load(void)
     for (int idx = 0; idx < TORTURE_DOORS_COUNT; ++idx) {
         char tab_name[2048];
         char dat_name[2048];
-        strcpy(tab_name, prepare_file_fmtpath(FGrp_LoData,"door%02d.tab", idx + 1));
-        strcpy(dat_name, prepare_file_fmtpath(FGrp_LoData,"door%02d.dat", idx + 1));
+        char *tmp_fname = NULL;
+        tmp_fname = get_game_file_path_fmt(FGrp_LoData,"door%02d.tab", idx + 1);
+        strcpy(tab_name, tmp_fname != NULL ? tmp_fname : "");
+        tmp_fname = get_game_file_path_fmt(FGrp_LoData,"door%02d.dat", idx + 1);
+        strcpy(dat_name, tmp_fname != NULL ? tmp_fname : "");
         doors[idx].sprites = load_spritesheet(dat_name, tab_name);
         if (!doors[idx].sprites) ERRORLOG("Unable to load torture door %d", idx + 1);
     }

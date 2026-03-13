@@ -355,7 +355,9 @@ void init_menu_buttons(struct GuiMenu *gmnu)
     {
       gbtn = &active_buttons[i];
       callback = gbtn->maintain_call;
-      if ((callback != NULL) && (gbtn->gmenu_idx == gmnu->number))
+      // Only call maintain callbacks on active buttons for the current menu
+      // This prevents calling callbacks on stale buttons from previously-closed menus
+      if ((callback != NULL) && (gbtn->flags & LbBtnF_Active) && (gbtn->gmenu_idx == gmnu->number))
         callback(gbtn);
     }
 }
@@ -364,6 +366,10 @@ void kill_button(struct GuiButton *gbtn)
 {
     if (gbtn != NULL) {
         gbtn->flags &= ~LbBtnF_Active;
+        // Zero stale fields to prevent reuse of dangling pointers
+        gbtn->maintain_call = NULL;
+        gbtn->content.ptr = NULL;
+        gbtn->gmenu_idx = 0;
     }
 }
 

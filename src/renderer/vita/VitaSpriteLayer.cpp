@@ -163,7 +163,15 @@ bool VitaSpriteLayer::Init()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 1, 0,
+    // Validate palette dimensions (256×1 is a fixed constant)
+    const int palette_w = 256, palette_h = 1;
+    if (palette_w <= 0 || palette_w > 4096 || palette_h <= 0 || palette_h > 4096) {
+        ERRORLOG("VitaSpriteLayer: invalid palette texture dimensions %dx%d", palette_w, palette_h);
+        glDeleteBuffers(1, &m_vbo);
+        m_vbo = 0;
+        return false;
+    }
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, palette_w, palette_h, 0,
                  GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     glBindTexture(GL_TEXTURE_2D, 0);
 

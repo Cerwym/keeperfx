@@ -47,6 +47,7 @@
 #include "front_simple.h"
 #include "front_easter.h"
 #include "frontend.h"
+#include "ui_init.h"
 #include "frontmenu_ingame_tabs.h"
 #include "frontmenu_ingame_evnt.h"
 #include "frontmenu_ingame_map.h"
@@ -638,7 +639,9 @@ void redraw_creature_view(void)
         draw_overlay_compass(player->minimap_pos_x, player->minimap_pos_y);
     }
     message_draw();
-    gui_draw_all_boxes();
+    if (should_render_ui()) {
+        gui_draw_all_boxes();
+    }
     draw_tooltip();
     struct CreatureControl* cctrl = creature_control_get_from_thing(thing);
     if (!creature_control_invalid(cctrl))
@@ -701,7 +704,9 @@ void redraw_isometric_view(void)
         draw_overlay_compass(player->minimap_pos_x, player->minimap_pos_y);
     }
     message_draw();
-    gui_draw_all_boxes();
+    if (should_render_ui()) {
+        gui_draw_all_boxes();
+    }
     draw_power_hand();
     draw_tooltip();
     SYNCDBG(8,"Finished");
@@ -725,7 +730,9 @@ void redraw_frontview(void)
     message_draw();
     draw_power_hand();
     draw_tooltip();
-    gui_draw_all_boxes();
+    if (should_render_ui()) {
+        gui_draw_all_boxes();
+    }
 }
 
 int get_place_room_pointer_graphics(RoomKind rkind)

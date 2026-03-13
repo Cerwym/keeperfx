@@ -129,22 +129,22 @@ static char *prepare_letter_one_file_path_for_mod_one(unsigned long tmapidx, cha
 
     if (mod_state->cmpg_lvls)
     {
-        fname = prepare_file_fmtpath_mod(mod_dir, FGrp_CmpgLvls, "map%05lu.tmap%c%03d.dat", (unsigned long)lvnum, letter, tmapidx);
-        if (fname[0] != 0 && LbFileExists(fname))
+        fname = get_mod_file_path_fmt(mod_dir, FGrp_CmpgLvls, "map%05lu.tmap%c%03d.dat", (unsigned long)lvnum, letter, tmapidx);
+        if (fname != NULL && LbFileExists(fname))
             return fname;
     }
 
     if (mod_state->cmpg_config)
     {
-        fname = prepare_file_fmtpath_mod(mod_dir, FGrp_CmpgConfig, "tmap%c%03d.dat", letter, tmapidx);
-        if (fname[0] != 0 && LbFileExists(fname))
+        fname = get_mod_file_path_fmt(mod_dir, FGrp_CmpgConfig, "tmap%c%03d.dat", letter, tmapidx);
+        if (fname != NULL && LbFileExists(fname))
             return fname;
     }
 
     if (mod_state->std_data)
     {
-        fname = prepare_file_fmtpath_mod(mod_dir, FGrp_StdData, "tmap%c%03d.dat", letter, tmapidx);
-        if (fname[0] != 0 && LbFileExists(fname))
+        fname = get_mod_file_path_fmt(mod_dir, FGrp_StdData, "tmap%c%03d.dat", letter, tmapidx);
+        if (fname != NULL && LbFileExists(fname))
             return fname;
     }
 
@@ -178,8 +178,8 @@ static char *prepare_letter_one_file_path(unsigned long tmapidx, char letter, Le
             return fname;
     }
 
-    fname = prepare_file_fmtpath(fgroup, "map%05lu.tmap%c%03d.dat",(unsigned long)lvnum, letter, tmapidx);
-    if (LbFileExists(fname))
+    fname = get_game_file_path_fmt(fgroup, "map%05lu.tmap%c%03d.dat",(unsigned long)lvnum, letter, tmapidx);
+    if (fname != NULL && LbFileExists(fname))
         return fname;
 
     if (mods_conf.after_campaign_cnt > 0)
@@ -189,8 +189,8 @@ static char *prepare_letter_one_file_path(unsigned long tmapidx, char letter, Le
             return fname;
     }
 
-    fname = prepare_file_fmtpath(FGrp_CmpgConfig, "tmap%c%03d.dat", letter, tmapidx);
-    if (LbFileExists(fname))
+    fname = get_game_file_path_fmt(FGrp_CmpgConfig, "tmap%c%03d.dat", letter, tmapidx);
+    if (fname != NULL && LbFileExists(fname))
         return fname;
 
     if (mods_conf.after_base_cnt > 0)
@@ -200,7 +200,7 @@ static char *prepare_letter_one_file_path(unsigned long tmapidx, char letter, Le
             return fname;
     }
 
-    fname = prepare_file_fmtpath(FGrp_StdData, "tmap%c%03d.dat", letter, tmapidx);
+    fname = get_game_file_path_fmt(FGrp_StdData, "tmap%c%03d.dat", letter, tmapidx);
     return fname;
 }
 
@@ -227,6 +227,11 @@ static TbBool load_letter_one_file(unsigned long tmapidx, char letter, void *dst
 TbBool load_texture_map_file(unsigned long tmapidx, LevelNumber lvnum, short fgroup)
 {
     SYNCDBG(7,"Starting");
+    if (block_mem == NULL)
+    {
+        ERRORLOG("block_mem is NULL — texture buffer was never allocated");
+        return false;
+    }
     memset(block_mem, 130, BLOCK_MEM_SIZE);
     if (!load_letter_one_file(tmapidx,'a', block_mem,lvnum,fgroup))
     {
