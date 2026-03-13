@@ -52,7 +52,7 @@ def _cwd_vita(ftp: ftplib.FTP, path: str) -> None:
 
 
 def list_dumps(ftp: ftplib.FTP, include_all: bool = False) -> List[DumpEntry]:
-    """List .psp2dmp files on the Vita."""
+    """List .psp2dmp files on the Vita (sorted by Unix timestamp in filename)."""
     entries = []
     lines = []
     _cwd_vita(ftp, DUMP_DIR)
@@ -74,7 +74,24 @@ def list_dumps(ftp: ftplib.FTP, include_all: bool = False) -> List[DumpEntry]:
             size = 0
         entries.append(DumpEntry(filename=filename, size=size))
 
+    # Sort by Unix timestamp in filename (psp2core-<TIMESTAMP>-...)
+    # to ensure chronological order regardless of FTP server's LIST order
+    entries.sort(key=lambda e: _extract_timestamp(e.filename))
+
     return entries
+
+
+def _extract_timestamp(filename: str) -> int:
+    """Extract Unix timestamp from psp2core-<TIMESTAMP>-... filename."""
+    try:
+        # Format: psp2core-1773310208-0x00004b30e9-eboot.bin.psp2dmp
+        parts = filename.split('-')
+        if len(parts) >= 2:
+            return int(parts[1])
+    except (ValueError, IndexError):
+        pass
+    # Fallback: return 0 so unparseable files sort first
+    return 0
 
 
 def download_dump(ftp: ftplib.FTP, filename: str, output_dir: str) -> str:

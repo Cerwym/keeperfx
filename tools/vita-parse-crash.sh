@@ -73,8 +73,6 @@ $OPEN && TOOL_ARGS+=("--open")
 
 # --- Detect native Vita SDK environment ---
 if command -v arm-vita-eabi-addr2line &>/dev/null && command -v python3 &>/dev/null; then
-    echo -e "\033[36mRunning vita_crash natively (Vita SDK detected)...\033[0m"
-
     # Ensure pyelftools is installed (baked into the vitasdk image;
     # this is a safety net for manual environments).
     if ! python3 -c 'import elftools' 2>/dev/null; then
@@ -89,7 +87,6 @@ if command -v arm-vita-eabi-addr2line &>/dev/null && command -v python3 &>/dev/n
 fi
 
 # --- Fallback: run via Docker ---
-echo -e "\033[36mRunning vita_crash tool in Docker...\033[0m"
 
 DOCKER_VOLUMES=(
     "-v" "${TOOLS_VOLUME}:/tools"
@@ -115,5 +112,3 @@ docker run --rm \
     -w /src \
     "$VITASDK_IMAGE" \
     bash /src/tools/vita_crash/docker-entry.sh "${TOOL_ARGS[@]}"
-
-echo -e "\n\033[32mDone. Reports saved to out/vita-dumps/\033[0m"

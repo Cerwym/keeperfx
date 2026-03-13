@@ -112,14 +112,21 @@ def main():
 
     # Get the dump file
     dump_path = args.dump
+    auto_downloaded = False
     if not dump_path:
         dump_path = _download_dump(args)
+        auto_downloaded = True
         if not dump_path:
             sys.exit(1)
 
     if not os.path.isfile(dump_path):
         print(f"ERROR: Dump file not found: {dump_path}", file=sys.stderr)
         sys.exit(1)
+
+    # If we auto-downloaded the latest dump, refresh logs from Vita to match
+    if auto_downloaded:
+        print("Auto-refreshing logs from Vita to match latest crash dump...", file=sys.stderr)
+        _fetch_latest_logs_from_vita(source_root, args)
 
     # Parse the core dump
     print(f"Parsing: {dump_path}", file=sys.stderr)
@@ -176,7 +183,7 @@ def main():
     vita_logs: dict = {}
     logs_dir = os.path.join(source_root, "out", "vita-logs")
     if os.path.isdir(logs_dir):
-        for fname in ("kfx_boot.log", "kfx_preinit.log", "keeperfx.log", "vitaGL.log"):
+        for fname in ("kfx_boot.log", "kfx_preinit.log", "keeperfx.log", "profiler.log", "vitaGL.log"):
             fpath = os.path.join(logs_dir, fname)
             if os.path.isfile(fpath) and os.path.getsize(fpath) > 0:
                 with open(fpath, "r", errors="replace") as f:
@@ -187,8 +194,8 @@ def main():
     os.makedirs(args.output, exist_ok=True)
 
     if args.format in ("text", "all"):
-        text = format_text(dump, traces, source_root, register_symbols)
-        print(text)  # Always print to stdout
+        text = format_text(dump, traces, source_root, register_symbols,
+                           vita_logs=vita_logs or None)
         text_path = os.path.join(args.output, "crash_report.txt")
         with open(text_path, "w", encoding="utf-8") as f:
             f.write(text)
@@ -282,7 +289,7 @@ def _download_dump(args) -> Optional[str]:
                 idx = len(dumps) - 1
             selected = dumps[idx]
         else:
-            # Auto-latest: pick the last one (FTP listing is typically chronological)
+            # Auto-latest: pick the last one (list_dumps sorts by Unix timestamp)
             selected = dumps[-1]
 
         print(f"Downloading: {selected.filename}", file=sys.stderr)
@@ -301,6 +308,40 @@ def _download_crash_log(args) -> Optional[str]:
         return path
     except Exception:
         return None
+
+
+def _fetch_latest_logs_from_vita(source_root: str, args) -> None:
+    """Fetch latest logs from Vita via vita-companion.sh script.
+    
+    This ensures that harvested logs correspond to the crash event being analyzed,
+    rather than using stale logs from a previous session.
+    """
+    import subprocess
+    
+    script_path = os.path.join(source_root, "tools", "vita-companion.sh")
+    if not os.path.isfile(script_path):
+        print("WARNING: vita-companion.sh not found, skipping log refresh", file=sys.stderr)
+        return
+    
+    try:
+        print("Running: bash tools/vita-companion.sh fetch-logs", file=sys.stderr)
+        result = subprocess.run(
+            ["bash", script_path, "fetch-logs"],
+            cwd=source_root,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        if result.returncode != 0:
+            print(f"WARNING: fetch-logs failed (exit code {result.returncode})", file=sys.stderr)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
+        else:
+            print("Logs refreshed from Vita", file=sys.stderr)
+    except subprocess.TimeoutExpired:
+        print("WARNING: fetch-logs timed out after 60s", file=sys.stderr)
+    except Exception as e:
+        print(f"WARNING: Failed to fetch logs from Vita: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

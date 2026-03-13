@@ -281,7 +281,8 @@ cmd_fetch_logs() {
         "ux0:/data/vitaGL.log" \
         "ux0:/data/keeperfx/kfx_boot.log" \
         "ux0:/data/keeperfx/kfx_preinit.log" \
-        "ux0:/data/keeperfx/keeperfx.log"
+        "ux0:/data/keeperfx/keeperfx.log" \
+        "ux0:/data/keeperfx/profiler.log"
     do
         local fname
         fname="$(basename "$remote")"

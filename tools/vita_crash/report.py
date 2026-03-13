@@ -14,6 +14,61 @@ from .sce_error_codes import SCE_ERROR_CODES, SCE_ERROR_DESCRIPTIONS
 from .symbolicate import StackTrace, StackFrame, SourceLocation
 
 
+# ── Profiler Data Extraction ─────────────────────────────────────────────
+
+def _extract_profiler_frames(trace: 'StackTrace') -> List['StackFrame']:
+    """Extract stack profiler-related frames from the crash stack trace.
+    
+    Returns frames from StackMonitor_*, snprintf, fprintf, malloc—showing where
+    the profiler code crashed and what it was sampling.
+    """
+    profiler_keywords = [
+        "StackMonitor", "snprintf", "fprintf", "malloc", "vsnprintf",
+        "prepare_file_path", "load_texture_map", "load_level_file"
+    ]
+    
+    return [f for f in trace.frames
+            if f.source and any(kw in (f.source.function or "") for kw in profiler_keywords)]
+
+
+def _extract_stack_measurements(dump: CoreDump) -> Optional[Dict[str, any]]:
+    """Extract stack measurements from crash data.
+    
+    Calculates stack usage from:
+    - Vita main thread stack: 4MB starting at ~0x836xxxxx (grows downward)
+    - Current SP from crashed thread registers
+    - Stack frames in call trace
+    
+    Returns dict with measurements:
+    - total_size: 4 MB (standard Vita main thread stack)
+    - current_sp: SP value at crash
+    - estimated_used: estimated bytes consumed (calculated from SP)
+    - stack_depth: estimated depth from register analysis
+    """
+    ct = dump.crashed_thread
+    if not ct or not ct.regs:
+        return None
+    
+    # Vita main thread stack is 4 MB (sceUserMainThreadStackSize)
+    VITA_MAIN_STACK_SIZE = 4 * 1024 * 1024  # 4 MB
+    VITA_STACK_TOP = 0x83600000  # Typical stack base (grows toward lower addresses)
+    
+    measurements = {
+        "total_size": VITA_MAIN_STACK_SIZE,
+        "current_sp": ct.regs.sp,
+        "stack_base": VITA_STACK_TOP,
+    }
+    
+    # Estimate used stack: distance from SP to stack base
+    if VITA_STACK_TOP and ct.regs.sp < VITA_STACK_TOP:
+        estimated_used = VITA_STACK_TOP - ct.regs.sp
+        measurements["estimated_used"] = estimated_used
+        measurements["remaining"] = VITA_MAIN_STACK_SIZE - estimated_used
+        measurements["usage_percent"] = (estimated_used * 100.0) / VITA_MAIN_STACK_SIZE
+    
+    return measurements
+
+
 # ── ARM register decoding (per ARM DDI 0406C §B1.3, §B4.1.58) ──────────
 
 # CPSR M[4:0] → mode name (Table B1-1, ARM DDI 0406C §B1.3)
@@ -275,7 +330,8 @@ def _fpscr_plain_english(fpscr: int) -> str:
 
 def format_text(dump: CoreDump, traces: List[StackTrace],
                 source_root: Optional[str] = None,
-                register_symbols: Optional[Dict[int, SourceLocation]] = None) -> str:
+                register_symbols: Optional[Dict[int, SourceLocation]] = None,
+                vita_logs: Optional[Dict[str, str]] = None) -> str:
     """Generate a human-readable text crash report."""
     lines = []
     ct = dump.crashed_thread
@@ -353,6 +409,36 @@ def format_text(dump: CoreDump, traces: List[StackTrace],
         lines.append("DIAGNOSIS:")
         for d in diag:
             lines.append(f"  {d}")
+
+    # Profiler measurements (stack monitoring frames from crash trace)
+    profiler_frames = []
+    for trace in traces:
+        if ct and trace.thread_id == ct.tid:
+            profiler_frames = _extract_profiler_frames(trace)
+            break
+    
+    # Stack measurements from crash data
+    stack_measurements = _extract_stack_measurements(dump)
+    if stack_measurements:
+        lines.append("")
+        lines.append("STACK MEASUREMENTS AT CRASH:")
+        lines.append(f"  Total Stack Size:     {stack_measurements['total_size']:>12,} bytes ({stack_measurements['total_size'] / (1024*1024):.2f} MB)")
+        lines.append(f"  Stack Base (top):     0x{stack_measurements['stack_base']:08x}")
+        lines.append(f"  Current SP:           0x{stack_measurements['current_sp']:08x}")
+        if "estimated_used" in stack_measurements:
+            lines.append(f"  Estimated Used:       {stack_measurements['estimated_used']:>12,} bytes ({stack_measurements['estimated_used'] / (1024*1024):.2f} MB, {stack_measurements['usage_percent']:.1f}%)")
+            lines.append(f"  Remaining:            {stack_measurements['remaining']:>12,} bytes ({stack_measurements['remaining'] / (1024*1024):.2f} MB)")
+    
+    if profiler_frames:
+        lines.append("")
+        lines.append("PROFILER STACK FRAMES (where crash occurred):")
+        for frame in profiler_frames:
+            src = frame.source
+            if src:
+                func = src.function or "unknown"
+                file_info = f"{src.file}:{src.line}" if src.file and src.file != "??" else "??"
+                lines.append(f"  #{frame.index:<2}  {func} @ {file_info}")
+                lines.append(f"       0x{frame.address:08x}  ({frame.module_ref or 'unknown'})")
 
     # Other threads
     other_traces = [t for t in traces if not ct or t.thread_id != ct.tid]
@@ -756,21 +842,29 @@ def format_html(dump: CoreDump, traces: List[StackTrace],
             parts.append(f"<p><strong>LR:</strong> <code>0x{ct.regs.lr:08x}</code></p>")
         parts.append("</div></div>")
 
-    # Diagnosis box — tabbed: Diagnosis hints + one tab per harvested log
+    # Diagnosis box — tabbed: Diagnosis hints + profiler stack frames + one tab per harvested log
     diag = _diagnose(dump, ct)
-    _LOG_ORDER = ["kfx_boot.log", "kfx_preinit.log", "keeperfx.log", "vitaGL.log"]
+    profiler_frames = []
+    stack_measurements = _extract_stack_measurements(dump)
+    for trace in traces:
+        if ct and trace.thread_id == ct.tid:
+            profiler_frames = _extract_profiler_frames(trace)
+            break
+    _LOG_ORDER = ["kfx_boot.log", "kfx_preinit.log", "keeperfx.log", "profiler.log", "vitaGL.log"]
     log_tabs = []
     if vita_logs:
         log_tabs = sorted(vita_logs.keys(),
                           key=lambda k: (_LOG_ORDER.index(k) if k in _LOG_ORDER else len(_LOG_ORDER)))
-    if diag or log_tabs:
+    if diag or profiler_frames or stack_measurements or log_tabs:
         parts.append("<div class='content-box diagnosis'>")
         parts.append("<div class='content-header'><h2>Diagnosis</h2></div>")
         parts.append("<div class='content-body'>")
-        # Build tab list: always start with 'hints' if there are any hints
+        # Build tab list: always start with 'hints' if there are any hints, then profiler, then logs
         all_tabs = []
         if diag:
             all_tabs.append(("diag-hints", "Hints"))
+        if profiler_frames:
+            all_tabs.append(("diag-profiler", "Profiler Stack"))
         for fname in log_tabs:
             tab_id = "diag-log-" + fname.replace(".", "-").replace("_", "-")
             label = fname.removesuffix(".log") if hasattr(str, 'removesuffix') else fname[:-4] if fname.endswith(".log") else fname
@@ -789,6 +883,30 @@ def format_html(dump: CoreDump, traces: List[StackTrace],
             if tid == "diag-hints":
                 for d in diag:
                     parts.append(f"<p>{h(d)}</p>")
+            elif tid == "diag-profiler":
+                parts_profiler = []
+                if stack_measurements:
+                    parts_profiler.append("<p><strong>Stack Measurements at Crash:</strong></p>")
+                    parts_profiler.append(f"<p><code>Total Stack: {stack_measurements['total_size']:,} bytes ({stack_measurements['total_size'] / (1024*1024):.2f} MB)<br/>")
+                    parts_profiler.append(f"Stack Base: 0x{stack_measurements['stack_base']:08x}<br/>")
+                    parts_profiler.append(f"Current SP: 0x{stack_measurements['current_sp']:08x}<br/>")
+                    if "estimated_used" in stack_measurements:
+                        parts_profiler.append(f"Used: {stack_measurements['estimated_used']:,} bytes ({stack_measurements['estimated_used'] / (1024*1024):.2f} MB, {stack_measurements['usage_percent']:.1f}%)<br/>")
+                        parts_profiler.append(f"Remaining: {stack_measurements['remaining']:,} bytes ({stack_measurements['remaining'] / (1024*1024):.2f} MB)</code></p>")
+                if profiler_frames:
+                    parts_profiler.append("<p><strong>Stack frames where profiler crashed:</strong></p>")
+                    parts_profiler.append("<pre class='source log-source'>")
+                    for frame in profiler_frames:
+                        src = frame.source
+                        if src:
+                            func = src.function or "unknown"
+                            file_info = f"{src.file}:{src.line}" if src.file and src.file != "??" else "??"
+                            parts_profiler.append(f"#{frame.index:<2}  {h(func)} @ {h(file_info)}")
+                            parts_profiler.append(f"     0x{frame.address:08x}  ({h(frame.module_ref or 'unknown')})")
+                    parts_profiler.append("</pre>")
+                if not stack_measurements and not profiler_frames:
+                    parts_profiler.append("<p><em>(no profiler data)</em></p>")
+                parts.extend(parts_profiler)
             else:
                 fname = next(f for f in log_tabs if ("diag-log-" + f.replace(".", "-").replace("_", "-")) == tid)
                 content = vita_logs[fname]
