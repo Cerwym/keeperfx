@@ -25,6 +25,7 @@
 #include "audio/audio_vita.h"
 #include "audio/audio_interface.h"
 #include "platform/kfx_breadcrumb.h"
+#include "platform/stack_monitor.h"
 #include <vitaGL.h>
 #include <SDL2/SDL.h>
 extern "C" {
@@ -53,13 +54,11 @@ extern "C" bool vita_is_vitagl_ready(void) { return s_vita_video_ready; }
  *
  * Memory budget (256 MB process limit on HENkaku):
  *   Code (.text):    ~4 MB
- *   Data + BSS:    ~114 MB  (struct Game=51 MB, block_mem=34 MB, poly_pool=16 MB, ...)
+ *   Data + BSS:     ~9.1 MB  (reduced from 114 MB across BSS paths A–E)
  *   Main stack:      4 MB
- *   Heap (below):  128 MB
- *   Total:        ~250 MB  (leaves ~6 MB headroom for kernel/system allocations)
- *
- * BSS is now ~9.1 MB (reduced from 114 MB across BSS paths A–E), so a 192 MB heap
- * leaves ~245 MB total (text + data/BSS + stack + heap), safely within 256 MB. */
+ *   Heap (below):  192 MB
+ *   Total:        ~209 MB  (leaves ~47 MB headroom for kernel/system allocations)
+ */
 int _newlib_heap_size_user  = 192 * 1024 * 1024; // 192 MB heap — ~245 MB total, within 256 MB
 int sceUserMainThreadStackSize = 4 * 1024 * 1024; // 4 MB main thread stack
 
@@ -601,6 +600,9 @@ void PlatformVita::SystemInit()
     // denormal or other edge-case float operation in the game code will trap.
     sceKernelChangeThreadVfpException(0x0800009FU, 0x0);
     _SYSI_LOG("vfp");
+    // Initialize stack depth monitoring for optimization validation.
+    StackMonitor_Init();
+    _SYSI_LOG("stack-mon");
     // chdir so that any POSIX-relative opens outside LbDataLoad also resolve.
     chdir(GetDataPath());
     _SYSI_LOG("chdir");

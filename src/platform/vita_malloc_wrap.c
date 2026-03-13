@@ -26,6 +26,8 @@
 /******************************************************************************/
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 #include <vitaGL.h>
 
 /* Forward declarations of the real allocator provided by the linker's --wrap
@@ -40,56 +42,102 @@ extern void  __real_free(void *addr);
 extern void *__real_realloc(void *ptr, uint32_t size);
 extern void *__real_memalign(uint32_t alignment, uint32_t size);
 
-/* Plain (non-TLS) flags: on ARM Vita _Thread_local uses emutls which
- * allocates its per-thread slot via malloc — putting it in a malloc wrapper
- * creates infinite recursion before the guard can even be checked.
- * The game's rendering/allocation work is single-threaded so a plain
- * static flag is sufficient. */
-static int _in_vgl_malloc  = 0;
-static int _in_vgl_free    = 0;
-static int _in_vgl_realloc = 0;
+/* Simple recursion guards: when vglMalloc/vglFree call stdlib internally,
+ * these flags prevent infinite recursion by routing inner calls to __real_malloc.
+ * We use volatile to ensure the compiler doesn't optimize out the flag checks. */
+static volatile int _in_vgl_malloc = 0;
+static volatile int _in_vgl_free = 0;
+static volatile int _in_vgl_realloc = 0;
+static volatile int _in_vgl_memalign = 0;
+
+/* Fallback small-allocation threshold: if vglMalloc exhausts the GPU pool,
+ * allocations below this size will try __real_malloc as a fallback. This
+ * prevents crashes when the vglMalloc pool is full but CPU heap is available.
+ * Textures and large buffers still prefer vglMalloc (GPU-optimal). */
+#define FALLBACK_ALLOC_THRESHOLD (5 * 1024 * 1024)  // 5 MB threshold
 
 void *__wrap_malloc(uint32_t size)
 {
-    if (_in_vgl_malloc) return __real_malloc(size);
+    if (_in_vgl_malloc)
+        return __real_malloc(size);
+    
     _in_vgl_malloc = 1;
     void *ptr = vglMalloc(size);
     _in_vgl_malloc = 0;
+    
+    /* If vglMalloc exhausted but the allocation is small, try fallback.
+     * This prevents crashes when a small buffer request fails due to pool
+     * exhaustion while CPU heap still has space. */
+    if (!ptr && size < FALLBACK_ALLOC_THRESHOLD) {
+        ptr = __real_malloc(size);
+    }
     return ptr;
 }
-void  __wrap_free(void *addr)
+
+void __wrap_free(void *addr)
 {
-    if (_in_vgl_free) { __real_free(addr); return; }
+    if (!addr) return;  // NULL is safe to free
+    
+    if (_in_vgl_free) {
+        __real_free(addr);
+        return;
+    }
+    
     _in_vgl_free = 1;
     vglFree(addr);
     _in_vgl_free = 0;
 }
+
 void *__wrap_calloc(uint32_t nmemb, uint32_t size)
 {
     /* Do NOT call vglCalloc(): it internally calls calloc() → __wrap_calloc
      * → infinite recursion.  Use __wrap_malloc (which carries the recursion
-     * guard) and zero the block manually. */
+     * guard) and zero the block manually. 
+     * 
+     * CRITICAL: Check for integer overflow in nmemb * size (standard C behavior).
+     * Without this check, nmemb=0x100000000 size=0x100000000 silently wraps to 0.
+     * This matches the overflow protection in standard libc calloc().
+     */
+    if (nmemb && size > 0xFFFFFFFFU / nmemb) {
+        errno = ENOMEM;
+        return NULL;
+    }
     size_t total = (size_t)nmemb * size;
     void *ptr = __wrap_malloc(total);
     if (ptr != NULL)
         memset(ptr, 0, total);
     return ptr;
 }
+
 void *__wrap_realloc(void *ptr, uint32_t size)
 {
-    if (_in_vgl_realloc) return __real_realloc(ptr, size);
+    if (_in_vgl_realloc)
+        return __real_realloc(ptr, size);
+    
     _in_vgl_realloc = 1;
     void *p = vglRealloc(ptr, size);
     _in_vgl_realloc = 0;
+    
+    /* If vglRealloc fails and size is small, try fallback to __real_malloc.
+     * This follows the same logic as __wrap_malloc. */
+    if (!p && size < FALLBACK_ALLOC_THRESHOLD) {
+        p = __real_realloc(ptr, size);
+    }
     return p;
 }
-static int _in_vgl_memalign = 0;
 
 void *__wrap_memalign(uint32_t alignment, uint32_t size)
 {
-    if (_in_vgl_memalign) return __real_memalign(alignment, size);
+    if (_in_vgl_memalign)
+        return __real_memalign(alignment, size);
+    
     _in_vgl_memalign = 1;
     void *ptr = vglMemalign(alignment, size);
     _in_vgl_memalign = 0;
+    
+    /* If vglMemalign fails and size is small, try fallback. */
+    if (!ptr && size < FALLBACK_ALLOC_THRESHOLD) {
+        ptr = __real_memalign(alignment, size);
+    }
     return ptr;
 }
