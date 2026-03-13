@@ -96,12 +96,20 @@ struct LensConfig *get_lens_config(long lens_idx)
 
 static int64_t value_mist(const struct NamedField* named_field, const char* value_text, const struct NamedFieldSet* named_fields_set, int idx, const char* src_str, unsigned char flags)
 {
+    if (idx < 0 || idx >= named_fields_set->max_count) {
+        ERRORMSG("Config index %d out of bounds [0,%d) for mist in lens.cfg", idx, named_fields_set->max_count);
+        return 0;
+    }
     lenses_conf.lenses[idx].flags |= LCF_HasMist;
     return value_name(named_field, value_text, named_fields_set, idx, src_str, flags);
 }
 
 static int64_t value_displace(const struct NamedField* named_field, const char* value_text, const struct NamedFieldSet* named_fields_set, int idx, const char* src_str, unsigned char flags)
 {
+    if (idx < 0 || idx >= named_fields_set->max_count) {
+        ERRORMSG("Config index %d out of bounds [0,%d) for displace in lens.cfg", idx, named_fields_set->max_count);
+        return 0;
+    }
     lenses_conf.lenses[idx].flags |= LCF_HasDisplace;
     return value_default(named_field, value_text, named_fields_set, idx, src_str, flags);
 }
@@ -109,6 +117,10 @@ static int64_t value_displace(const struct NamedField* named_field, const char* 
 
 static int64_t value_pallete(const struct NamedField* named_field, const char* value_text, const struct NamedFieldSet* named_fields_set, int idx, const char* src_str, unsigned char flags)
 {
+    if (idx < 0 || idx >= named_fields_set->max_count) {
+        ERRORMSG("Config index %d out of bounds [0,%d) for palette in lens.cfg", idx, named_fields_set->max_count);
+        return 0;
+    }
     lenses_conf.lenses[idx].flags |= LCF_HasPalette;
     char* fname = prepare_file_path(FGrp_StdData, value_text);
     if (LbFileLoadAt(fname, (char*)named_fields_set->get_struct_base() + named_fields_set->struct_size * idx + (ptrdiff_t)named_field->field) != PALETTE_SIZE)
@@ -121,6 +133,10 @@ static int64_t value_pallete(const struct NamedField* named_field, const char* v
 
 static int64_t value_overlay(const struct NamedField* named_field, const char* value_text, const struct NamedFieldSet* named_fields_set, int idx, const char* src_str, unsigned char flags)
 {
+    if (idx < 0 || idx >= named_fields_set->max_count) {
+        ERRORMSG("Config index %d out of bounds [0,%d) for overlay in lens.cfg", idx, named_fields_set->max_count);
+        return 0;
+    }
     SYNCDBG (9, "value_overlay called: argnum=%d, value='%s', lens=%d", named_field->argnum, value_text, idx);
     
     if (value_text == NULL || value_text[0] == '\0') {
