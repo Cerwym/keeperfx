@@ -247,6 +247,11 @@ char *prepare_file_fmtpath_mod(const char *mod_dir, short fgroup, const char *fm
 char *prepare_file_path_buf(char *dst, int dst_size, short fgroup, const char *fname);
 char *prepare_file_path(short fgroup, const char *fname);
 char *prepare_file_fmtpath(short fgroup, const char *fmt_str, ...);
+/* New API - self-documenting game vs. mod distinction */
+char *get_game_file_path(short fgroup, const char *fname);
+char *get_mod_file_path(const char *mod_dir, short fgroup, const char *fname);
+char *get_game_file_path_fmt(short fgroup, const char *fmt_str, ...);
+char *get_mod_file_path_fmt(const char *mod_dir, short fgroup, const char *fmt_str, ...);
 unsigned char *load_data_file_to_buffer(int32_t *ldsize, short fgroup, const char *fmt_str, ...);
 /******************************************************************************/
 TbBool load_config(const struct ConfigFileData* file_data, unsigned short flags);
