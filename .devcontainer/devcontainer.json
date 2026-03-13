@@ -19,8 +19,9 @@
 //   cmake --preset windows-x86-debug   && cmake --build --preset windows-x86-debug
 //   cmake --preset windows-x86-release && cmake --build --preset windows-x86-release
 //
-// Note: Windows .exe artifacts are cross-compiled and cannot be run inside the
-// container. For F5 debugging, reopen in the host window and use the GDB tasks.
+// Note: Windows .exe artifacts are cross-compiled. In-container F5 debugging
+// is supported through winegdb via the "Devcontainer F5" launch profile.
+// If winegdb is missing in the image, the preLaunch task prints install guidance.
 {
 	"name": "KeeperFX — MinGW32 (Windows x86 cross-compile)",
 	"image": "ghcr.io/cerwym/keeperfx-build-mingw32:latest",
@@ -47,8 +48,8 @@
 		}
 	},
 
-	// Reconfigure only when CMake cache has stale paths (e.g. /src from Docker
-	// Compose builds) or doesn't exist yet. Skips the slow cmake step on
-	// subsequent container starts when paths already match /workspaces/.
-	"postStartCommand": "if ! grep -q 'CMAKE_HOME_DIRECTORY:INTERNAL=/workspaces' out/build/windows-x86-debug/CMakeCache.txt 2>/dev/null; then rm -rf out/build/windows-x86-debug/CMakeCache.txt out/build/windows-x86-debug/CMakeFiles && cmake --preset windows-x86-debug 2>&1 | tail -20; fi && echo '\u2713 IntelliSense ready (windows-x86-debug).'"
+	// Startup fixups for worktrees and IntelliSense:
+	//   1) Repairs broken worktree git pointers inside the container when needed.
+	//   2) Reconfigures or rewrites compile_commands paths only when stale.
+	"postStartCommand": "bash .devcontainer/fix-git-worktree.sh && bash .devcontainer/fix-intellisense.sh windows-x86-debug"
 }

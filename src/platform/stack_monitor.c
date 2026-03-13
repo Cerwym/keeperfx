@@ -9,6 +9,10 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#if defined(_WIN32)
+    #include <direct.h>
+#endif
+
 #ifdef PLATFORM_VITA
     #include <psp2/kernel/processmgr.h>
     #include <psp2/io/fcntl.h>
@@ -42,7 +46,7 @@ static struct {
 static inline uintptr_t GetStackPointer(void)
 {
     uintptr_t sp;
-    #ifdef __GNUC__
+    #if defined(__GNUC__) && (defined(__arm__) || defined(__aarch64__))
         asm volatile("mov %0, sp" : "=r"(sp));
     #else
         /* Fallback: assume SP-like behavior for non-GCC */
@@ -60,6 +64,8 @@ static void _ensure_directory(const char *path)
 #ifdef PLATFORM_VITA
     /* Vita: use sceIoMkdir (from psp2/io/stat.h) */
     sceIoMkdir(path, 0777);  /* Fails gracefully if exists; error code ignored */
+#elif defined(_WIN32)
+    _mkdir(path);            /* Windows: _mkdir has a single-argument signature */
 #else
     mkdir(path, 0755);       /* Unix: mkdir with permission; error ignored */
 #endif

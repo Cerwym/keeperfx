@@ -1233,34 +1233,6 @@ char *prepare_file_path_buf(char *dst, int dst_size, short fgroup, const char *f
     return prepare_file_path_buf_mod(dst, dst_size, NULL, fgroup, fname);
 }
 
-/**
- * Safely check string length with a maximum limit.
- * Returns length if valid, -1 if string is too long or pointer is invalid.
- */
-static int _strnlen_safe(const char *str, int max_len)
-{
-    if (!str) return 0;
-    
-    uintptr_t p = (uintptr_t)str;
-    
-    /* Quick rejection of obviously bad pointers */
-    if (p >= 0xe0000000) return -1;  /* Kernel space */
-    if (p == 0xdeadbeef || p == 0xaaaaaaaa || p == 0xcdcdcdcd || p == 0xdbdbdbdb || p == 0xfdfdfdfd) return -1;
-    if (p < 0x80000000) return -1;  /* Too low */
-    
-    /* Walk string with length limit - this is safe even if string never NUL-terminates
-       because we enforce a maximum before strlen can read far. */
-    int len = 0;
-    while (len < max_len && str[len] != '\0') {
-        len++;
-    }
-    
-    /* If we hit max_len without finding NUL, string is too long */
-    if (len >= max_len) return -1;
-    
-    return len;
-}
-
 /*
  * @mod_dir insert before fgroup related sdir, set NULL if no mod.
  * @fname insert after fgroup related sdir.
@@ -1399,13 +1371,13 @@ static char *_resolve_file_path_internal(char *dst, size_t dst_size,
 
       /* SAFETY: Validate component lengths before string concatenation */
       /* Use safe strnlen with max 4KB per component (generous but bounded) */
-      int len_mdir = _strnlen_safe(mdir, 4096);
-      int len_mod_dir = _strnlen_safe(mod_dir, 4096);
-      int len_sdir = _strnlen_safe(sdir, 4096);
-      int len_fname = _strnlen_safe(fname, 4096);
+      int len_mdir = strnlen(mdir, 4096);
+      int len_mod_dir = strnlen(mod_dir, 4096);
+      int len_sdir = strnlen(sdir, 4096);
+      int len_fname = strnlen(fname, 4096);
       
-      /* Check for invalid string lengths (detected by _strnlen_safe returning -1) */
-      if (len_mdir < 0 || len_mod_dir < 0 || len_sdir < 0 || len_fname < 0) {
+      /* Check for invalid string lengths (detected by strnlen returning max) */
+      if (len_mdir >= 4096 || len_mod_dir >= 4096 || len_sdir >= 4096 || len_fname >= 4096) {
           ERRORMSG("CORRUPTED STRING: mdir_len=%d, mod_dir_len=%d, sdir_len=%d, fname_len=%d (possibly unterminated or unmapped)",
                    len_mdir, len_mod_dir, len_sdir, len_fname);
           dst[0] = '\0';

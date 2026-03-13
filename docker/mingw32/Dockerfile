@@ -19,11 +19,18 @@ FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ── Toolchain & build tools ──────────────────────────────────────────────────
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN dpkg --add-architecture i386 \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
         gcc-mingw-w64-i686-posix \
         g++-mingw-w64-i686-posix \
         cmake \
         ninja-build \
+        gdb \
+        gdb-mingw-w64 \
+        gdb-mingw-w64-target \
+        wine \
+        wine32 \
         curl \
         git \
         ca-certificates \

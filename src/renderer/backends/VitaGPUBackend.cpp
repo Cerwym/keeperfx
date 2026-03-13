@@ -22,11 +22,15 @@ VitaGPUBackend::VitaGPUBackend()
 
 VitaGPUBackend::~VitaGPUBackend()
 {
+#ifdef PLATFORM_VITA
     if (m_sprite_layer) {
         delete m_sprite_layer;
         m_sprite_layer = nullptr;
         SYNCLOG("VitaGPUBackend: VitaSpriteLayer destroyed");
     }
+#else
+    m_sprite_layer = nullptr;
+#endif
 }
 
 bool VitaGPUBackend::Initialize()

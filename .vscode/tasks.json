@@ -12,10 +12,10 @@
 {
 "label": "Build & Deploy Windows Debug",
 "type": "shell",
-"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm mingw32 bash -c 'cmake --preset windows-x86-debug && cmake --build --preset windows-x86-debug' && cp out/build/windows-x86-debug/keeperfx.exe .deploy/keeperfx.exe && echo 'Deployed.'",
+"command": "docker compose -f '${workspaceFolder}/docker/compose.yml' run --rm mingw32 bash -c 'if grep -q /workspaces out/build/windows-x86-debug/CMakeCache.txt 2>/dev/null; then rm -rf out/build/windows-x86-debug/CMakeCache.txt out/build/windows-x86-debug/CMakeFiles; fi && cmake --preset windows-x86-debug && cmake --build --preset windows-x86-debug' && cp out/build/windows-x86-debug/keeperfx.exe .deploy/keeperfx.exe && echo 'Deployed.'",
 "windows": {
 "command": [
-"docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm mingw32 bash -c 'cmake --preset windows-x86-debug && cmake --build --preset windows-x86-debug';",
+"docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm mingw32 bash -c 'if grep -q /workspaces out/build/windows-x86-debug/CMakeCache.txt 2>/dev/null; then rm -rf out/build/windows-x86-debug/CMakeCache.txt out/build/windows-x86-debug/CMakeFiles; fi && cmake --preset windows-x86-debug && cmake --build --preset windows-x86-debug';",
 "if ($LASTEXITCODE -ne 0) { exit 1 };",
 "Copy-Item '${workspaceFolder}\\out\\build\\windows-x86-debug\\keeperfx.exe' '${workspaceFolder}\\.deploy\\keeperfx.exe' -Force;",
 "Write-Host 'keeperfx.exe deployed to .deploy/' -ForegroundColor Green;"
@@ -23,6 +23,26 @@
 },
 "problemMatcher": "$gcc",
 "group": { "kind": "build", "isDefault": true },
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Devcontainer F5 Prep (Windows Debug)",
+"detail": "Build windows-x86-debug then incrementally sync exe/assets into .deploy for winegdb",
+"type": "shell",
+"command": "bash '${workspaceFolder}/.vscode/devcontainer_f5_prepare.sh' '${workspaceFolder}' 'windows-x86-debug'",
+"problemMatcher": "$gcc",
+"group": "build",
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Install Devcontainer Wine Debugger",
+"detail": "One-time setup in devcontainer: install wine + winegdb required by container F5 debug profile",
+"type": "shell",
+"command": "bash '${workspaceFolder}/.vscode/install_wine_debugger.sh'",
+"problemMatcher": [],
+"group": "build",
 "presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
 },
 
@@ -36,6 +56,36 @@
 "problemMatcher": "$gcc",
 "group": "build",
 "presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Build & Assemble Windows Runtime",
+"detail": "Compile in mingw container, then create clean host runtime package in out/package/<preset>/",
+"type": "shell",
+"windows": {
+"command": [
+"docker compose -f '${workspaceFolder}\\docker\\compose.yml' run --rm mingw32 bash -c 'cmake --preset ${input:windowsBuildPreset} && cmake --build --preset ${input:windowsBuildPreset}';",
+"if ($LASTEXITCODE -ne 0) { exit 1 };",
+"powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\.vscode\\assemble_windows_runtime.ps1' -WorkspaceFolder '${workspaceFolder}' -Preset '${input:windowsBuildPreset}'"
+]
+},
+"command": "bash '${workspaceFolder}/.vscode/build_and_assemble_windows_runtime.sh' '${workspaceFolder}' '${input:windowsBuildPreset}'",
+"problemMatcher": "$gcc",
+"group": "build",
+"presentation": { "clear": true, "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+"label": "Assemble Windows Runtime Package",
+"detail": "Create clean host runtime package from .deploy + latest built executable",
+"type": "shell",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\.vscode\\assemble_windows_runtime.ps1' -WorkspaceFolder '${workspaceFolder}' -Preset '${input:windowsBuildPreset}'"
+},
+"command": "bash '${workspaceFolder}/.vscode/assemble_windows_runtime.sh' '${workspaceFolder}' '${input:windowsBuildPreset}'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
 },
 
 // ── Linux (Docker) ───────────────────────────────────────────────────
@@ -97,17 +147,32 @@
 {
 // One-time setup: builds game data layers and populates .deploy/.
 // Requires the DK original game files to be present on this machine.
+"label": "Init DK Originals Layer",
+"type": "shell",
+"windows": {
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\.vscode\\init_dk_layer.ps1' -WorkspaceFolder '${workspaceFolder}' -DkInstallPath '${input:dkInstallPath}'"
+},
+"command": "bash '${workspaceFolder}/.vscode/init_dk_layer.sh' '${workspaceFolder}' '${input:dkInstallPath}'",
+"problemMatcher": [],
+"group": "build",
+"presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
+},
+
+{
+// One-time setup: builds game data layers and populates .deploy/.
+// Requires the DK original game files to be present on this machine.
 "label": "Init .deploy/",
 "type": "shell",
 "windows": {
-"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\.vscode\\init_layered_deploy.ps1' -WorkspaceFolder '${workspaceFolder}'"
+"command": "powershell -ExecutionPolicy Bypass -File '${workspaceFolder}\\.vscode\\init_layered_deploy.ps1' -WorkspaceFolder '${workspaceFolder}' -DkInstallPath '${input:dkInstallPath}'"
 },
 "osx": {
-"command": "echo 'Init .deploy/ is Windows-only. Copy DK originals to .deploy/ manually on Mac.'"
+"command": "bash '${workspaceFolder}/.vscode/init_layered_deploy.sh' '${workspaceFolder}' '${input:dkInstallPath}'"
 },
 "linux": {
-"command": "echo 'Init .deploy/ is Windows-only. Copy DK originals to .deploy/ manually on Linux.'"
+"command": "bash '${workspaceFolder}/.vscode/init_layered_deploy.sh' '${workspaceFolder}' '${input:dkInstallPath}'"
 },
+"command": "bash '${workspaceFolder}/.vscode/init_layered_deploy.sh' '${workspaceFolder}' '${input:dkInstallPath}'",
 "problemMatcher": [],
 "group": "build",
 "presentation": { "reveal": "always", "focus": true, "panel": "shared", "showReuseMessage": false }
@@ -390,6 +455,19 @@
     "type": "promptString",
     "description": "PrincessLog listener port (must match PrincessLog settings on Vita)",
     "default": "8080"
+},
+{
+    "id": "dkInstallPath",
+    "type": "promptString",
+    "description": "Path to original Dungeon Keeper install root (containing data/ and sound/). Leave blank to use cached value or prompt.",
+    "default": ""
+},
+{
+    "id": "windowsBuildPreset",
+    "type": "pickString",
+    "description": "Windows preset for build/runtime assembly",
+    "options": ["windows-x86-release", "windows-x86-debug"],
+    "default": "windows-x86-release"
 }
 ]
 }

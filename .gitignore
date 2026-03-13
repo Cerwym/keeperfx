@@ -24,6 +24,7 @@ docs/latex
 *.Tpo
 res/keeperfx_icon.ico
 .header_checksum
+/\.deploy/
 /deps/enet
 /deps/enet6
 /deps/zlib

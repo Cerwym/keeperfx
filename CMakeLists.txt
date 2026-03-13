@@ -215,6 +215,7 @@ endif()
 # Global definitions for all targets.
 add_compile_definitions("DEBUG=$<IF:$<CONFIG:Debug>,1,0>")
 add_compile_definitions("SPNG_STATIC=1")
+add_compile_definitions("AL_LIBTYPE_STATIC=1")
 if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
     add_compile_definitions("SDL_MIXER_AVAILABLE=1")
 endif()
@@ -251,6 +252,30 @@ elseif(APPLE)
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/PlatformWindows\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/src/linux\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/src/windows\\.cpp$")
+endif()
+
+# Desktop builds must exclude homebrew-only platform backends and inputs.
+if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/PlatformVita\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/Platform3DS\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/PlatformSwitch\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/PlatformHomebrewMain\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/WindowSystemVita\\.cpp$")
+
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/renderer/RendererVita\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/renderer/Renderer3DS\\.cpp$")
+    list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/renderer/vita/.*\\.cpp$")
+
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/input/input_vita\\.c$")
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/input/input_3ds\\.c$")
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/input/input_switch\\.c$")
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/platform/vita_.*\\.c$")
+    list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/platform/debugscreen/.*\\.c$")
+endif()
+
+# OpenAL dependency archive uses GCC win32 gthr symbols; include shim on MinGW.
+if(WIN32 OR MINGW)
+    list(APPEND KEEPERFX_SOURCES_C "deps/openal_gthr_shims.c")
 endif()
 
 # Add two executable targets: keeperfx and keeperfx_hvlog.

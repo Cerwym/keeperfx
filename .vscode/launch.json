@@ -1,0 +1,44 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug KeeperFX (Windows Host)",
+      // F5 default. Builds in container, copies exe to .deploy/, then launches + debugs on Windows host.
+      // Run \"Init .deploy/\" once first to populate game data layers.
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/.deploy/keeperfx.exe",
+      "cwd": "${workspaceFolder}/.deploy",
+      "args": [
+        "-nointro",
+        "-alex"
+      ],
+      "MIMode": "gdb",
+      "windows": {
+        "miDebuggerPath": "${workspaceFolder}/.vscode/gdb.exe"
+      },
+      "linux": {
+        "miDebuggerPath": "winegdb"
+      },
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Set disassembly flavor to Intel",
+          "text": "-gdb-set disassembly-flavor intel",
+          "ignoreFailures": true
+        }
+      ],
+      "sourceFileMap": {
+        "/src": "${workspaceFolder}"
+      },
+      "preLaunchTask": "Build & Deploy Windows Debug",
+      "externalConsole": true,
+      "stopAtEntry": false,
+      "internalConsoleOptions": "openOnSessionStart"
+    }
+  ]
+}
