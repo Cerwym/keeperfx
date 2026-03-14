@@ -39,6 +39,39 @@
       "externalConsole": true,
       "stopAtEntry": false,
       "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": "Devcontainer F5 (Wine)",
+      // Use this profile when working inside the MinGW devcontainer.
+      // Builds natively with the container's own compiler (no Docker-in-Docker),
+      // then launches keeperfx.exe under Wine with GDB attached.
+      // One-time setup: run task \"Install Devcontainer Wine Debugger\" first.
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/.deploy/keeperfx.exe",
+      "cwd": "${workspaceFolder}/.deploy",
+      "args": [
+        "-nointro",
+        "-alex"
+      ],
+      "MIMode": "gdb",
+      "miDebuggerPath": "${workspaceFolder}/.vscode/wine_debugger.sh",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Set disassembly flavor to Intel",
+          "text": "-gdb-set disassembly-flavor intel",
+          "ignoreFailures": true
+        }
+      ],
+      "preLaunchTask": "Devcontainer F5 Prep (Windows Debug)",
+      "externalConsole": false,
+      "stopAtEntry": false,
+      "internalConsoleOptions": "openOnSessionStart"
     }
   ]
 }

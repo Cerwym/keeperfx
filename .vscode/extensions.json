@@ -1,5 +1,20 @@
 {
 	"recommendations": [
+		// Core C/C++ — IntelliSense, debugging, CMake integration
 		"ms-vscode.cpptools",
+		"ms-vscode.cpptools-extension-pack",
+		"ms-vscode.cmake-tools",
+		// Devcontainer support (required for MinGW / VitaSDK / Linux containers)
+		"ms-vscode-remote.remote-containers",
+		// Alternative GDB/LLDB frontend — better raw register/memory views
+		"webfreak.debug",
+		// Binary file inspection (.psp2dmp, .dat, sound banks, etc.)
+		"ms-vscode.hexeditor",
+		// Inline compiler errors/warnings in the editor margin
+		"usernamehw.errorlens",
+		// Git blame, history, and bisect helpers inline
+		"eamodio.gitlens",
+		// GitHub PR / issues integration
+		"github.vscode-pull-request-github"
 	],
 }

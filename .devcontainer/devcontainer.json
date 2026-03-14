@@ -38,7 +38,7 @@
 			"settings": {
 				"C_Cpp.default.configurationName": "Docker MinGW (Windows x86 Debug)",
 				"C_Cpp.default.compileCommands": "${workspaceFolder}/out/build/windows-x86-debug/compile_commands.json",
-				"C_Cpp.default.compilerPath": "/usr/bin/i686-w64-mingw32-gcc-posix",
+				"C_Cpp.default.compilerPath": "/usr/bin/i686-w64-mingw32-gcc-win32",
 				"C_Cpp.default.intelliSenseMode": "linux-gcc-x86",
 				"C_Cpp.default.cStandard": "gnu11",
 				"C_Cpp.default.cppStandard": "gnu++20",
