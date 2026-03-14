@@ -1381,7 +1381,7 @@ static char *_resolve_file_path_internal(char *dst, size_t dst_size,
           ERRORMSG("CORRUPTED STRING: mdir_len=%d, mod_dir_len=%d, sdir_len=%d, fname_len=%d (possibly unterminated or unmapped)",
                    len_mdir, len_mod_dir, len_sdir, len_fname);
           dst[0] = '\0';
-          return NULL;
+          return dst;
       }
       
       /* Sanity check: strings should be reasonable length */
@@ -1390,7 +1390,7 @@ static char *_resolve_file_path_internal(char *dst, size_t dst_size,
           ERRORMSG("INSANE STRING LENGTH: mdir=%d, mod_dir=%d, sdir=%d, fname=%d bytes",
                    len_mdir, len_mod_dir, len_sdir, len_fname);
           dst[0] = '\0';
-          return NULL;
+          return dst;
       }
       
       int total_len = len_mdir + len_mod_dir + len_sdir + len_fname + 3; /* +3 for separators */
@@ -1401,17 +1401,12 @@ static char *_resolve_file_path_internal(char *dst, size_t dst_size,
                    len_mdir, len_mod_dir, 
                    len_sdir, len_fname);
           dst[0] = '\0';
-          return NULL;
+          return dst;
       }
 
       const char *mod_sep = mod_dir[0] == 0 ? "" : "/";
       const char *dir_sep = sdir[0] == 0 ? "" : "/";
       const char *file_sep = fname[0] == 0 ? "" : "/";
-      
-      /* DEBUG: Log the actual components before snprintf to diagnose heap issues */
-      WARNMSG("PATH RESOLVE: mdir=%p sdir=%p fname=%p len_mdir=%d len_sdir=%d len_fname=%d total=%d dst_size=%lu",
-              (void*)mdir, (void*)sdir, (void*)fname,
-              len_mdir, len_sdir, len_fname, (len_mdir + len_sdir + len_fname), (unsigned long)dst_size);
       
       /* OVERFLOW CHECK: snprintf returns number of chars that would have been written.
          If >= dst_size, the buffer was overflowed. Return NULL to signal error. */
@@ -1423,7 +1418,7 @@ static char *_resolve_file_path_internal(char *dst, size_t dst_size,
                    (unsigned long)len_mdir, (unsigned long)len_mod_dir, 
                    (unsigned long)len_sdir, (unsigned long)len_fname);
           dst[0] = '\0';
-          return NULL;
+          return dst;
       }
   }
   return dst;

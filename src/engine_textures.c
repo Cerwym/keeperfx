@@ -216,6 +216,11 @@ static TbBool load_letter_one_file(unsigned long tmapidx, char letter, void *dst
     SYNCDBG(9,"Starting");
 
     char* fname = prepare_letter_one_file_path(tmapidx, letter, lvnum, fgroup);
+    if (fname == NULL || fname[0] == '\0')
+    {
+        WARNMSG("Texture file path resolution failed for map %lu texture %lu%c.", (unsigned long)lvnum, tmapidx, letter);
+        return false;
+    }
     if (!LbFileExists(fname))
     {
         SYNCDBG(10, "Texture file \"%s\" doesn't exist.",fname);
