@@ -590,7 +590,7 @@ void LbGrabMouseCheck(long grab_event)
 
     TbBool window_has_focus = lbAppActive;
      // ensure the game is not paused, to avoid confusion about the grab state when the player is in possession mode and has set the option to unlock cursor when paused
-    TbBool paused = (*gpGame).operation_flags &= ~GOF_Paused != 0;
+    TbBool paused = (game.operation_flags & GOF_Paused) != 0;
     TbBool possession_mode = (get_my_player()->view_type == PVT_CreatureContrl) && ((game.view_mode_flags & GNFldD_CreaturePasngr) == 0);
     TbBool grab_cursor = lbMouseGrabbed;
     if (!window_has_focus)

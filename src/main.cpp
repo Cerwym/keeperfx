@@ -1033,6 +1033,9 @@ short setup_game(void)
   features_enabled |= Ft_DeltaTime; // enable delta time
   features_enabled |= Ft_NoCdMusic; // use music files (OGG) rather than CD music
 
+  // Prepare the Game structure, do it early so shit doesnt break.
+  clear_complete_game();
+
   // Configuration file
   if ( !load_configuration() )
   {
@@ -1111,8 +1114,7 @@ short setup_game(void)
   }
 
   // Now do more setup
-  // Prepare the Game structure
-  clear_complete_game();
+
   // Moon phase calculation
   calculate_moon_phase(true,true);
   // Start the sound system
