@@ -71,8 +71,15 @@ foreach ($dll in @("SDL2.dll", "SDL2_image.dll", "SDL2_mixer.dll", "SDL2_net.dll
 Write-Host "Overlaying latest generated package assets (if available) ..." -ForegroundColor Cyan
 $pkgData = Join-Path $workspace "pkg/data"
 $pkgLdata = Join-Path $workspace "pkg/ldata"
+$pkgFxdata = Join-Path $workspace "pkg/fxdata"
+$pkgCampgns = Join-Path $workspace "pkg/campgns"
+$pkgLevels = Join-Path $workspace "pkg/levels"
 $pkgSound = Join-Path $workspace "pkg/sound"
 $outData = Join-Path $outDir "data"
+$outLdata = Join-Path $outDir "ldata"
+$outFxdata = Join-Path $outDir "fxdata"
+$outCampgns = Join-Path $outDir "campgns"
+$outLevels = Join-Path $outDir "levels"
 $outSound = Join-Path $outDir "sound"
 
 if (Test-Path $pkgData) {
@@ -80,8 +87,20 @@ if (Test-Path $pkgData) {
     Copy-Item "$pkgData\*" $outData -Recurse -Force
 }
 if (Test-Path $pkgLdata) {
-    New-Item -ItemType Directory -Force -Path $outData | Out-Null
-    Copy-Item "$pkgLdata\*" $outData -Recurse -Force
+    New-Item -ItemType Directory -Force -Path $outLdata | Out-Null
+    Copy-Item "$pkgLdata\*" $outLdata -Recurse -Force
+}
+if (Test-Path $pkgFxdata) {
+    New-Item -ItemType Directory -Force -Path $outFxdata | Out-Null
+    Copy-Item "$pkgFxdata\*" $outFxdata -Recurse -Force
+}
+if (Test-Path $pkgCampgns) {
+    New-Item -ItemType Directory -Force -Path $outCampgns | Out-Null
+    Copy-Item "$pkgCampgns\*" $outCampgns -Recurse -Force
+}
+if (Test-Path $pkgLevels) {
+    New-Item -ItemType Directory -Force -Path $outLevels | Out-Null
+    Copy-Item "$pkgLevels\*" $outLevels -Recurse -Force
 }
 if (Test-Path $pkgSound) {
     New-Item -ItemType Directory -Force -Path $outSound | Out-Null

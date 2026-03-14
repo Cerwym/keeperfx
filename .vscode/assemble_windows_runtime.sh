@@ -53,8 +53,20 @@ if [[ -d "$workspace/pkg/data" ]]; then
   cp -a "$workspace/pkg/data/." "$out_dir/data/"
 fi
 if [[ -d "$workspace/pkg/ldata" ]]; then
-  mkdir -p "$out_dir/data"
-  cp -a "$workspace/pkg/ldata/." "$out_dir/data/"
+  mkdir -p "$out_dir/ldata"
+  cp -a "$workspace/pkg/ldata/." "$out_dir/ldata/"
+fi
+if [[ -d "$workspace/pkg/fxdata" ]]; then
+  mkdir -p "$out_dir/fxdata"
+  cp -a "$workspace/pkg/fxdata/." "$out_dir/fxdata/"
+fi
+if [[ -d "$workspace/pkg/campgns" ]]; then
+  mkdir -p "$out_dir/campgns"
+  cp -a "$workspace/pkg/campgns/." "$out_dir/campgns/"
+fi
+if [[ -d "$workspace/pkg/levels" ]]; then
+  mkdir -p "$out_dir/levels"
+  cp -a "$workspace/pkg/levels/." "$out_dir/levels/"
 fi
 if [[ -d "$workspace/pkg/sound" ]]; then
   mkdir -p "$out_dir/sound"

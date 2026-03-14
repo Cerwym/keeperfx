@@ -25,9 +25,16 @@ if ($LASTEXITCODE -ne 0) {
 
 $pkgData = Join-Path $workspace "pkg/data"
 $pkgLdata = Join-Path $workspace "pkg/ldata"
+$pkgFxdata = Join-Path $workspace "pkg/fxdata"
+$pkgCampgns = Join-Path $workspace "pkg/campgns"
+$pkgLevels = Join-Path $workspace "pkg/levels"
+$deployLdata = Join-Path $deployDir "ldata"
+$deployFxdata = Join-Path $deployDir "fxdata"
+$deployCampgns = Join-Path $deployDir "campgns"
+$deployLevels = Join-Path $deployDir "levels"
 
-if (-not (Test-Path $pkgData) -and -not (Test-Path $pkgLdata)) {
-    throw "No gfx package output found under pkg/data or pkg/ldata."
+if (-not (Test-Path $pkgData) -and -not (Test-Path $pkgLdata) -and -not (Test-Path $pkgFxdata) -and -not (Test-Path $pkgCampgns) -and -not (Test-Path $pkgLevels)) {
+    throw "No gfx package output found under pkg/data, pkg/ldata, pkg/fxdata, pkg/campgns, or pkg/levels."
 }
 
 New-Item -ItemType Directory -Force -Path $deployData | Out-Null
@@ -35,7 +42,20 @@ if (Test-Path $pkgData) {
     Copy-Item "$pkgData\*" $deployData -Recurse -Force
 }
 if (Test-Path $pkgLdata) {
-    Copy-Item "$pkgLdata\*" $deployData -Recurse -Force
+    New-Item -ItemType Directory -Force -Path $deployLdata | Out-Null
+    Copy-Item "$pkgLdata\*" $deployLdata -Recurse -Force
+}
+if (Test-Path $pkgFxdata) {
+    New-Item -ItemType Directory -Force -Path $deployFxdata | Out-Null
+    Copy-Item "$pkgFxdata\*" $deployFxdata -Recurse -Force
+}
+if (Test-Path $pkgCampgns) {
+    New-Item -ItemType Directory -Force -Path $deployCampgns | Out-Null
+    Copy-Item "$pkgCampgns\*" $deployCampgns -Recurse -Force
+}
+if (Test-Path $pkgLevels) {
+    New-Item -ItemType Directory -Force -Path $deployLevels | Out-Null
+    Copy-Item "$pkgLevels\*" $deployLevels -Recurse -Force
 }
 
-Write-Host "GFX layer refreshed in .deploy/data." -ForegroundColor Green
+Write-Host "GFX layer refreshed in .deploy/data, .deploy/ldata, .deploy/fxdata, .deploy/campgns and .deploy/levels." -ForegroundColor Green
