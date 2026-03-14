@@ -1403,6 +1403,11 @@ static TbBool load_level_file(LevelNumber lvnum)
           result = false;
         load_map_wibble_file(lvnum);
         load_and_setup_map_info(lvnum);
+        if (!game.texture_id)
+        {
+            ERRORLOG("Invalid texture id in map info file for level %lu", (unsigned long)lvnum);
+            game.texture_id = 0;
+        }
         load_texture_map_file(game.texture_id, lvnum, fgroup);
         if (new_format)
         {
