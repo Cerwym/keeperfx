@@ -61,7 +61,8 @@ be added to the KeeperFX development channel.
   - VS Code connects via `host.docker.internal:2159` using the cross-compile GDB inside the container; full breakpoints, step, locals, and source navigation work.
 - **From a Windows-hosted VS Code session:** use `Host F5: Build + Assemble + Debug (Windows gdb)` instead (runs gdb natively, no gdbserver needed).
 - Host debugger preflight (`Verify Windows Host GDB`) checks `.vscode/gdb.exe` and fails fast with instructions if missing.
-- First-time requirement: run `Init .deploy/` once so layered runtime assets are available for assembly.
+- First-time requirement: initialize `.deploy/` once so layered runtime assets are available for assembly:
+  `powershell -ExecutionPolicy Bypass -File tools/init-deploy.ps1 -DungeonKeeperPath "C:\\Path\\To\\Dungeon Keeper"`.
 
 
 ## Components
