@@ -67,9 +67,22 @@ endif()
 
 # Dependencies: platform SDKs provide their own; desktop uses vcpkg or find_package
 if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
+    # CLion Docker toolchains may invoke CMake directly with MinGW cross compilers
+    # but without the mingw toolchain file. Add the MinGW sysroot as a package
+    # prefix so find_package(SDL2 CONFIG REQUIRED) can resolve SDL2Config.cmake.
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE OR CMAKE_TOOLCHAIN_FILE STREQUAL "")
+        if(CMAKE_C_COMPILER MATCHES "(^|.*/)i686-w64-mingw32-gcc(-win32)?(\\.exe)?$")
+            list(APPEND CMAKE_PREFIX_PATH "/usr/i686-w64-mingw32")
+            message(STATUS "Auto-added MinGW i686 package prefix: /usr/i686-w64-mingw32")
+        elseif(CMAKE_C_COMPILER MATCHES "(^|.*/)x86_64-w64-mingw32-gcc(-win32)?(\\.exe)?$")
+            list(APPEND CMAKE_PREFIX_PATH "/usr/x86_64-w64-mingw32")
+            message(STATUS "Auto-added MinGW x86_64 package prefix: /usr/x86_64-w64-mingw32")
+        endif()
+    endif()
+
     # When cross-compiling for Windows with MinGW, force static SDL2 libs so the
     # final exe doesn't require SDL2*.dll at runtime.
-    if(MINGW OR CMAKE_CROSSCOMPILING)
+    if(KFX_WINDOWS_TOOLCHAIN)
         set(SDL2_USE_STATIC_LIBS ON)
         set(SDL2IMAGE_STATIC ON)
         set(SDL2MIXER_STATIC ON)
@@ -375,10 +388,10 @@ else()
 endif()
 
 # System libraries (Windows only).
-if(WIN32)
-    target_link_libraries(keeperfx PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32)
-    target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32)
-    target_link_libraries(tests PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32)
+if(KFX_WINDOWS_TOOLCHAIN)
+    target_link_libraries(keeperfx PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32 avrt)
+    target_link_libraries(keeperfx_hvlog PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32 avrt)
+    target_link_libraries(tests PRIVATE imagehlp dbghelp ole32 uuid winmm ws2_32 avrt)
 endif()
 
 # Go into submodules (desktop only — homebrew platforms use their own SDK deps).

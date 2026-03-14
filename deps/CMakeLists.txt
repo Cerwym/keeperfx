@@ -174,6 +174,7 @@ target_link_libraries(keeperfx_hvlog PUBLIC luajit_static)
 add_library(openal_static STATIC IMPORTED)
 set_target_properties(openal_static PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/openal/libOpenAL32.a)
 set_target_properties(openal_static PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/openal/include)
+target_link_libraries(openal_static INTERFACE avrt)
 target_link_libraries(keeperfx PUBLIC openal_static)
 target_link_libraries(keeperfx_hvlog PUBLIC openal_static)
 
