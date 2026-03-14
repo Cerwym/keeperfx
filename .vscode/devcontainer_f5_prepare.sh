@@ -91,14 +91,17 @@ mkdir -p "$deploy_dir"
 cp -f "$exe_src" "$deploy_dir/keeperfx.exe"
 
 copy_dir_newer "$workspace/pkg/data" "$deploy_dir/data"
-copy_dir_newer "$workspace/pkg/ldata" "$deploy_dir/data"
+copy_dir_newer "$workspace/pkg/ldata" "$deploy_dir/ldata"
 copy_dir_newer "$workspace/pkg/sound" "$deploy_dir/sound"
 
 copy_dir_newer "$workspace/config/creatrs" "$deploy_dir/creatrs"
 copy_dir_newer "$workspace/config/fxdata" "$deploy_dir/fxdata"
+copy_dir_newer "$workspace/pkg/fxdata" "$deploy_dir/fxdata"
 copy_dir_newer "$workspace/config/mods" "$deploy_dir/mods"
 copy_dir_newer "$workspace/campgns" "$deploy_dir/campgns"
 copy_dir_newer "$workspace/levels" "$deploy_dir/levels"
+copy_dir_newer "$workspace/pkg/campgns" "$deploy_dir/campgns"
+copy_dir_newer "$workspace/pkg/levels" "$deploy_dir/levels"
 
 copy_file_if_exists "$workspace/config/keeperfx.cfg" "$deploy_dir/keeperfx.cfg"
 copy_file_if_exists "$workspace/docs/keeperfx_readme.txt" "$deploy_dir/keeperfx_readme.txt"
@@ -106,6 +109,9 @@ copy_file_if_exists "$workspace/docs/keeperfx_readme.txt" "$deploy_dir/keeperfx_
 for dll in SDL2.dll SDL2_image.dll SDL2_mixer.dll SDL2_net.dll; do
   copy_file_if_exists "$workspace/sdl/for_final_package/$dll" "$deploy_dir/$dll"
 done
+
+echo "Running runtime asset preflight checks ..."
+bash "$workspace/.vscode/validate_runtime_assets.sh" "$workspace" ".deploy"
 
 if ! command -v winegdb >/dev/null 2>&1 && ! command -v winedbg >/dev/null 2>&1; then
   echo "" >&2
