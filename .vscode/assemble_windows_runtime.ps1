@@ -74,13 +74,11 @@ $pkgLdata = Join-Path $workspace "pkg/ldata"
 $pkgFxdata = Join-Path $workspace "pkg/fxdata"
 $pkgCampgns = Join-Path $workspace "pkg/campgns"
 $pkgLevels = Join-Path $workspace "pkg/levels"
-$pkgSound = Join-Path $workspace "pkg/sound"
 $outData = Join-Path $outDir "data"
 $outLdata = Join-Path $outDir "ldata"
 $outFxdata = Join-Path $outDir "fxdata"
 $outCampgns = Join-Path $outDir "campgns"
 $outLevels = Join-Path $outDir "levels"
-$outSound = Join-Path $outDir "sound"
 
 if (Test-Path $pkgData) {
     New-Item -ItemType Directory -Force -Path $outData | Out-Null
@@ -102,10 +100,9 @@ if (Test-Path $pkgLevels) {
     New-Item -ItemType Directory -Force -Path $outLevels | Out-Null
     Copy-Item "$pkgLevels\*" $outLevels -Recurse -Force
 }
-if (Test-Path $pkgSound) {
-    New-Item -ItemType Directory -Force -Path $outSound | Out-Null
-    Copy-Item "$pkgSound\*" $outSound -Recurse -Force
-}
+
+# Keep DK/release-provided sound banks for runtime. pkg/sound assets are not
+# guaranteed to match the expected bank layout consumed by bflib_sndlib.
 
 Write-Host "Copying executable ..." -ForegroundColor Cyan
 Copy-Item $exePath (Join-Path $outDir "keeperfx.exe") -Force

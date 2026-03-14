@@ -68,10 +68,9 @@ if [[ -d "$workspace/pkg/levels" ]]; then
   mkdir -p "$out_dir/levels"
   cp -a "$workspace/pkg/levels/." "$out_dir/levels/"
 fi
-if [[ -d "$workspace/pkg/sound" ]]; then
-  mkdir -p "$out_dir/sound"
-  cp -a "$workspace/pkg/sound/." "$out_dir/sound/"
-fi
+
+# Keep DK/release-provided sound banks for runtime. pkg/sound assets are not
+# guaranteed to match the expected bank layout consumed by bflib_sndlib.
 
 cp "$exe_path" "$out_dir/keeperfx.exe"
 

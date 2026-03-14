@@ -92,7 +92,9 @@ cp -f "$exe_src" "$deploy_dir/keeperfx.exe"
 
 copy_dir_newer "$workspace/pkg/data" "$deploy_dir/data"
 copy_dir_newer "$workspace/pkg/ldata" "$deploy_dir/ldata"
-copy_dir_newer "$workspace/pkg/sound" "$deploy_dir/sound"
+
+# Keep DK/release-provided sound banks for runtime. pkg/sound assets are not
+# guaranteed to match the expected bank layout consumed by bflib_sndlib.
 
 copy_dir_newer "$workspace/config/creatrs" "$deploy_dir/creatrs"
 copy_dir_newer "$workspace/config/fxdata" "$deploy_dir/fxdata"

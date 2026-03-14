@@ -84,7 +84,6 @@ $pkgLdata = Join-Path $workspace "pkg/ldata"
 $pkgFxdata = Join-Path $workspace "pkg/fxdata"
 $pkgCampgns = Join-Path $workspace "pkg/campgns"
 $pkgLevels = Join-Path $workspace "pkg/levels"
-$pkgSound = Join-Path $workspace "pkg/sound"
 $deployLdata = Join-Path $deployDir "ldata"
 $deployFxdata = Join-Path $deployDir "fxdata"
 $deployCampgns = Join-Path $deployDir "campgns"
@@ -109,9 +108,9 @@ if (Test-Path $pkgLevels) {
     New-Item -ItemType Directory -Force -Path $deployLevels | Out-Null
     Copy-Item "$pkgLevels\*" $deployLevels -Recurse -Force
 }
-if (Test-Path $pkgSound) {
-    Copy-Item "$pkgSound\*" $deploySound -Recurse -Force
-}
+
+# Keep DK/release-provided sound banks for runtime. pkg/sound assets are not
+# guaranteed to match the expected bank layout consumed by bflib_sndlib.
 
 # KeeperFX community maps (classic/standard/lostlvls) ship their binary data
 # only in the official "complete" release archive, not in the git repo.

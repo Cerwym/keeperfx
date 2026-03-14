@@ -74,9 +74,9 @@ if [[ -d "$workspace/pkg/levels" ]]; then
   mkdir -p "$deploy_dir/levels"
   cp -a "$workspace/pkg/levels/." "$deploy_dir/levels/"
 fi
-if [[ -d "$workspace/pkg/sound" ]]; then
-  cp -a "$workspace/pkg/sound/." "$deploy_sound/"
-fi
+
+# Keep DK/release-provided sound banks for runtime. pkg/sound assets are not
+# guaranteed to match the expected bank layout consumed by bflib_sndlib.
 
 # KeeperFX community maps (classic/standard/lostlvls) ship their binary data
 # only in the official "complete" release archive, not in the git repo.
