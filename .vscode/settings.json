@@ -1,0 +1,6 @@
+{
+  "debug.showVariableTypes": true,
+  "debug.inlineValues": true,
+  "debug.console.wordWrap": true,
+  "debug.toolBarLocation": "floating"
+}

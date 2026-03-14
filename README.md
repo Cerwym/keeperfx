@@ -52,6 +52,8 @@ detailed instructions on setting up a development environment and building Keepe
 If you wish to discuss development, you can join the [Keeper Klan discord](https://discord.gg/hE4p7vy2Hb) and ask to 
 be added to the KeeperFX development channel.
 
+For a CLion workflow using Docker cross-builds and local Windows GDB, see `docs/clion-windows-debug.md`.
+
 ### Windows debug runtime from the mingw devcontainer
 - Build/package task for full debug runtime layout: `Build & Assemble Windows Debug Runtime`.
 - Output path: `out/package/windows-x86-debug/` — identical structure to the release package.
