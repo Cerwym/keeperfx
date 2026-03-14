@@ -49,6 +49,16 @@ else()
     message(STATUS "Building for desktop platform")
 endif()
 
+# CLion Docker toolchains can invoke MinGW cross compilers without a Windows
+# CMake system context (WIN32/MINGW remain false). Detect that case from
+# compiler executable names and treat it as a Windows desktop toolchain.
+set(KFX_WINDOWS_TOOLCHAIN OFF)
+if(WIN32 OR MINGW
+   OR CMAKE_C_COMPILER MATCHES "w64-mingw32"
+   OR CMAKE_CXX_COMPILER MATCHES "w64-mingw32")
+    set(KFX_WINDOWS_TOOLCHAIN ON)
+endif()
+
 # Networking: disable for homebrew platforms by default; can also be disabled on desktop.
 option(KEEPERFX_NETWORKING "Build with multiplayer networking support" ON)
 if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
@@ -239,7 +249,7 @@ if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
 endif()
 
 # Platform-specific IPlatform implementation filtering for desktop builds
-if(WIN32 OR MINGW)
+if(KFX_WINDOWS_TOOLCHAIN)
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform/PlatformLinux\\.cpp$")
     # linux.cpp provides Linux-only stubs that conflict with Windows-native cdrom.cpp + steam_api.cpp
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/src/linux\\.cpp$")
@@ -278,7 +288,7 @@ add_executable(keeperfx ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
 target_include_directories(keeperfx PRIVATE src deps/centitoml deps/centijson/include)
 
 target_compile_definitions(keeperfx PUBLIC BFDEBUG_LEVEL=0)
-if(WIN32)
+if(KFX_WINDOWS_TOOLCHAIN)
     target_sources(keeperfx PRIVATE "res/keeperfx_stdres.rc")
 endif()
 
@@ -286,7 +296,7 @@ add_executable(keeperfx_hvlog ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
 target_include_directories(keeperfx_hvlog PRIVATE src deps/centitoml deps/centijson/include)
 
 target_compile_definitions(keeperfx_hvlog PUBLIC BFDEBUG_LEVEL=10)
-if(WIN32)
+if(KFX_WINDOWS_TOOLCHAIN)
     target_sources(keeperfx_hvlog PRIVATE "res/keeperfx_stdres.rc")
 endif()
 
@@ -331,7 +341,7 @@ else()
     target_compile_options(keeperfx_hvlog PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
     target_compile_options(tests PRIVATE ${WARNFLAGS} ${GNU_COMPILER_FLAG})
 
-    if(WIN32 OR MINGW)
+    if(KFX_WINDOWS_TOOLCHAIN)
         # MinGW-only: Windows subsystem flags and static libstdc++/winpthread
         set(GNU_LINK_FLAG -mwindows -Wl,--enable-auto-import)
         target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
@@ -623,7 +633,7 @@ elseif(PLATFORM_SWITCH)
 else()
     # When cross-compiling for Windows (MinGW), always use static SDL2 targets to
     # produce a self-contained exe that doesn't need SDL2*.dll at runtime.
-    if(MINGW OR CMAKE_CROSSCOMPILING)
+    if(KFX_WINDOWS_TOOLCHAIN)
         set(_SDL2_LINK SDL2::SDL2-static)
         set(_SDL2_IMAGE_LINK SDL2_image::SDL2_image-static)
         set(_SDL2_MIXER_LINK SDL2_mixer::SDL2_mixer-static)
