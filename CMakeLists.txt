@@ -333,7 +333,9 @@ endif()
 message(STATUS "We are using ${CMAKE_CXX_COMPILER_ID}")
 
 # The default bfd linker in MinGW is extremely slow. LLVM linker (LLD) is much much faster.
-# Only set on MinGW — native Linux GCC uses the system linker.
+# Only enable LLD when CMake is actually in a Windows/MinGW system context.
+# CLion Docker cross-compiler mode can run with Linux system semantics, where
+# forcing LINKER_TYPE LLD has shown fragile behavior with some static archives.
 if(WIN32 OR MINGW)
     set_property(TARGET keeperfx PROPERTY LINKER_TYPE LLD)
     set_property(TARGET keeperfx_hvlog PROPERTY LINKER_TYPE LLD)
