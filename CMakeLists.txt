@@ -49,6 +49,12 @@ else()
     message(STATUS "Building for desktop platform")
 endif()
 
+# Networking: disable for homebrew platforms by default; can also be disabled on desktop.
+option(KEEPERFX_NETWORKING "Build with multiplayer networking support" ON)
+if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
+    set(KEEPERFX_NETWORKING OFF CACHE BOOL "Networking disabled on homebrew" FORCE)
+endif()
+
 # Dependencies: platform SDKs provide their own; desktop uses vcpkg or find_package
 if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
     # When cross-compiling for Windows with MinGW, force static SDL2 libs so the
@@ -97,12 +103,6 @@ list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/debugscreen/.*\\.c$")
 if(NOT KEEPERFX_RENDERER_OPENGL)
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/renderer/RendererOpenGL\\.cpp$")
     list(FILTER KEEPERFX_SOURCES_CXX EXCLUDE REGEX ".*/platform_gl_sdl2\\.cpp$")
-endif()
-
-# Networking: disable for homebrew platforms by default; can also be disabled on desktop.
-option(KEEPERFX_NETWORKING "Build with multiplayer networking support" ON)
-if(PLATFORM_VITA OR PLATFORM_3DS OR PLATFORM_SWITCH)
-    set(KEEPERFX_NETWORKING OFF CACHE BOOL "Networking disabled on homebrew" FORCE)
 endif()
 
 # Debug memory: per-callsite tracking + guard-zone canaries around every KfxAlloc.
@@ -273,11 +273,6 @@ if(NOT PLATFORM_VITA AND NOT PLATFORM_3DS AND NOT PLATFORM_SWITCH)
     list(FILTER KEEPERFX_SOURCES_C EXCLUDE REGEX ".*/platform/debugscreen/.*\\.c$")
 endif()
 
-# OpenAL dependency archive uses GCC win32 gthr symbols; include shim on MinGW.
-if(WIN32 OR MINGW)
-    list(APPEND KEEPERFX_SOURCES_C "deps/openal_gthr_shims.c")
-endif()
-
 # Add two executable targets: keeperfx and keeperfx_hvlog.
 add_executable(keeperfx ${KEEPERFX_SOURCES_C} ${KEEPERFX_SOURCES_CXX})
 target_include_directories(keeperfx PRIVATE src deps/centitoml deps/centijson/include)
@@ -342,9 +337,9 @@ else()
         target_link_options(keeperfx PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx.map)
         target_link_options(keeperfx_hvlog PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,keeperfx_hvlog.map)
         target_link_options(tests PRIVATE ${GNU_LINK_FLAG} -Wl,-Map,tests.map)
-        target_link_libraries(keeperfx PUBLIC -static stdc++ winpthread -dynamic)
-        target_link_libraries(keeperfx_hvlog PUBLIC -static stdc++ winpthread -dynamic)
-        target_link_libraries(tests PUBLIC -static stdc++ winpthread -dynamic)
+        target_link_libraries(keeperfx PUBLIC -static stdc++ -dynamic)
+        target_link_libraries(keeperfx_hvlog PUBLIC -static stdc++ -dynamic)
+        target_link_libraries(tests PUBLIC -static stdc++ -dynamic)
     else()
         # Native Linux: link map + pthreads
         target_link_options(keeperfx PRIVATE -Wl,-Map,keeperfx.map)

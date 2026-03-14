@@ -1,92 +1,93 @@
 cmake_minimum_required(VERSION 3.20)
 
+function(kfx_resolve_dep_archive archive_name archive_url)
+	set(archive_dst "${CMAKE_SOURCE_DIR}/deps/${archive_name}")
+
+	if(NOT EXISTS "${archive_dst}" AND DEFINED ENV{KFX_DEPS_CACHE} AND NOT "$ENV{KFX_DEPS_CACHE}" STREQUAL "")
+		set(archive_cache_src "$ENV{KFX_DEPS_CACHE}/${archive_name}")
+		if(EXISTS "${archive_cache_src}")
+			message(STATUS "Using cached dependency archive: ${archive_name}")
+			execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different "${archive_cache_src}" "${archive_dst}")
+		endif()
+	endif()
+
+	if(NOT EXISTS "${archive_dst}")
+		file(DOWNLOAD "${archive_url}" "${archive_dst}" SHOW_PROGRESS)
+	endif()
+
+	file(SIZE "${archive_dst}" archive_size)
+	if(archive_size EQUAL 0)
+		message(FATAL_ERROR "Dependency archive ${archive_name} is empty. URL: ${archive_url}")
+	endif()
+endfunction()
+
 
 if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/enet6/lib/libenet6.a )
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/enet6)
-	if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/enet6-mingw32.tar.gz )
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/initial/enet6-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/enet6-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("enet6-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/20260310/enet6-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/enet6-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/enet6)
 endif()
 
 if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/zlib/libz.a )
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/zlib)
-	if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/zlib-mingw32.tar.gz )
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/initial/zlib-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/zlib-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("zlib-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/initial/zlib-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/zlib-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/zlib)
 endif()
 
 if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/spng/libspng.a )
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/spng)
-	if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/spng-mingw32.tar.gz )
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/initial/spng-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/spng-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("spng-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/initial/spng-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/spng-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/spng)
 endif()
 
 if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/astronomy/libastronomy.a )
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/astronomy)
-	if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/astronomy-mingw32.tar.gz )
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/initial/astronomy-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/astronomy-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("astronomy-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/initial/astronomy-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/astronomy-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/astronomy)
 endif()
 
 if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/centijson/libjson.a )
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/centijson)
-	if( NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/centijson-mingw32.tar.gz )
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/initial/centijson-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/centijson-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("centijson-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/initial/centijson-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/centijson-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/centijson)
 endif()
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/ffmpeg/libavcodec/libavcodec.a)
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/ffmpeg)
-	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/ffmpeg-mingw32.tar.gz)
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/initial/ffmpeg-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/ffmpeg-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("ffmpeg-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/initial/ffmpeg-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/ffmpeg-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/ffmpeg)
 endif()
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/luajit/lib/libluajit.a)
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/luajit)
-	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/luajit-mingw32.tar.gz)
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/20250418/luajit-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/luajit-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("luajit-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/20250418/luajit-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/luajit-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/luajit)
 endif()
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/openal/libOpenAL32.a)
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/openal)
-	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/openal-mingw32.tar.gz)
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/2024-11-14/openal-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/openal-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("openal-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/20260310/openal-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/openal-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/openal)
 endif()
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/miniupnpc/libminiupnpc.a)
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/miniupnpc)
-	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/miniupnpc-mingw32.tar.gz)
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/20260102/miniupnpc-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/miniupnpc-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("miniupnpc-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/20260102/miniupnpc-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/miniupnpc-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/miniupnpc)
 endif()
 
 if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/libnatpmp/libnatpmp.a)
 	file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/libnatpmp)
-	if(NOT EXISTS ${CMAKE_SOURCE_DIR}/deps/libnatpmp-mingw32.tar.gz)
-		file(DOWNLOAD https://github.com/dkfans/kfx-deps/releases/download/20260102/libnatpmp-mingw32.tar.gz ${CMAKE_SOURCE_DIR}/deps/libnatpmp-mingw32.tar.gz SHOW_PROGRESS)
-	endif()
+	kfx_resolve_dep_archive("libnatpmp-mingw32.tar.gz" "https://github.com/dkfans/kfx-deps/releases/download/20260102/libnatpmp-mingw32.tar.gz")
 
 	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_SOURCE_DIR}/deps/libnatpmp-mingw32.tar.gz WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/deps/libnatpmp)
 endif()
