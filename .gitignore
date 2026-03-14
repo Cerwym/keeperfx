@@ -42,6 +42,12 @@ keeperfx.log
 crash_log.txt
 .local/
 
+# CLion — commit shared run configurations only, ignore everything else
+.idea/*
+!.idea/runConfigurations/
+.idea/runConfigurations/*
+!.idea/runConfigurations/*.xml
+
 # Python cache
 __pycache__/
 *.pyc
