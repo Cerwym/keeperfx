@@ -28,12 +28,13 @@
 #include "front_simple.h"
 #include "config.h"
 #include "game_legacy.h"
+#include "kfx/memory_system_c.h"
 #include "post_inc.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-/******************************************************************************/
+/************** ****************************************************************/
 unsigned char *block_mem = NULL;
 unsigned char *block_ptrs[TEXTURE_VARIATIONS_COUNT * TEXTURE_BLOCKS_COUNT];
 
@@ -48,8 +49,14 @@ static long anim_counter;
 /******************************************************************************/
 void setup_texture_block_mem(void)
 {
-    if (block_mem == NULL)
-        block_mem = (unsigned char *)KfxCalloc(1, BLOCK_MEM_SIZE);
+    kfx_memory_register_external_buffer("texture.page.main", (void**)&block_mem,
+        (block_mem != NULL) ? BLOCK_MEM_SIZE : 0, KFX_DOMAIN_GAMEPLAY_STATIC,
+        KFX_MANAGED_MUTABLE | KFX_MANAGED_EXTERNAL);
+    if (!kfx_memory_ensure_capacity("texture.page.main", BLOCK_MEM_SIZE))
+    {
+        ERRORLOG("Unable to reserve texture.page.main memory (%lu bytes)", (unsigned long)BLOCK_MEM_SIZE);
+        return;
+    }
     unsigned char** dst = block_ptrs;
     unsigned char* src  = block_mem;
     for (int i = 0; i < (TEXTURE_VARIATIONS_COUNT * TEXTURE_BLOCKS_COUNT); i++)

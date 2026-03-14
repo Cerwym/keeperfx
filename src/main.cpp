@@ -56,6 +56,7 @@
 #include "gui_msgs.h"
 #include "scrcapt.h"
 #include "vidmode.h"
+#include "kfx/memory_system_c.h"
 #include "kjm_input.h"
 #include "packets.h"
 #include "config.h"
@@ -958,8 +959,8 @@ TbBool initial_setup(void)
     SYNCDBG(6,"Starting");
     // setting this will force video mode change, even if previous one is same
     MinimalResolutionSetup = true;
-    // setting this will force video mode change, even if previous one is same
-    game_load_files[1].SLength = max((ulong)TEXTURE_BLOCKS_STAT_COUNT_A*block_dimension*block_dimension,(ulong)LANDVIEW_MAP_WIDTH*LANDVIEW_MAP_HEIGHT);
+    // Reserve the full texture page; later texture loading writes BLOCK_MEM_SIZE bytes.
+    game_load_files[1].SLength = max((ulong)BLOCK_MEM_SIZE, (ulong)LANDVIEW_MAP_WIDTH*LANDVIEW_MAP_HEIGHT);
     if (LbDataLoadAllV2(game_load_files))
     {
         ERRORLOG("Unable to load game_load_files");
@@ -995,6 +996,7 @@ short setup_game(void)
 #define VITA_TICK(label) ((void)0)
 #endif
   // Do only a very basic setup
+    kfx_memory_system_init();
   cpu_detect(&cpu_info);
   SYNCMSG("CPU %s type %d family %d model %d stepping %d features %08lx",cpu_info.vendor,
       (int)cpu_get_type(&cpu_info),(int)cpu_get_family(&cpu_info),(int)cpu_get_model(&cpu_info),
@@ -4097,6 +4099,7 @@ short reset_game(void)
     RendererShutdown();
     free_gui_strings_data();
     free_level_strings_data();
+    kfx_memory_system_shutdown();
     FreeAudio();
     return 1;
 }
